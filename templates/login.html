@@ -104,6 +104,29 @@
         <p class="mt-1">খামারি: <span class="font-mono bg-crimson-50 border border-crimson-200 text-crimson-800 px-1.5 py-0.5 rounded font-bold">01712345678</span> / পিন: <span class="font-mono bg-crimson-50 border border-crimson-200 text-crimson-800 px-1.5 py-0.5 rounded font-bold">1234</span></p>
       </div>
 
+      <!-- Direct GitHub APK Download Card (Zero Render Bandwidth) -->
+      {% if not is_mobile_app %}
+      <div class="mt-4 p-3 bg-gradient-to-r from-orangeBrand-50 to-amber-50 rounded-2xl border border-orangeBrand-200">
+        <div class="flex items-center justify-between gap-2">
+          <div class="flex items-center gap-2.5 text-left">
+            <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-maroon-800 to-crimson-600 text-white flex items-center justify-center text-base flex-shrink-0 shadow-sm">
+              📱
+            </div>
+            <div>
+              <p class="text-xs font-black text-slate-900 leading-tight">অ্যান্ড্রয়েড মোবাইল অ্যাপ</p>
+              <p class="text-[10px] text-slate-500 font-medium">সরাসরি গিটহাব থেকে ডাউনলোড</p>
+            </div>
+          </div>
+          <a href="https://raw.githubusercontent.com/najmul5524/SR_Enterprise/main/static/apk/SR_Enterprise.apk" 
+             download="SR_Enterprise.apk" 
+             target="_blank" 
+             class="px-3.5 py-1.5 bg-gradient-to-r from-crimson-600 to-orangeBrand-500 hover:opacity-95 text-white font-black rounded-xl text-xs shadow-sm transition flex-shrink-0 touch-press inline-flex items-center gap-1">
+            <span>ডাউনলোড</span> <span>⬇️</span>
+          </a>
+        </div>
+      </div>
+      {% endif %}
+
     </div>
   </div>
 </div>

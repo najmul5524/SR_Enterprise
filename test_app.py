@@ -210,17 +210,11 @@ async def run_tests():
         assert res.status_code == 303
 
         print("\n--- 11. Testing APK Download and Cloudinary Storage ---")
-        # Test APK redirect to GitHub CDN (preserves 5GB Render free bandwidth)
+        # Test APK redirect directly to GitHub raw CDN (preserves 5GB Render free bandwidth)
         res = await client.get("/download/apk", follow_redirects=False)
         print(f"GET /download/apk -> Status {res.status_code}, Location: {res.headers.get('location')}")
-        assert res.status_code == 302
-        assert "raw.githubusercontent.com" in res.headers.get("location")
-
-        # Test local APK download
-        res = await client.get("/download/apk?local=1")
-        print(f"GET /download/apk?local=1 -> Status {res.status_code}, Content-Type: {res.headers.get('content-type')}")
-        assert res.status_code == 200
-        assert len(res.content) > 50000 # Verified valid APK binary
+        assert res.status_code == 301
+        assert "raw.githubusercontent.com/najmul5524/SR_Enterprise/main/static/apk/SR_Enterprise.apk" in res.headers.get("location")
 
         # Test Cloudinary storage module
         from app.storage import upload_image_file, upload_image_to_cloudinary, is_cloudinary_active

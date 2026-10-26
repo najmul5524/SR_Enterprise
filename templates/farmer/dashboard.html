@@ -59,6 +59,27 @@
     </a>
   </div>
 
+  <!-- Direct GitHub APK Download Card (Zero Render Bandwidth) -->
+  {% if not is_mobile_app %}
+  <div class="bg-gradient-to-r from-orangeBrand-50 to-amber-50 p-4 rounded-3xl border border-orangeBrand-200 flex items-center justify-between gap-3 shadow-sm">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-maroon-800 to-crimson-600 text-white flex items-center justify-center text-xl flex-shrink-0 shadow-sm">
+        📱
+      </div>
+      <div>
+        <h4 class="text-xs font-black text-slate-900">মোবাইল অ্যাপ ব্যবহার করুন</h4>
+        <p class="text-[11px] text-slate-500 font-medium">মোবাইলে সহজে হিসাব দেখতে সরাসরি অ্যাপটি ইনস্টল করুন</p>
+      </div>
+    </div>
+    <a href="https://raw.githubusercontent.com/najmul5524/SR_Enterprise/main/static/apk/SR_Enterprise.apk" 
+       download="SR_Enterprise.apk" 
+       target="_blank" 
+       class="px-4 py-2 bg-gradient-to-r from-crimson-600 to-orangeBrand-500 hover:opacity-95 text-white font-black text-xs rounded-xl shadow-sm transition flex-shrink-0 touch-press inline-flex items-center gap-1">
+      <span>APK ডাউনলোড</span> <span>⬇️</span>
+    </a>
+  </div>
+  {% endif %}
+
   <!-- ACTIVE SHED STATUS -->
   {% if active_batch %}
   <div class="bg-white rounded-3xl border border-orangeBrand-200 shadow-sm p-5 space-y-4">
