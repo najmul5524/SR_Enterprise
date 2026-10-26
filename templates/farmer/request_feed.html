@@ -28,12 +28,39 @@
     <h2 class="text-sm font-black text-slate-900">মালামালের রিকুয়েস্ট ফর্ম</h2>
 
     <form action="/farmer/request-feed/submit" method="POST" class="space-y-4">
-      {% if active_batch %}
-        <input type="hidden" name="batch_id" value="{{ active_batch.id }}">
-        <div class="p-3.5 bg-orangeBrand-50 rounded-2xl border border-orangeBrand-200 text-xs text-orangeBrand-900 font-bold">
-          রানিং শেড: <strong class="text-maroon-900">{{ active_batch.batch_no }}</strong> ({{ active_batch.bird_type }})
+      
+      <!-- Shed Selection Dropdown -->
+      <div>
+        <div class="flex items-center justify-between mb-1">
+          <label class="block text-xs font-black text-slate-700">কোন শেডের জন্য মালামাল প্রয়োজন? (শেড নির্বাচন করুন) *</label>
+          {% if active_batches and active_batches|length > 1 %}
+            <span class="text-[10px] font-black px-2 py-0.5 rounded-full bg-orangeBrand-100 text-orangeBrand-800 border border-orangeBrand-200">
+              {{ active_batches|length }}টি সক্রিয় শেড রয়েছে
+            </span>
+          {% endif %}
         </div>
-      {% endif %}
+        <select name="batch_id" required class="w-full px-3.5 py-2.5 bg-white border border-orangeBrand-200 rounded-2xl text-sm font-bold text-slate-800 focus:ring-2 focus:ring-crimson-500 focus:outline-none transition">
+          {% if active_batches %}
+            <optgroup label="সক্রিয় রানিং শেডসমূহ (Active Sheds)">
+              {% for b in active_batches %}
+                <option value="{{ b.id }}" {{ 'selected' if selected_batch_id == b.id else '' }}>
+                  {{ b.batch_no }} • {{ b.bird_type }} (বয়স: {{ b.age_days or 0 }} দিন, {{ b.chick_qty }}টি বাচ্চা)
+                </option>
+              {% endfor %}
+            </optgroup>
+          {% endif %}
+          {% if batches and batches|length > active_batches|length %}
+            <optgroup label="অন্যান্য শেড">
+              {% for b in batches if b.status != 'active' %}
+                <option value="{{ b.id }}" {{ 'selected' if selected_batch_id == b.id else '' }}>
+                  {{ b.batch_no }} • {{ b.bird_type }} (সম্পন্ন)
+                </option>
+              {% endfor %}
+            </optgroup>
+          {% endif %}
+          <option value="">-- কোনো নির্দিষ্ট শেড নেই (সাধারণ প্রয়োজন) --</option>
+        </select>
+      </div>
 
       <div>
         <label class="block text-xs font-black text-slate-700 mb-1">প্রয়োজনীয় মালামাল ও পরিমাণ লিখুন *</label>
@@ -64,7 +91,14 @@
       <div class="py-3 flex items-center justify-between">
         <div>
           <div class="font-bold text-slate-800">{{ req.items_requested }}</div>
-          <div class="text-[10px] text-slate-400 font-medium">{{ req.created_at }}</div>
+          <div class="flex items-center gap-2 mt-0.5">
+            <span class="text-[10px] text-slate-400 font-medium">{{ req.created_at }}</span>
+            {% if req.batch_no %}
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-orangeBrand-50 text-orangeBrand-800 border border-orangeBrand-200">
+                শেড: {{ req.batch_no }} ({{ req.bird_type }})
+              </span>
+            {% endif %}
+          </div>
         </div>
         <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black 
           {{ 'bg-amberBrand-100 text-amberBrand-800' if req.status == 'pending' else ('bg-emerald-100 text-emerald-800' if req.status == 'approved' else 'bg-rose-100 text-rose-800') }}">

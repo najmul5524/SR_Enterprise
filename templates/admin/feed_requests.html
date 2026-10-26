@@ -24,8 +24,13 @@
       {% for req in feed_requests %}
       <div class="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-orangeBrand-50/20 transition">
         <div>
-          <div class="flex items-center gap-2">
+          <div class="flex items-center gap-2 flex-wrap">
             <span class="font-black text-slate-900 text-base">{{ req.farmer_name }}</span>
+            {% if req.batch_no %}
+              <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-orangeBrand-100 text-orangeBrand-800 border border-orangeBrand-200">
+                🏘️ শেড: {{ req.batch_no }} ({{ req.bird_type }})
+              </span>
+            {% endif %}
             <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black 
               {{ 'bg-amberBrand-100 text-amberBrand-800' if req.status == 'pending' else ('bg-emerald-100 text-emerald-800' if req.status == 'approved' else 'bg-rose-100 text-rose-800') }}">
               {{ 'অপেক্ষমান' if req.status == 'pending' else ('অনুমোদিত' if req.status == 'approved' else 'বাতিল') }}
@@ -46,7 +51,7 @@
 
         <div class="flex items-center gap-2">
           {% if req.status == 'pending' %}
-            <a href="/admin/dispatch?farmer_id={{ req.farmer_id }}" class="px-4 py-2 bg-gradient-to-r from-crimson-600 to-orangeBrand-500 hover:opacity-95 text-white rounded-xl text-xs font-black transition touch-press shadow-sm">
+            <a href="/admin/dispatch?farmer_id={{ req.farmer_id }}{% if req.batch_id %}&batch_id={{ req.batch_id }}{% endif %}" class="px-4 py-2 bg-gradient-to-r from-crimson-600 to-orangeBrand-500 hover:opacity-95 text-white rounded-xl text-xs font-black transition touch-press shadow-sm">
               📝 চালান তৈরি করুন
             </a>
             <form action="/admin/feed-requests/{{ req.id }}/status" method="POST" class="inline">

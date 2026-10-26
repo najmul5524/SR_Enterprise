@@ -1368,15 +1368,20 @@ class DatabaseManager:
     def get_feed_requests(self, farmer_id: Optional[str] = None, status: Optional[str] = None) -> List[Dict[str, Any]]:
         with self._get_connection() as conn:
             cur = conn.cursor()
-            query = "SELECT * FROM feed_requests WHERE 1=1"
+            query = """
+            SELECT feed_requests.*, batches.batch_no, batches.bird_type
+            FROM feed_requests
+            LEFT JOIN batches ON feed_requests.batch_id = batches.id
+            WHERE 1=1
+            """
             params = []
             if farmer_id:
-                query += " AND farmer_id = ?"
+                query += " AND feed_requests.farmer_id = ?"
                 params.append(farmer_id)
             if status:
-                query += " AND status = ?"
+                query += " AND feed_requests.status = ?"
                 params.append(status)
-            query += " ORDER BY created_at DESC"
+            query += " ORDER BY feed_requests.created_at DESC"
             cur.execute(query, params)
             return [dict(row) for row in cur.fetchall()]
 

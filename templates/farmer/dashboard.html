@@ -80,42 +80,80 @@
   </div>
   {% endif %}
 
-  <!-- ACTIVE SHED STATUS -->
-  {% if active_batch %}
+  <!-- MULTIPLE SHEDS / ACTIVE SHED STATUS -->
+  {% if batches and batches|length > 0 %}
   <div class="bg-white rounded-3xl border border-orangeBrand-200 shadow-sm p-5 space-y-4">
+    
+    <!-- Shed Switcher / Multi-Shed Selector -->
+    {% if batches|length > 1 %}
+    <div class="p-3 bg-gradient-to-r from-orangeBrand-50 to-amber-50 rounded-2xl border border-orangeBrand-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5">
+      <div class="flex items-center gap-2">
+        <span class="text-base">🏘️</span>
+        <div>
+          <span class="text-xs font-black text-slate-900">শেড পরিবর্তন করুন:</span>
+          <span class="text-[10px] text-slate-500 font-medium block">আপনার মোট {{ batches|length }}টি শেড নিবন্ধিত রয়েছে</span>
+        </div>
+      </div>
+      <div class="flex items-center gap-1.5 flex-wrap">
+        {% for b in batches %}
+          <a href="/farmer?batch_id={{ b.id }}" 
+            class="px-3 py-1.5 rounded-xl text-xs font-black transition touch-press flex items-center gap-1
+            {{ 'bg-slate-900 text-white shadow-sm ring-2 ring-orangeBrand-400' if selected_batch and selected_batch.id == b.id else 'bg-white text-slate-700 hover:bg-stone-100 border border-slate-200' }}">
+            <span>{{ '🟢' if b.status == 'active' else '⚪' }}</span>
+            <span>{{ b.batch_no }}</span>
+            <span class="text-[10px] opacity-75">({{ b.bird_type }})</span>
+          </a>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    {% if selected_batch %}
     <div class="flex items-center justify-between pb-3 border-b border-orange-50">
       <div class="flex items-center gap-2.5">
         <span class="text-2xl">🐣</span>
         <div>
-          <h2 class="font-black text-slate-900 text-base">{{ active_batch.batch_no }}</h2>
-          <span class="text-xs text-slate-500 font-medium">{{ active_batch.bird_type }} • শুরুর তারিখ: {{ active_batch.start_date }}</span>
+          <div class="flex items-center gap-2">
+            <h2 class="font-black text-slate-900 text-base">{{ selected_batch.batch_no }}</h2>
+            <span class="px-2 py-0.5 rounded-full text-[10px] font-black {{ 'bg-emerald-100 text-emerald-800' if selected_batch.status == 'active' else 'bg-stone-100 text-slate-600' }}">
+              {{ '🟢 সক্রিয় রানিং শেড' if selected_batch.status == 'active' else '⚪ সম্পন্ন শেড' }}
+            </span>
+          </div>
+          <span class="text-xs text-slate-500 font-medium">{{ selected_batch.bird_type }} • শুরুর তারিখ: {{ selected_batch.start_date }}</span>
         </div>
       </div>
+      {% if selected_batch.status == 'active' %}
       <div class="text-center px-3.5 py-1.5 bg-gradient-to-br from-orangeBrand-500 to-crimson-600 text-white rounded-2xl shadow-sm">
-        <span class="text-base font-black leading-none block">{{ active_batch.age_days }}</span>
+        <span class="text-base font-black leading-none block">{{ selected_batch.age_days }}</span>
         <span class="text-[9px] font-bold text-orangeBrand-100 uppercase">দিন বয়স</span>
       </div>
+      {% else %}
+      <div class="text-center px-3 py-1 bg-stone-100 text-slate-600 rounded-xl text-xs font-bold">
+        হিসাব সম্পন্ন
+      </div>
+      {% endif %}
     </div>
 
     <!-- Shed Metrics Grid (Warm Tinted Boxes) -->
     <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs">
       <div class="p-3 bg-stone-50 rounded-2xl border border-slate-100">
         <span class="text-[10px] text-slate-400 font-bold uppercase">বাচ্চা সংখ্যা</span>
-        <div class="text-sm font-black text-slate-900 mt-0.5">{{ active_batch.chick_qty }} টি</div>
+        <div class="text-sm font-black text-slate-900 mt-0.5">{{ selected_batch.chick_qty }} টি</div>
       </div>
       <div class="p-3 bg-stone-50 rounded-2xl border border-slate-100">
         <span class="text-[10px] text-slate-400 font-bold uppercase">খাদ্য খাওয়া</span>
-        <div class="text-sm font-black text-orangeBrand-700 mt-0.5">{{ active_batch.total_feed_bags }} বস্তা</div>
+        <div class="text-sm font-black text-orangeBrand-700 mt-0.5">{{ selected_batch.total_feed_bags }} বস্তা</div>
       </div>
       <div class="p-3 bg-stone-50 rounded-2xl border border-slate-100">
         <span class="text-[10px] text-slate-400 font-bold uppercase">মর্টালিটি</span>
-        <div class="text-sm font-black text-rose-600 mt-0.5">{{ active_batch.mortality_count }} টি</div>
+        <div class="text-sm font-black text-rose-600 mt-0.5">{{ selected_batch.mortality_count }} টি</div>
       </div>
       <div class="p-3 bg-orangeBrand-50 rounded-2xl border border-orangeBrand-200">
-        <span class="text-[10px] text-orangeBrand-900 font-bold uppercase">SR মোট খরচ</span>
-        <div class="text-sm font-black text-maroon-900 mt-0.5">৳ {{ "{:,.0f}".format(active_batch.total_investment) }}</div>
+        <span class="text-[10px] text-orangeBrand-900 font-bold uppercase">শেডে মোট খরচ</span>
+        <div class="text-sm font-black text-maroon-900 mt-0.5">৳ {{ "{:,.0f}".format(selected_batch.total_investment) }}</div>
       </div>
     </div>
+    {% endif %}
 
     <!-- Recent logs in active shed -->
     {% if recent_logs %}

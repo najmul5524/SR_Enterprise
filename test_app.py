@@ -483,6 +483,51 @@ async def run_tests():
         assert "শেড-২ (সোনালী)" in memo_res.text
         print("Print memo successfully shows the selected shed/batch name!")
 
+        # Verify Multi-Shed Farmer Portal Sync & Feed Request with Shed Selection
+        print("\n--- 14b. Testing Multi-Shed Farmer Portal Sync & Dropdown Feed Request ---")
+        client.cookies.clear()
+        res = await client.post("/login/farmer", data={"phone": "01799887766", "pin": "1234"}, follow_redirects=False)
+        assert res.status_code == 303
+        multi_farmer_cookie = res.cookies["sre_session"]
+        client.cookies.set("sre_session", multi_farmer_cookie)
+
+        # 1. Check farmer dashboard shows multiple sheds
+        dash_res = await client.get("/farmer")
+        assert dash_res.status_code == 200
+        assert "শেড-১ (ব্রয়লার)" in dash_res.text
+        assert "শেড-২ (সোনালী)" in dash_res.text
+        assert "শেড পরিবর্তন করুন" in dash_res.text
+        print("Farmer dashboard correctly synchronizes and displays multiple sheds!")
+
+        # 2. Switch to Shed-2 via query param
+        dash_shed2 = await client.get(f"/farmer?batch_id={batch_2_id}")
+        assert dash_shed2.status_code == 200
+        assert "শেড-২ (সোনালী)" in dash_shed2.text
+        print("Farmer can seamlessly switch active shed view on dashboard!")
+
+        # 3. Check feed request page has shed dropdown
+        feed_req_page = await client.get("/farmer/request-feed")
+        assert feed_req_page.status_code == 200
+        assert "কোন শেডের জন্য মালামাল প্রয়োজন?" in feed_req_page.text
+        assert "শেড-২ (সোনালী)" in feed_req_page.text
+
+        # 4. Submit feed request specifically selecting Shed-2
+        req_submit = await client.post("/farmer/request-feed/submit", data={
+            "items_requested": "সোনালী স্টার্টার ৪ বস্তা",
+            "batch_id": batch_2_id,
+            "farmer_note": "শেড ২ এর জন্য জরুরি"
+        }, follow_redirects=False)
+        assert req_submit.status_code == 303
+
+        # 5. Verify feed request shows shed in admin panel
+        client.cookies.clear()
+        client.cookies.set("sre_session", admin_cookie)
+        admin_reqs = await client.get("/admin/feed-requests")
+        assert admin_reqs.status_code == 200
+        assert "শেড-২ (সোনালী)" in admin_reqs.text
+        assert f"batch_id={batch_2_id}" in admin_reqs.text
+        print("Feed request correctly attributes shed and links to dispatch in admin!")
+
         # Clean up test data
         db.delete_invoice(inv_id)
         db.delete_batch(batch_1_id)

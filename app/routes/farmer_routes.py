@@ -31,34 +31,44 @@ def render_farmer_template(request: Request, name: str, extra: dict = None):
 
 @router.get("", response_class=HTMLResponse)
 @router.get("/", response_class=HTMLResponse)
-async def farmer_dashboard(request: Request):
+async def farmer_dashboard(request: Request, batch_id: Optional[str] = None):
     user = get_current_user(request)
     farmer = db.get_farmer_by_id(user["farmer_id"])
     if not farmer:
         return RedirectResponse(url="/logout", status_code=303)
 
     batches = db.get_batches(farmer_id=farmer["id"])
-    active_batch = None
     for b in batches:
-        if b["status"] == "active":
-            active_batch = b
-            try:
-                start_d = datetime.strptime(b["start_date"], "%Y-%m-%d").date()
-                b["age_days"] = max(0, (datetime.now().date() - start_d).days)
-            except Exception:
-                b["age_days"] = 0
-            break
+        try:
+            start_d = datetime.strptime(b["start_date"], "%Y-%m-%d").date()
+            b["age_days"] = max(0, (datetime.now().date() - start_d).days)
+        except Exception:
+            b["age_days"] = 0
+
+    active_batches = [b for b in batches if b.get("status") == "active"]
+    
+    selected_batch = None
+    if batch_id:
+        for b in batches:
+            if b["id"] == batch_id:
+                selected_batch = b
+                break
+    if not selected_batch:
+        selected_batch = active_batches[0] if active_batches else (batches[0] if batches else None)
 
     recent_logs = []
-    if active_batch:
-        recent_logs = db.get_batch_logs(active_batch["id"])[-8:]
+    if selected_batch:
+        recent_logs = db.get_batch_logs(selected_batch["id"])[-8:]
 
     recent_invoices = db.get_invoices(farmer_id=farmer["id"], limit=5)
     farmer_qr = generate_qr_data_url(f"SRE:FRM:{farmer['id']}")
 
     return render_farmer_template(request, "farmer/dashboard.html", {
         "farmer": farmer,
-        "active_batch": active_batch,
+        "batches": batches,
+        "active_batches": active_batches,
+        "active_batch": selected_batch,
+        "selected_batch": selected_batch,
         "recent_logs": recent_logs,
         "recent_invoices": recent_invoices,
         "farmer_qr": farmer_qr,
@@ -105,17 +115,28 @@ async def farmer_ledger(request: Request):
     })
 
 @router.get("/request-feed", response_class=HTMLResponse)
-async def request_feed_page(request: Request, success: Optional[str] = None):
+async def request_feed_page(request: Request, batch_id: Optional[str] = None, success: Optional[str] = None):
     user = get_current_user(request)
     farmer = db.get_farmer_by_id(user["farmer_id"])
-    batches = db.get_batches(status="active", farmer_id=farmer["id"])
-    active_batch = batches[0] if batches else None
+    batches = db.get_batches(farmer_id=farmer["id"])
+    for b in batches:
+        try:
+            start_d = datetime.strptime(b["start_date"], "%Y-%m-%d").date()
+            b["age_days"] = max(0, (datetime.now().date() - start_d).days)
+        except Exception:
+            b["age_days"] = 0
+
+    active_batches = [b for b in batches if b.get("status") == "active"]
+    selected_batch_id = batch_id or (active_batches[0]["id"] if active_batches else (batches[0]["id"] if batches else ""))
     products = db.get_products()
     my_requests = db.get_feed_requests(farmer_id=farmer["id"])
 
     return render_farmer_template(request, "farmer/request_feed.html", {
         "farmer": farmer,
-        "active_batch": active_batch,
+        "batches": batches,
+        "active_batches": active_batches,
+        "selected_batch_id": selected_batch_id,
+        "active_batch": active_batches[0] if active_batches else None,
         "products": products,
         "my_requests": my_requests,
         "success": success
