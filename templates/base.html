@@ -199,6 +199,88 @@
 
           {% if user %}
             <div class="flex items-center gap-2 pl-2 border-l border-slate-200">
+
+              <!-- ADMIN NOTIFICATION BUTTON (Placed right next to logout) -->
+              {% if user.role == 'admin' %}
+              <div class="relative" id="adminNotificationWrapper">
+                <button type="button" id="notifBellBtn" onclick="toggleNotificationDropdown()"
+                  class="relative p-2 text-slate-600 hover:text-crimson-600 hover:bg-orangeBrand-50 rounded-2xl transition touch-press"
+                  title="খামারিদের রিকোয়েস্ট নোটিফিকেশন">
+                  <span class="text-xl">🔔</span>
+                  
+                  <!-- Notification Count Badge -->
+                  <span id="notifBadge" 
+                    class="{{ '' if pending_requests_count and pending_requests_count > 0 else 'hidden' }} absolute -top-1 -right-1 min-w-[20px] h-5 px-1 bg-gradient-to-r from-crimson-600 to-rose-600 text-white font-black text-[10px] rounded-full flex items-center justify-center shadow-md animate-pulse">
+                    {{ pending_requests_count or 0 }}
+                  </span>
+                </button>
+
+                <!-- Notification Dropdown Panel -->
+                <div id="notifDropdown" class="hidden absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-3xl shadow-2xl border border-orange-100 z-50 overflow-hidden transform origin-top-right transition-all duration-200">
+                  <div class="p-4 bg-gradient-to-r from-maroon-950 via-maroon-900 to-crimson-800 text-white flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                      <span class="text-lg">📥</span>
+                      <h3 class="text-xs font-black uppercase tracking-wider">খামারিদের মালামাল রিকুয়েস্ট</h3>
+                    </div>
+                    <span id="notifCountHeader" class="px-2 py-0.5 rounded-full text-[10px] font-black bg-white/20 text-white">
+                      {{ pending_requests_count or 0 }} টি নতুন
+                    </span>
+                  </div>
+
+                  <!-- Notification List Items -->
+                  <div id="notifListContainer" class="max-h-80 overflow-y-auto divide-y divide-orange-50 text-xs">
+                    {% if pending_requests %}
+                      {% for req in pending_requests %}
+                      <div class="p-3.5 hover:bg-orangeBrand-50/40 transition flex flex-col gap-1.5">
+                        <div class="flex items-center justify-between">
+                          <span class="font-black text-slate-900 text-sm">{{ req.farmer_name }}</span>
+                          <span class="text-[10px] text-slate-400 font-medium">{{ req.created_at }}</span>
+                        </div>
+                        {% if req.batch_no %}
+                          <div>
+                            <span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-orangeBrand-100 text-orangeBrand-800 border border-orangeBrand-200">
+                              🏘️ শেড: {{ req.batch_no }} ({{ req.bird_type }})
+                            </span>
+                          </div>
+                        {% endif %}
+                        <div class="text-slate-700 font-semibold bg-stone-50 p-2.5 rounded-xl border border-slate-100">
+                          📦 {{ req.items_requested }}
+                        </div>
+                        {% if req.farmer_note %}
+                          <div class="text-[11px] text-slate-500 italic">
+                            💬 "{{ req.farmer_note }}"
+                          </div>
+                        {% endif %}
+                        <div class="flex items-center gap-2 pt-1">
+                          <a href="/admin/dispatch?farmer_id={{ req.farmer_id }}{% if req.batch_id %}&batch_id={{ req.batch_id }}{% endif %}"
+                            class="px-3.5 py-1.5 bg-gradient-to-r from-crimson-600 to-orangeBrand-500 hover:opacity-95 text-white font-black text-xs rounded-xl shadow-xs transition">
+                            📝 চালান তৈরি করুন
+                          </a>
+                          <form action="/admin/feed-requests/{{ req.id }}/status" method="POST" class="inline">
+                            <input type="hidden" name="status" value="approved">
+                            <button type="submit" class="px-3 py-1.5 bg-stone-100 hover:bg-stone-200 text-slate-700 font-bold text-xs rounded-xl transition">
+                              অনুমোদন
+                            </button>
+                          </form>
+                        </div>
+                      </div>
+                      {% endfor %}
+                    {% else %}
+                      <div id="emptyNotifMsg" class="p-6 text-center text-slate-400 text-xs font-medium">
+                        বর্তমানে কোনো নতুন মালামাল রিকুয়েস্ট অপেক্ষমান নেই।
+                      </div>
+                    {% endif %}
+                  </div>
+
+                  <div class="p-2.5 bg-stone-50 border-t border-slate-100 text-center">
+                    <a href="/admin/feed-requests" class="text-xs font-black text-crimson-700 hover:text-crimson-800">
+                      সকল রিকুয়েস্টের তালিকা দেখুন ➔
+                    </a>
+                  </div>
+                </div>
+              </div>
+              {% endif %}
+
               <div class="text-right hidden sm:block">
                 <div class="text-xs font-black text-slate-900 leading-tight">{{ user.name }}</div>
                 <div class="text-[10px] text-crimson-700 font-bold">
@@ -359,6 +441,49 @@
         }, 500);
       });
     })();
+
+    // Admin Notification Dropdown & Live Poller
+    function toggleNotificationDropdown() {
+      const dropdown = document.getElementById('notifDropdown');
+      if (dropdown) {
+        dropdown.classList.toggle('hidden');
+      }
+    }
+
+    document.addEventListener('click', function(e) {
+      const wrapper = document.getElementById('adminNotificationWrapper');
+      const dropdown = document.getElementById('notifDropdown');
+      if (wrapper && dropdown && !wrapper.contains(e.target)) {
+        dropdown.classList.add('hidden');
+      }
+    });
+
+    function checkAdminNotifications() {
+      const badge = document.getElementById('notifBadge');
+      const headerCount = document.getElementById('notifCountHeader');
+      if (!badge) return;
+
+      fetch('/admin/api/notifications')
+        .then(res => res.json())
+        .then(data => {
+          if (data && typeof data.count === 'number') {
+            if (data.count > 0) {
+              badge.innerText = data.count;
+              badge.classList.remove('hidden');
+            } else {
+              badge.classList.add('hidden');
+            }
+            if (headerCount) {
+              headerCount.innerText = data.count + ' টি নতুন';
+            }
+          }
+        })
+        .catch(function() {});
+    }
+
+    if (document.getElementById('adminNotificationWrapper')) {
+      setInterval(checkAdminNotifications, 20000); // Poll every 20s
+    }
   </script>
 </body>
 </html>

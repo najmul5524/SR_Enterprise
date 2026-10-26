@@ -16,6 +16,7 @@ templates = Jinja2Templates(directory=str(settings.BASE_DIR / "templates"))
 
 # Context processor helper for base templates
 def admin_context(request: Request, extra: dict = None) -> dict:
+    pending_reqs = db.get_feed_requests(status="pending")
     ctx = {
         "current_path": request.url.path,
         "user": get_current_user(request),
@@ -24,6 +25,8 @@ def admin_context(request: Request, extra: dict = None) -> dict:
         "is_firebase": db.is_firebase_active(),
         "is_mobile_app": is_mobile_app_client(request),
         "now_date": datetime.now().strftime("%Y-%m-%d"),
+        "pending_requests_count": len(pending_reqs),
+        "pending_requests": pending_reqs[:6],
     }
     if extra:
         ctx.update(extra)
@@ -31,6 +34,14 @@ def admin_context(request: Request, extra: dict = None) -> dict:
 
 def render_template(request: Request, name: str, extra: dict = None):
     return templates.TemplateResponse(request=request, name=name, context=admin_context(request, extra))
+
+@router.get("/api/notifications")
+async def get_admin_notifications_api():
+    pending = db.get_feed_requests(status="pending")
+    return {
+        "count": len(pending),
+        "requests": pending[:6]
+    }
 
 # ==================== DASHBOARD ====================
 @router.get("", response_class=HTMLResponse)

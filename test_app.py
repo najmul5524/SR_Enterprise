@@ -229,6 +229,24 @@ async def run_tests():
         client.cookies.clear()
         client.cookies.set("sre_session", admin_cookie)
 
+        # Test Admin Notification Button & Badge next to Logout
+        print("\n--- 9b. Testing Admin Top Header Notification Bell & Dropdown ---")
+        admin_dash_res = await client.get("/admin")
+        assert admin_dash_res.status_code == 200
+        assert "notifBellBtn" in admin_dash_res.text
+        assert "notifBadge" in admin_dash_res.text
+        assert "খামারিদের মালামাল রিকুয়েস্ট" in admin_dash_res.text
+        assert "নুরিশ গ্রোয়ার ৫ বস্তা" in admin_dash_res.text
+        print("Admin header successfully displays notification bell & badge with pending request!")
+
+        # Test Notifications API
+        api_notif_res = await client.get("/admin/api/notifications")
+        assert api_notif_res.status_code == 200
+        notif_json = api_notif_res.json()
+        assert notif_json["count"] >= 1
+        assert any("নুরিশ গ্রোয়ার" in req["items_requested"] for req in notif_json["requests"])
+        print(f"GET /admin/api/notifications -> Status 200, Live count: {notif_json['count']}")
+
         # 1. Invoices list page
         res = await client.get("/admin/invoices")
         print(f"GET /admin/invoices -> Status {res.status_code}")
