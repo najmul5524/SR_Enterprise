@@ -817,6 +817,80 @@ async def run_tests():
         assert updated_inv["discount"] == 100.0
         print("Invoice memo photo update verified successfully!")
 
+        print("\n--- 19. Testing Farmer Digital Memo & Real-Time Notifications ---")
+        # 19a: Test Farmer Digital Memo Access
+        farmer_phone = db.get_farmer_by_id(f_test_id)["phone"]
+        await client.post("/login/farmer", data={"phone": farmer_phone, "pin": "1234"}, follow_redirects=False)
+        
+        # Access own invoice memo
+        res_farmer_memo = await client.get(f"/farmer/invoice/{created_inv_id}/memo")
+        print(f"GET /farmer/invoice/{created_inv_id}/memo -> Status {res_farmer_memo.status_code}")
+        assert res_farmer_memo.status_code == 200
+        assert "মালামাল ডেলিভারি চালান" in res_farmer_memo.text
+        assert "খামারি পোর্টালে ফিরুন" in res_farmer_memo.text
+        assert "/farmer" in res_farmer_memo.text
+
+        # Create a second farmer to test unauthorized access rejection (403)
+        other_farmer_id = db.save_farmer({
+            "name": "অন্য খামারি",
+            "phone": f"018{uuid.uuid4().hex[:8]}",
+            "shed_name": "শেড ২"
+        })
+        other_phone = db.get_farmer_by_id(other_farmer_id)["phone"]
+        await client.post("/login/farmer", data={"phone": other_phone, "pin": "1234"}, follow_redirects=False)
+        res_unauthorized_memo = await client.get(f"/farmer/invoice/{created_inv_id}/memo")
+        print(f"Unauthorized farmer memo access -> Status {res_unauthorized_memo.status_code}")
+        assert res_unauthorized_memo.status_code == 403
+
+        # Switch back to first farmer
+        await client.post("/login/farmer", data={"phone": farmer_phone, "pin": "1234"}, follow_redirects=False)
+
+        # 19b: Test Farmer Notification Bell & Modals in Farmer View
+        res_farmer_dash = await client.get("/farmer")
+        assert res_farmer_dash.status_code == 200
+        assert "farmerNotifBellBtn" in res_farmer_dash.text
+        assert "farmerNotifModal" in res_farmer_dash.text
+        assert "farmerNotifDropdown" in res_farmer_dash.text
+
+        # Post a feed request from farmer
+        res_req_feed = await client.post("/farmer/request-feed/submit", data={
+            "batch_id": f_shed_id,
+            "items_requested": "১০ বস্তা স্টার্টার ফিড ও ভিটামিন",
+            "farmer_note": "কালকের মধ্যে ডেলিভারি লাগবে।"
+        }, follow_redirects=False)
+        assert res_req_feed.status_code == 303
+
+        # Check Farmer Notification API
+        res_f_notifs = await client.get("/farmer/api/notifications")
+        assert res_f_notifs.status_code == 200
+        f_notif_data = res_f_notifs.json()
+        print(f"Farmer Notifications API -> Count: {f_notif_data['count']}, Total items: {len(f_notif_data['notifications'])}")
+        assert f_notif_data["count"] >= 1
+        assert any(n.get("type") == "request" for n in f_notif_data["notifications"])
+
+        # 19c: Test Admin Notification Bell, Details Modal & Enriched Info
+        await client.post("/login/admin", data={"username": "admin", "password": "admin123"}, follow_redirects=False)
+        res_admin_page = await client.get("/admin")
+        assert res_admin_page.status_code == 200
+        assert "notifBellBtn" in res_admin_page.text
+        assert "adminNotifModal" in res_admin_page.text
+        assert "showAdminNotifDetails" in res_admin_page.text
+
+        # Check Admin Notification API & Enriched Fields (phone, address, due)
+        res_a_notifs = await client.get("/admin/api/notifications")
+        assert res_a_notifs.status_code == 200
+        a_notif_data = res_a_notifs.json()
+        print(f"Admin Notifications API -> Pending Count: {a_notif_data['count']}")
+        assert a_notif_data["count"] >= 1
+        top_req = a_notif_data["requests"][0]
+        assert "farmer_phone" in top_req
+        assert "farmer_address" in top_req
+        assert "farmer_due" in top_req
+        print(f"Enriched Feed Request details: farmer={top_req['farmer_name']}, phone={top_req['farmer_phone']}, due={top_req['farmer_due']}")
+
+        # Clean up second farmer
+        db.delete_farmer(other_farmer_id)
+
         # Clean up test invoice & farmer
         db.delete_invoice(created_inv_id)
         for s in f_sheds:

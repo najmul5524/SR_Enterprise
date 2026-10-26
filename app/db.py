@@ -1490,9 +1490,12 @@ class DatabaseManager:
         with self._get_connection() as conn:
             cur = conn.cursor()
             query = """
-            SELECT feed_requests.*, batches.batch_no, batches.bird_type
+            SELECT feed_requests.*, batches.batch_no, batches.bird_type,
+                   farmers.phone AS farmer_phone, farmers.address AS farmer_address,
+                   COALESCE(farmers.total_due, 0) AS farmer_due
             FROM feed_requests
             LEFT JOIN batches ON feed_requests.batch_id = batches.id
+            LEFT JOIN farmers ON feed_requests.farmer_id = farmers.id
             WHERE 1=1
             """
             params = []

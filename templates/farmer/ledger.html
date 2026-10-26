@@ -93,7 +93,7 @@
           </div>
           {% if entry.type == 'debit' %}
             <div class="flex items-center justify-end gap-1.5 mt-0.5">
-              <a href="/admin/invoice/{{ entry.ref_id }}/print" target="_blank" class="text-[11px] text-orangeBrand-700 underline font-black">ডিজিটাল মেমো</a>
+              <a href="/farmer/invoice/{{ entry.ref_id }}/memo" target="_blank" class="text-[11px] text-orangeBrand-700 underline font-black">ডিজিটাল মেমো</a>
               {% if entry.receipt_image_url %}
               <button type="button" onclick="openFarmerMemoModal('{{ entry.receipt_image_url }}', '{{ entry.title }}')" class="px-2 py-0.5 bg-amber-500 hover:bg-amber-600 text-white rounded-lg font-black text-[10px] inline-flex items-center gap-0.5 shadow-sm touch-press" title="মেমোর আসল ছবি দেখুন">
                 <span>📸</span> <span>মেমোর ছবি</span>

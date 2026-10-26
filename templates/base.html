@@ -203,7 +203,7 @@
           {% if user %}
             <div class="flex items-center gap-2 pl-2 border-l border-slate-200">
 
-              <!-- ADMIN NOTIFICATION BUTTON (Placed right next to logout) -->
+              <!-- ADMIN NOTIFICATION BUTTON -->
               {% if user.role == 'admin' %}
               <div class="relative" id="adminNotificationWrapper">
                 <button type="button" id="notifBellBtn" onclick="toggleNotificationDropdown()"
@@ -234,9 +234,13 @@
                   <div id="notifListContainer" class="max-h-80 overflow-y-auto divide-y divide-orange-50 text-xs">
                     {% if pending_requests %}
                       {% for req in pending_requests %}
-                      <div class="p-3.5 hover:bg-orangeBrand-50/40 transition flex flex-col gap-1.5">
+                      <div class="p-3.5 hover:bg-orangeBrand-50/60 cursor-pointer transition flex flex-col gap-1.5 group"
+                           onclick="showAdminNotifDetails('{{ req.id }}')">
                         <div class="flex items-center justify-between">
-                          <span class="font-black text-slate-900 text-sm">{{ req.farmer_name }}</span>
+                          <span class="font-black text-slate-900 text-sm group-hover:text-crimson-600 transition flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full bg-crimson-500 animate-pulse"></span>
+                            {{ req.farmer_name }}
+                          </span>
                           <span class="text-[10px] text-slate-400 font-medium">{{ req.created_at }}</span>
                         </div>
                         {% if req.batch_no %}
@@ -254,17 +258,13 @@
                             💬 "{{ req.farmer_note }}"
                           </div>
                         {% endif %}
-                        <div class="flex items-center gap-2 pt-1">
-                          <a href="/admin/dispatch?farmer_id={{ req.farmer_id }}{% if req.batch_id %}&batch_id={{ req.batch_id }}{% endif %}"
-                            class="px-3.5 py-1.5 bg-gradient-to-r from-crimson-600 to-orangeBrand-500 hover:opacity-95 text-white font-black text-xs rounded-xl shadow-xs transition">
-                            📝 চালান তৈরি করুন
-                          </a>
-                          <form action="/admin/feed-requests/{{ req.id }}/status" method="POST" class="inline">
-                            <input type="hidden" name="status" value="approved">
-                            <button type="submit" class="px-3 py-1.5 bg-stone-100 hover:bg-stone-200 text-slate-700 font-bold text-xs rounded-xl transition">
-                              অনুমোদন
-                            </button>
-                          </form>
+                        <div class="flex items-center justify-between pt-1">
+                          <span class="text-[11px] text-crimson-700 font-black group-hover:underline inline-flex items-center gap-1">
+                            বিস্তারিত ও একশন ➔
+                          </span>
+                          <span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-orangeBrand-100/70 text-orangeBrand-800">
+                            ক্লিক করুন
+                          </span>
                         </div>
                       </div>
                       {% endfor %}
@@ -278,6 +278,97 @@
                   <div class="p-2.5 bg-stone-50 border-t border-slate-100 text-center">
                     <a href="/admin/feed-requests" class="text-xs font-black text-crimson-700 hover:text-crimson-800">
                       সকল রিকুয়েস্টের তালিকা দেখুন ➔
+                    </a>
+                  </div>
+                </div>
+              </div>
+
+              <!-- FARMER NOTIFICATION BUTTON -->
+              {% elif user.role == 'farmer' %}
+              <div class="relative" id="farmerNotificationWrapper">
+                <button type="button" id="farmerNotifBellBtn" onclick="toggleFarmerNotificationDropdown()"
+                  class="relative p-2 text-slate-600 hover:text-crimson-600 hover:bg-orangeBrand-50 rounded-2xl transition touch-press"
+                  title="খামারি নোটিফিকেশন">
+                  <span class="text-xl">🔔</span>
+                  
+                  <!-- Notification Count Badge -->
+                  <span id="farmerNotifBadge" 
+                    class="{{ '' if farmer_notif_count and farmer_notif_count > 0 else 'hidden' }} absolute -top-1 -right-1 min-w-[20px] h-5 px-1 bg-gradient-to-r from-crimson-600 to-rose-600 text-white font-black text-[10px] rounded-full flex items-center justify-center shadow-md animate-pulse">
+                    {{ farmer_notif_count or 0 }}
+                  </span>
+                </button>
+
+                <!-- Notification Dropdown Panel -->
+                <div id="farmerNotifDropdown" class="hidden absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-3xl shadow-2xl border border-orange-100 z-50 overflow-hidden transform origin-top-right transition-all duration-200">
+                  <div class="p-4 bg-gradient-to-r from-maroon-950 via-maroon-900 to-crimson-800 text-white flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                      <span class="text-lg">🔔</span>
+                      <h3 class="text-xs font-black uppercase tracking-wider">আপনার নোটিফিকেশন</h3>
+                    </div>
+                    <span id="farmerNotifCountHeader" class="px-2 py-0.5 rounded-full text-[10px] font-black bg-white/20 text-white">
+                      {{ farmer_notif_count or 0 }} টি
+                    </span>
+                  </div>
+
+                  <!-- Notification List Items -->
+                  <div id="farmerNotifListContainer" class="max-h-80 overflow-y-auto divide-y divide-orange-50 text-xs">
+                    {% if farmer_requests %}
+                      {% for req in farmer_requests %}
+                      <div class="p-3.5 hover:bg-orangeBrand-50/60 cursor-pointer transition flex flex-col gap-1.5 group"
+                           onclick="showFarmerNotifDetails('{{ req.id }}')">
+                        <div class="flex items-center justify-between">
+                          <span class="font-black text-slate-900 text-sm group-hover:text-crimson-600 transition flex items-center gap-1.5">
+                            {% if req.status == 'approved' %}
+                              <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                              <span class="text-emerald-700">অনুমোদিত হয়েছে</span>
+                            {% elif req.status == 'rejected' %}
+                              <span class="w-2 h-2 rounded-full bg-rose-500"></span>
+                              <span class="text-rose-700">বাতিল</span>
+                            {% else %}
+                              <span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+                              <span class="text-amber-700">অপেক্ষমান</span>
+                            {% endif %}
+                          </span>
+                          <span class="text-[10px] text-slate-400 font-medium">{{ req.created_at }}</span>
+                        </div>
+                        {% if req.batch_no %}
+                          <div>
+                            <span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-orangeBrand-100 text-orangeBrand-800 border border-orangeBrand-200">
+                              🏘️ শেড: {{ req.batch_no }}
+                            </span>
+                          </div>
+                        {% endif %}
+                        <div class="text-slate-700 font-semibold bg-stone-50 p-2.5 rounded-xl border border-slate-100">
+                          📦 {{ req.items_requested }}
+                        </div>
+                        {% if req.farmer_note %}
+                          <div class="text-[11px] text-slate-500 italic">
+                            💬 "{{ req.farmer_note }}"
+                          </div>
+                        {% endif %}
+                        <div class="flex items-center justify-between pt-1">
+                          <span class="text-[11px] text-crimson-700 font-black group-hover:underline inline-flex items-center gap-1">
+                            বিস্তারিত দেখতে ক্লিক করুন ➔
+                          </span>
+                          <span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-orangeBrand-100/70 text-orangeBrand-800">
+                            ক্লিক করুন
+                          </span>
+                        </div>
+                      </div>
+                      {% endfor %}
+                    {% else %}
+                      <div id="emptyFarmerNotifMsg" class="p-6 text-center text-slate-400 text-xs font-medium">
+                        বর্তমানে কোনো নতুন নোটিফিকেশন নেই।
+                      </div>
+                    {% endif %}
+                  </div>
+
+                  <div class="p-2.5 bg-stone-50 border-t border-slate-100 text-center flex justify-around">
+                    <a href="/farmer/request-feed" class="text-xs font-black text-crimson-700 hover:text-crimson-800">
+                      ➕ নতুন রিকোয়েস্ট পাঠান
+                    </a>
+                    <a href="/farmer/ledger" class="text-xs font-black text-slate-700 hover:text-slate-900">
+                      📒 খতিয়ান দেখুন
                     </a>
                   </div>
                 </div>
@@ -371,6 +462,153 @@
   </nav>
   {% endif %}
 
+  <!-- ADMIN NOTIFICATION DETAILS MODAL -->
+  <div id="adminNotifModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white w-full max-w-lg rounded-3xl shadow-2xl border-2 border-stone-200 overflow-hidden max-h-[90vh] flex flex-col">
+      <div class="p-4 bg-gradient-to-r from-maroon-950 via-maroon-900 to-crimson-800 text-white flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <span class="text-xl">📥</span>
+          <h3 class="font-black text-sm">মালামাল রিকুয়েস্টের বিস্তারিত তথ্য</h3>
+        </div>
+        <button type="button" onclick="closeAdminNotifModal()" class="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white text-lg transition">✕</button>
+      </div>
+
+      <div class="p-5 overflow-y-auto space-y-4 text-xs">
+        <!-- Farmer Info Card -->
+        <div class="bg-orangeBrand-50/50 border border-orangeBrand-200 rounded-2xl p-3.5 space-y-1.5">
+          <div class="flex items-center justify-between">
+            <span class="text-slate-500 font-bold">খামারির নাম:</span>
+            <span class="text-slate-900 font-black text-sm" id="modalAdminFarmerName">-</span>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="text-slate-500 font-bold">মোবাইল নম্বর:</span>
+            <span class="font-bold">
+              <a href="#" id="modalAdminFarmerPhoneLink" class="text-crimson-700 hover:underline inline-flex items-center gap-1 font-black">
+                📞 <span id="modalAdminFarmerPhone">-</span>
+              </a>
+            </span>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="text-slate-500 font-bold">ঠিকানা:</span>
+            <span class="text-slate-700 font-semibold text-right" id="modalAdminFarmerAddress">-</span>
+          </div>
+          <div class="flex items-center justify-between pt-1 border-t border-orangeBrand-200/60">
+            <span class="text-slate-600 font-bold">বর্তমান মোট বকেয়া:</span>
+            <span class="text-crimson-700 font-black text-sm" id="modalAdminFarmerDue">৳0</span>
+          </div>
+        </div>
+
+        <!-- Shed / Batch Info -->
+        <div class="bg-stone-50 border border-slate-200 rounded-2xl p-3.5 space-y-1.5">
+          <div class="flex items-center justify-between">
+            <span class="text-slate-500 font-bold">শেড / ব্যাচ:</span>
+            <span class="font-black text-slate-800" id="modalAdminShedInfo">-</span>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="text-slate-500 font-bold">রিকুয়েস্টের সময়:</span>
+            <span class="text-slate-600 font-medium" id="modalAdminDate">-</span>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="text-slate-500 font-bold">বর্তমান অবস্থা:</span>
+            <span id="modalAdminStatusBadge" class="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-amber-100 text-amber-800">অপেক্ষমান</span>
+          </div>
+        </div>
+
+        <!-- Requested Items Box -->
+        <div>
+          <label class="block text-slate-700 font-black mb-1">📦 রিকোয়েস্টকৃত মালামালের বিবরণ:</label>
+          <div class="bg-slate-50 border-2 border-slate-200 rounded-2xl p-3.5 text-slate-900 font-bold text-sm whitespace-pre-wrap" id="modalAdminItems">
+            -
+          </div>
+        </div>
+
+        <!-- Farmer Note -->
+        <div id="modalAdminNoteWrapper">
+          <label class="block text-slate-700 font-black mb-1">💬 খামারির বিশেষ নোট:</label>
+          <div class="bg-amber-50/60 border border-amber-200 rounded-2xl p-3 text-slate-700 italic" id="modalAdminNote">
+            -
+          </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="pt-3 border-t border-slate-200 space-y-2">
+          <a href="#" id="modalAdminDispatchLink" class="w-full py-2.5 px-4 bg-gradient-to-r from-crimson-600 via-rose-600 to-orangeBrand-500 hover:opacity-95 text-white font-black text-center rounded-2xl shadow-md transition flex items-center justify-center gap-2 text-sm">
+            <span>📝</span> এই রিকোয়েস্ট থেকে সরাসরি চালান তৈরি করুন (POS)
+          </a>
+
+          <div class="grid grid-cols-2 gap-2">
+            <form id="modalAdminApproveForm" method="POST" action="">
+              <input type="hidden" name="status" value="approved">
+              <button type="submit" class="w-full py-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl transition text-xs flex items-center justify-center gap-1 shadow-sm">
+                <span>✅</span> অনুমোদন করুন
+              </button>
+            </form>
+            <form id="modalAdminRejectForm" method="POST" action="">
+              <input type="hidden" name="status" value="rejected">
+              <button type="submit" onclick="return confirm('আপনি কি নিশ্চিত যে এই রিকোয়েস্টটি বাতিল করতে চান?')" class="w-full py-2 px-3 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-black rounded-xl transition text-xs flex items-center justify-center gap-1">
+                <span>❌</span> বাতিল করুন
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FARMER NOTIFICATION DETAILS MODAL -->
+  <div id="farmerNotifModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white w-full max-w-lg rounded-3xl shadow-2xl border-2 border-stone-200 overflow-hidden max-h-[90vh] flex flex-col">
+      <div class="p-4 bg-gradient-to-r from-maroon-950 via-maroon-900 to-crimson-800 text-white flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <span class="text-xl">🔔</span>
+          <h3 class="font-black text-sm" id="modalFarmerTitle">নোটিফিকেশনের বিস্তারিত</h3>
+        </div>
+        <button type="button" onclick="closeFarmerNotifModal()" class="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white text-lg transition">✕</button>
+      </div>
+
+      <div class="p-5 overflow-y-auto space-y-4 text-xs">
+        <div class="bg-stone-50 border border-slate-200 rounded-2xl p-3.5 space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="text-slate-500 font-bold">তারিখ:</span>
+            <span class="text-slate-800 font-semibold" id="modalFarmerDate">-</span>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="text-slate-500 font-bold">বর্তমান অবস্থা / স্ট্যাটাস:</span>
+            <span id="modalFarmerStatusBadge" class="px-2.5 py-1 rounded-full text-xs font-black bg-stone-200 text-slate-800">-</span>
+          </div>
+          <div class="flex items-center justify-between" id="modalFarmerShedRow">
+            <span class="text-slate-500 font-bold">শেড নম্বর:</span>
+            <span class="text-slate-900 font-black" id="modalFarmerShed">-</span>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-slate-700 font-black mb-1" id="modalFarmerDetailsLabel">বিবরণ:</label>
+          <div class="bg-slate-50 border border-slate-200 rounded-2xl p-3.5 text-slate-900 font-bold text-sm whitespace-pre-wrap" id="modalFarmerDetails">
+            -
+          </div>
+        </div>
+
+        <div id="modalFarmerNoteWrapper">
+          <label class="block text-slate-700 font-black mb-1">আপনার নোট:</label>
+          <div class="bg-amber-50/60 border border-amber-200 rounded-2xl p-3 text-slate-700 italic" id="modalFarmerNote">
+            -
+          </div>
+        </div>
+
+        <div id="modalFarmerActionContainer" class="pt-2">
+          <!-- Dynamic action link -->
+        </div>
+      </div>
+
+      <div class="p-3 bg-stone-50 border-t border-slate-100 text-center">
+        <button type="button" onclick="closeFarmerNotifModal()" class="px-5 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold text-xs rounded-xl transition">
+          বন্ধ করুন
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- FOOTER -->
   <footer class="mt-auto border-t border-orange-100 bg-white/80 py-4 text-center text-xs text-slate-500 no-print">
     <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
@@ -445,7 +683,47 @@
       });
     })();
 
-    // Admin Notification Dropdown & Live Poller
+    // Caches for Notifications
+    window.adminNotifsCache = {
+      {% if pending_requests %}
+        {% for req in pending_requests %}
+          "{{ req.id }}": {
+            id: {{ req.id | tojson }},
+            farmer_id: {{ (req.farmer_id or "") | tojson }},
+            batch_id: {{ (req.batch_id or "") | tojson }},
+            farmer_name: {{ (req.farmer_name or "") | tojson }},
+            farmer_phone: {{ (req.farmer_phone or "") | tojson }},
+            farmer_address: {{ (req.farmer_address or "") | tojson }},
+            farmer_due: {{ (req.farmer_due or 0) | tojson }},
+            batch_no: {{ (req.batch_no or "") | tojson }},
+            bird_type: {{ (req.bird_type or "") | tojson }},
+            items_requested: {{ (req.items_requested or "") | tojson }},
+            farmer_note: {{ (req.farmer_note or "") | tojson }},
+            created_at: {{ (req.created_at or "") | tojson }},
+            status: {{ (req.status or "pending") | tojson }}
+          },
+        {% endfor %}
+      {% endif %}
+    };
+
+    window.farmerNotifsCache = {
+      {% if farmer_requests %}
+        {% for req in farmer_requests %}
+          "{{ req.id }}": {
+            id: {{ req.id | tojson }},
+            type: "request",
+            title: "মালামাল রিকুয়েস্ট",
+            details: {{ (req.items_requested or "") | tojson }},
+            note: {{ (req.farmer_note or "") | tojson }},
+            status: {{ (req.status or "pending") | tojson }},
+            shed: {{ (req.batch_no or "") | tojson }},
+            date: {{ (req.created_at or "") | tojson }}
+          },
+        {% endfor %}
+      {% endif %}
+    };
+
+    // Admin Notification Handlers
     function toggleNotificationDropdown() {
       const dropdown = document.getElementById('notifDropdown');
       if (dropdown) {
@@ -453,17 +731,71 @@
       }
     }
 
-    document.addEventListener('click', function(e) {
-      const wrapper = document.getElementById('adminNotificationWrapper');
-      const dropdown = document.getElementById('notifDropdown');
-      if (wrapper && dropdown && !wrapper.contains(e.target)) {
-        dropdown.classList.add('hidden');
+    function showAdminNotifDetails(id) {
+      const req = window.adminNotifsCache ? window.adminNotifsCache[id] : null;
+      if (!req) return;
+
+      document.getElementById('modalAdminFarmerName').innerText = req.farmer_name || '-';
+      document.getElementById('modalAdminFarmerPhone').innerText = req.farmer_phone || 'নেই';
+      const phoneLink = document.getElementById('modalAdminFarmerPhoneLink');
+      if (req.farmer_phone) {
+        phoneLink.href = 'tel:' + req.farmer_phone;
+        phoneLink.classList.remove('pointer-events-none', 'opacity-60');
+      } else {
+        phoneLink.removeAttribute('href');
+        phoneLink.classList.add('pointer-events-none', 'opacity-60');
       }
-    });
+      document.getElementById('modalAdminFarmerAddress').innerText = req.farmer_address || 'উল্লেখ নেই';
+      document.getElementById('modalAdminFarmerDue').innerText = '৳' + Number(req.farmer_due || 0).toLocaleString('en-IN');
+      
+      let shedInfo = req.batch_no ? ('শেড: ' + req.batch_no) : 'নির্দিষ্ট শেড নেই';
+      if (req.bird_type) shedInfo += ' (' + req.bird_type + ')';
+      document.getElementById('modalAdminShedInfo').innerText = shedInfo;
+      document.getElementById('modalAdminDate').innerText = req.created_at || '-';
+      
+      const statusBadge = document.getElementById('modalAdminStatusBadge');
+      if (req.status === 'approved') {
+        statusBadge.innerText = 'অনুমোদিত';
+        statusBadge.className = 'px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800';
+      } else if (req.status === 'rejected') {
+        statusBadge.innerText = 'বাতিল';
+        statusBadge.className = 'px-2.5 py-0.5 rounded-full text-[10px] font-black bg-rose-100 text-rose-800';
+      } else {
+        statusBadge.innerText = 'অপেক্ষমান';
+        statusBadge.className = 'px-2.5 py-0.5 rounded-full text-[10px] font-black bg-amber-100 text-amber-800';
+      }
+
+      document.getElementById('modalAdminItems').innerText = req.items_requested || '-';
+      
+      const noteWrap = document.getElementById('modalAdminNoteWrapper');
+      if (req.farmer_note && req.farmer_note.trim()) {
+        document.getElementById('modalAdminNote').innerText = req.farmer_note;
+        noteWrap.classList.remove('hidden');
+      } else {
+        noteWrap.classList.add('hidden');
+      }
+
+      let dispatchUrl = '/admin/dispatch?farmer_id=' + encodeURIComponent(req.farmer_id || '');
+      if (req.batch_id) dispatchUrl += '&batch_id=' + encodeURIComponent(req.batch_id);
+      document.getElementById('modalAdminDispatchLink').href = dispatchUrl;
+
+      document.getElementById('modalAdminApproveForm').action = '/admin/feed-requests/' + encodeURIComponent(req.id) + '/status';
+      document.getElementById('modalAdminRejectForm').action = '/admin/feed-requests/' + encodeURIComponent(req.id) + '/status';
+
+      document.getElementById('adminNotifModal').classList.remove('hidden');
+      const dd = document.getElementById('notifDropdown');
+      if (dd) dd.classList.add('hidden');
+    }
+
+    function closeAdminNotifModal() {
+      const modal = document.getElementById('adminNotifModal');
+      if (modal) modal.classList.add('hidden');
+    }
 
     function checkAdminNotifications() {
       const badge = document.getElementById('notifBadge');
       const headerCount = document.getElementById('notifCountHeader');
+      const container = document.getElementById('notifListContainer');
       if (!badge) return;
 
       fetch('/admin/api/notifications')
@@ -479,6 +811,43 @@
             if (headerCount) {
               headerCount.innerText = data.count + ' টি নতুন';
             }
+            if (data.requests && Array.isArray(data.requests)) {
+              window.adminNotifsCache = window.adminNotifsCache || {};
+              let html = '';
+              if (data.requests.length === 0) {
+                html = '<div id="emptyNotifMsg" class="p-6 text-center text-slate-400 text-xs font-medium">বর্তমানে কোনো নতুন মালামাল রিকুয়েস্ট অপেক্ষমান নেই।</div>';
+              } else {
+                data.requests.forEach(req => {
+                  window.adminNotifsCache[req.id] = req;
+                  html += `
+                    <div class="p-3.5 hover:bg-orangeBrand-50/60 cursor-pointer transition flex flex-col gap-1.5 group"
+                         onclick="showAdminNotifDetails('${req.id}')">
+                      <div class="flex items-center justify-between">
+                        <span class="font-black text-slate-900 text-sm group-hover:text-crimson-600 transition flex items-center gap-1.5">
+                          <span class="w-2 h-2 rounded-full bg-crimson-500 animate-pulse"></span>
+                          ${req.farmer_name}
+                        </span>
+                        <span class="text-[10px] text-slate-400 font-medium">${req.created_at || ''}</span>
+                      </div>
+                      ${req.batch_no ? `<div><span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-orangeBrand-100 text-orangeBrand-800 border border-orangeBrand-200">🏘️ শেড: ${req.batch_no} ${req.bird_type ? '(' + req.bird_type + ')' : ''}</span></div>` : ''}
+                      <div class="text-slate-700 font-semibold bg-stone-50 p-2.5 rounded-xl border border-slate-100">
+                        📦 ${req.items_requested}
+                      </div>
+                      ${req.farmer_note ? `<div class="text-[11px] text-slate-500 italic">💬 "${req.farmer_note}"</div>` : ''}
+                      <div class="flex items-center justify-between pt-1">
+                        <span class="text-[11px] text-crimson-700 font-black group-hover:underline inline-flex items-center gap-1">
+                          বিস্তারিত ও একশন ➔
+                        </span>
+                        <span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-orangeBrand-100/70 text-orangeBrand-800">
+                          ক্লিক করুন
+                        </span>
+                      </div>
+                    </div>
+                  `;
+                });
+              }
+              if (container) container.innerHTML = html;
+            }
           }
         })
         .catch(function() {});
@@ -487,6 +856,183 @@
     if (document.getElementById('adminNotificationWrapper')) {
       setInterval(checkAdminNotifications, 20000); // Poll every 20s
     }
+
+    // Farmer Notification Handlers
+    function toggleFarmerNotificationDropdown() {
+      const dropdown = document.getElementById('farmerNotifDropdown');
+      if (dropdown) {
+        dropdown.classList.toggle('hidden');
+      }
+    }
+
+    function showFarmerNotifDetails(id) {
+      const item = window.farmerNotifsCache ? window.farmerNotifsCache[id] : null;
+      if (!item) return;
+
+      document.getElementById('modalFarmerTitle').innerText = item.title || 'নোটিফিকেশন';
+      document.getElementById('modalFarmerDate').innerText = item.date || '-';
+      
+      const statusBadge = document.getElementById('modalFarmerStatusBadge');
+      if (item.status === 'approved') {
+        statusBadge.innerText = '✅ অনুমোদিত হয়েছে';
+        statusBadge.className = 'px-2.5 py-1 rounded-full text-xs font-black bg-emerald-100 text-emerald-800';
+      } else if (item.status === 'rejected') {
+        statusBadge.innerText = '❌ বাতিল';
+        statusBadge.className = 'px-2.5 py-1 rounded-full text-xs font-black bg-rose-100 text-rose-800';
+      } else if (item.status === 'pending') {
+        statusBadge.innerText = '⏳ ডিলারের অপেক্ষমান';
+        statusBadge.className = 'px-2.5 py-1 rounded-full text-xs font-black bg-amber-100 text-amber-800';
+      } else {
+        statusBadge.innerText = item.status_text || 'সম্পন্ন';
+        statusBadge.className = 'px-2.5 py-1 rounded-full text-xs font-black bg-sky-100 text-sky-800';
+      }
+
+      const shedRow = document.getElementById('modalFarmerShedRow');
+      if (item.shed) {
+        document.getElementById('modalFarmerShed').innerText = item.shed;
+        shedRow.classList.remove('hidden');
+      } else {
+        shedRow.classList.add('hidden');
+      }
+
+      document.getElementById('modalFarmerDetails').innerText = item.details || '-';
+
+      const noteWrap = document.getElementById('modalFarmerNoteWrapper');
+      if (item.note && item.note.trim()) {
+        document.getElementById('modalFarmerNote').innerText = item.note;
+        noteWrap.classList.remove('hidden');
+      } else {
+        noteWrap.classList.add('hidden');
+      }
+
+      const actionContainer = document.getElementById('modalFarmerActionContainer');
+      actionContainer.innerHTML = '';
+      if (item.type === 'invoice') {
+        actionContainer.innerHTML = `
+          <a href="/farmer/invoice/${encodeURIComponent(item.id)}/memo" class="w-full py-2.5 px-4 bg-gradient-to-r from-crimson-600 to-orangeBrand-500 hover:opacity-95 text-white font-black text-center rounded-2xl shadow-md transition flex items-center justify-center gap-2 text-sm">
+            <span>📄</span> ডিজিটাল মেমো দেখুন
+          </a>
+        `;
+      } else if (item.type === 'payment') {
+        actionContainer.innerHTML = `
+          <a href="/farmer/ledger" class="w-full py-2.5 px-4 bg-gradient-to-r from-slate-800 to-slate-900 hover:opacity-95 text-white font-black text-center rounded-2xl shadow-md transition flex items-center justify-center gap-2 text-sm">
+            <span>📒</span> খতিয়ান ও জমার বিবরণ দেখুন
+          </a>
+        `;
+      }
+
+      document.getElementById('farmerNotifModal').classList.remove('hidden');
+      const dd = document.getElementById('farmerNotifDropdown');
+      if (dd) dd.classList.add('hidden');
+    }
+
+    function closeFarmerNotifModal() {
+      const modal = document.getElementById('farmerNotifModal');
+      if (modal) modal.classList.add('hidden');
+    }
+
+    function checkFarmerNotifications() {
+      const badge = document.getElementById('farmerNotifBadge');
+      const headerCount = document.getElementById('farmerNotifCountHeader');
+      const container = document.getElementById('farmerNotifListContainer');
+      if (!badge) return;
+
+      fetch('/farmer/api/notifications')
+        .then(res => res.json())
+        .then(data => {
+          if (data && typeof data.count === 'number') {
+            if (data.count > 0) {
+              badge.innerText = data.count;
+              badge.classList.remove('hidden');
+            } else {
+              badge.classList.add('hidden');
+            }
+            if (headerCount) {
+              headerCount.innerText = data.count + ' টি';
+            }
+            if (data.notifications && Array.isArray(data.notifications)) {
+              window.farmerNotifsCache = window.farmerNotifsCache || {};
+              let html = '';
+              if (data.notifications.length === 0) {
+                html = '<div id="emptyFarmerNotifMsg" class="p-6 text-center text-slate-400 text-xs font-medium">বর্তমানে কোনো নতুন নোটিফিকেশন নেই।</div>';
+              } else {
+                data.notifications.forEach(item => {
+                  window.farmerNotifsCache[item.id] = item;
+                  let dotColor = item.status === 'approved' ? 'bg-emerald-500' : (item.status === 'rejected' ? 'bg-rose-500' : (item.status === 'pending' ? 'bg-amber-500' : 'bg-sky-500'));
+                  html += `
+                    <div class="p-3.5 hover:bg-orangeBrand-50/60 cursor-pointer transition flex flex-col gap-1.5 group"
+                         onclick="showFarmerNotifDetails('${item.id}')">
+                      <div class="flex items-center justify-between">
+                        <span class="font-black text-slate-900 text-sm group-hover:text-crimson-600 transition flex items-center gap-1.5">
+                          <span class="w-2 h-2 rounded-full ${dotColor}"></span>
+                          ${item.title}
+                        </span>
+                        <span class="text-[10px] text-slate-400 font-medium">${item.date || ''}</span>
+                      </div>
+                      ${item.shed ? `<div><span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-orangeBrand-100 text-orangeBrand-800 border border-orangeBrand-200">🏘️ শেড: ${item.shed}</span></div>` : ''}
+                      <div class="text-slate-700 font-semibold bg-stone-50 p-2.5 rounded-xl border border-slate-100">
+                        📦 ${item.details}
+                      </div>
+                      ${item.note ? `<div class="text-[11px] text-slate-500 italic">💬 "${item.note}"</div>` : ''}
+                      <div class="flex items-center justify-between pt-1">
+                        <span class="text-[11px] text-crimson-700 font-black group-hover:underline inline-flex items-center gap-1">
+                          বিস্তারিত দেখতে ক্লিক করুন ➔
+                        </span>
+                        <span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-orangeBrand-100/70 text-orangeBrand-800">
+                          ক্লিক করুন
+                        </span>
+                      </div>
+                    </div>
+                  `;
+                });
+              }
+              if (container) container.innerHTML = html;
+            }
+          }
+        })
+        .catch(function() {});
+    }
+
+    if (document.getElementById('farmerNotificationWrapper')) {
+      setInterval(checkFarmerNotifications, 20000); // Poll every 20s
+      checkFarmerNotifications(); // Initial fetch
+    }
+
+    // Global Click-outside & Keyboard handlers for Dropdowns & Modals
+    document.addEventListener('click', function(e) {
+      const adminWrapper = document.getElementById('adminNotificationWrapper');
+      const adminDropdown = document.getElementById('notifDropdown');
+      if (adminWrapper && adminDropdown && !adminWrapper.contains(e.target)) {
+        adminDropdown.classList.add('hidden');
+      }
+
+      const farmerWrapper = document.getElementById('farmerNotificationWrapper');
+      const farmerDropdown = document.getElementById('farmerNotifDropdown');
+      if (farmerWrapper && farmerDropdown && !farmerWrapper.contains(e.target)) {
+        farmerDropdown.classList.add('hidden');
+      }
+
+      const adminModal = document.getElementById('adminNotifModal');
+      if (adminModal && !adminModal.classList.contains('hidden') && e.target === adminModal) {
+        closeAdminNotifModal();
+      }
+
+      const farmerModal = document.getElementById('farmerNotifModal');
+      if (farmerModal && !farmerModal.classList.contains('hidden') && e.target === farmerModal) {
+        closeFarmerNotifModal();
+      }
+    });
+
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') {
+        closeAdminNotifModal();
+        closeFarmerNotifModal();
+        const dd1 = document.getElementById('notifDropdown');
+        if (dd1) dd1.classList.add('hidden');
+        const dd2 = document.getElementById('farmerNotifDropdown');
+        if (dd2) dd2.classList.add('hidden');
+      }
+    });
   </script>
 </body>
 </html>

@@ -14,13 +14,19 @@ templates = Jinja2Templates(directory=str(settings.BASE_DIR / "templates"))
 
 def farmer_context(request: Request, extra: dict = None) -> dict:
     user = get_current_user(request)
-    farmer = db.get_farmer_by_id(user["farmer_id"])
+    farmer = db.get_farmer_by_id(user["farmer_id"]) if user.get("farmer_id") else None
+    
+    farmer_requests = db.get_feed_requests(farmer_id=user["farmer_id"]) if user.get("farmer_id") else []
+    farmer_notif_count = len([r for r in farmer_requests if r.get("status") in ("pending", "approved")])
+    
     ctx = {
         "current_path": request.url.path,
         "user": user,
         "farmer": farmer,
         "shop": db.get_settings(),
         "is_mobile_app": is_mobile_app_client(request),
+        "farmer_requests": farmer_requests[:6],
+        "farmer_notif_count": farmer_notif_count,
     }
     if extra:
         ctx.update(extra)
@@ -164,3 +170,77 @@ async def submit_feed_request(
     }
     db.create_feed_request(req_data)
     return RedirectResponse(url="/farmer/request-feed?success=১", status_code=303)
+
+@router.get("/invoice/{invoice_id}/memo", response_class=HTMLResponse)
+async def farmer_view_invoice_memo(request: Request, invoice_id: str):
+    user = get_current_user(request)
+    invoice = db.get_invoice_by_id(invoice_id)
+    if not invoice:
+        raise HTTPException(status_code=404, detail="চালান খুঁজে পাওয়া যায়নি")
+
+    if str(invoice.get("farmer_id")) != str(user.get("farmer_id")):
+        raise HTTPException(status_code=403, detail="এই চালানটি দেখার অনুমতি আপনার অ্যাকাউন্টে নেই")
+
+    farmer = db.get_farmer_by_id(invoice["farmer_id"])
+    batch = db.get_batch_by_id(invoice["batch_id"]) if invoice.get("batch_id") else None
+    qr_url = generate_qr_data_url(f"SRE:INV:{invoice['invoice_no']}")
+
+    return render_farmer_template(request, "admin/print_memo.html", {
+        "invoice": invoice,
+        "farmer": farmer,
+        "batch": batch,
+        "qr_url": qr_url,
+        "is_farmer": True,
+        "back_url": "/farmer"
+    })
+
+@router.get("/api/notifications")
+async def farmer_notifications_api(request: Request):
+    user = get_current_user(request)
+    if not user or not user.get("farmer_id"):
+        return {"count": 0, "notifications": []}
+
+    fid = user["farmer_id"]
+    requests = db.get_feed_requests(farmer_id=fid)[:6]
+    invoices = db.get_invoices(farmer_id=fid, limit=5)
+    payments = db.get_payments(farmer_id=fid, limit=3)
+
+    notifs = []
+    for r in requests:
+        st_text = "অনুমোদিত হয়েছে" if r["status"] == "approved" else ("বাতিল" if r["status"] == "rejected" else "ডিলারের অপেক্ষমান")
+        notifs.append({
+            "type": "request",
+            "id": r["id"],
+            "title": f"মালামাল রিকুয়েস্ট ({st_text})",
+            "details": r["items_requested"],
+            "note": r.get("farmer_note", ""),
+            "status": r["status"],
+            "status_text": st_text,
+            "shed": r.get("batch_no", ""),
+            "date": r["created_at"]
+        })
+    for inv in invoices:
+        notifs.append({
+            "type": "invoice",
+            "id": inv["id"],
+            "invoice_no": inv["invoice_no"],
+            "title": f"চালান #{inv['invoice_no']} ডেলিভারি",
+            "details": f"মোট বিল: ৳{inv['net_total']:,.0f} (বাকি: ৳{inv['due_amount']:,.0f})",
+            "date": inv["invoice_date"]
+        })
+    for p in payments:
+        notifs.append({
+            "type": "payment",
+            "id": p["id"],
+            "receipt_no": p["receipt_no"],
+            "title": f"পরিশোধ রসিদ #{p['receipt_no']}",
+            "details": f"৳{p['amount']:,.0f} জমা হয়েছে ({p.get('payment_method','নগদ')})",
+            "date": p["payment_date"]
+        })
+
+    notifs.sort(key=lambda x: str(x.get("date", "")), reverse=True)
+    count = len([r for r in requests if r.get("status") in ("pending", "approved")])
+    return {
+        "count": count,
+        "notifications": notifs[:10]
+    }

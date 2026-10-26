@@ -77,9 +77,15 @@
 
   <!-- Action Bar (High Contrast, Distinct Text & Background) -->
   <div class="max-w-2xl w-full mb-3 flex flex-wrap items-center justify-between gap-2.5 no-print">
+    {% if is_farmer %}
+    <a href="/farmer" class="px-4 py-2.5 bg-slate-800 text-white rounded-xl text-xs font-black hover:bg-black transition flex items-center gap-1.5 shadow-sm">
+      <span>⬅️</span> খামারি পোর্টালে ফিরুন
+    </a>
+    {% else %}
     <a href="/admin/dispatch" class="px-4 py-2.5 bg-slate-800 text-white rounded-xl text-xs font-black hover:bg-black transition flex items-center gap-1.5 shadow-sm">
       <span>⬅️</span> নতুন চালান
     </a>
+    {% endif %}
     <div class="flex items-center gap-2">
       <!-- 1-Click High-Contrast A4 PDF Save & Print Button -->
       <button type="button" onclick="handlePrint()" class="px-5 py-2.5 bg-gradient-to-r from-rose-950 via-rose-900 to-crimson-800 hover:opacity-95 text-white rounded-xl text-xs font-black shadow-lg transition flex items-center gap-2 border border-rose-950 cursor-pointer touch-press">
