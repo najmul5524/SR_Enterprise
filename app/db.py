@@ -176,6 +176,51 @@ class DatabaseManager:
             # Ensure all products use SKU as QR code
             cur.execute("UPDATE products SET qr_code = sku WHERE qr_code IS NULL OR qr_code LIKE 'SRE:PRD:%'")
 
+            cur.execute("""
+            CREATE TABLE IF NOT EXISTS expenses (
+                id TEXT PRIMARY KEY,
+                expense_date TEXT NOT NULL,
+                category TEXT NOT NULL,
+                amount REAL NOT NULL DEFAULT 0,
+                payment_method TEXT DEFAULT 'cash',
+                note TEXT,
+                created_by TEXT DEFAULT 'admin',
+                created_at TEXT
+            )
+            """)
+
+            # Stock quantity must NEVER be negative (Requirement 1)
+            cur.execute("UPDATE products SET stock = 0 WHERE stock < 0")
+
+            # Ensure every registered farmer has at least one active shed in batches (Requirements 2 & 3)
+            cur.execute("SELECT id, name, shed_name, shed_capacity FROM farmers")
+            for f in cur.fetchall():
+                cur.execute("SELECT COUNT(*) FROM batches WHERE farmer_id = ?", (f["id"],))
+                if cur.fetchone()[0] == 0:
+                    s_id = f"SHED-{uuid.uuid4().hex[:6].upper()}"
+                    s_name = (f["shed_name"] or f"{f['name']}-এর শেড").strip()
+                    n_date = datetime.now().strftime("%Y-%m-%d")
+                    n_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    cur.execute("""
+                    INSERT INTO batches (
+                        id, batch_no, farmer_id, farmer_name, bird_type, chick_qty, chick_unit_cost, total_chick_cost,
+                        start_date, status, created_at
+                    ) VALUES (?, ?, ?, ?, 'ব্রয়লার', ?, 0, 0, ?, 'active', ?)
+                    """, (s_id, s_name, f["id"], f["name"], f["shed_capacity"] or 1000, n_date, n_str))
+                    cur.execute("UPDATE farmers SET total_batches = 1 WHERE id = ?", (f["id"],))
+
+            # Ensure sample expenses exist if table is empty
+            cur.execute("SELECT COUNT(*) FROM expenses")
+            if cur.fetchone()[0] == 0:
+                now_d = datetime.now().strftime("%Y-%m-%d")
+                now_s = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                sample_expenses = [
+                    ("EXP-01", now_d, "দোকান / গোডাউন ভাড়া", 8000.0, "cash", "চলতি মাসের গোডাউন ও দোকান ভাড়া প্রদান", "admin", now_s),
+                    ("EXP-02", now_d, "আপ্যায়ন ও চা-নাস্তা", 650.0, "cash", "খামারিদের আপ্যায়ন, চা-বিস্কুট ও নাস্তা", "admin", now_s),
+                    ("EXP-03", now_d, "বিদ্যুৎ ও ইউটিলিটি বিল", 1450.0, "bKash", "দোকানের বিদ্যুৎ বিল পরিশোধ", "admin", now_s),
+                ]
+                cur.executemany("INSERT INTO expenses (id, expense_date, category, amount, payment_method, note, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", sample_expenses)
+
             conn.commit()
 
     def _seed_default_data_if_empty(self):
@@ -394,7 +439,12 @@ class DatabaseManager:
                 query += " AND stock <= alert_qty"
             query += " ORDER BY category ASC, name_bn ASC"
             cur.execute(query, params)
-            return [dict(row) for row in cur.fetchall()]
+            products = []
+            for row in cur.fetchall():
+                p = dict(row)
+                p["stock"] = max(0.0, float(p.get("stock") or 0))
+                products.append(p)
+            return products
 
     def get_product_by_id(self, product_id: str) -> Optional[Dict[str, Any]]:
         with self._get_connection() as conn:
@@ -405,7 +455,11 @@ class DatabaseManager:
                    OR LOWER(sku) = LOWER(?) OR LOWER(id) = LOWER(?)
             """, (product_id, product_id, product_id, product_id, product_id))
             row = cur.fetchone()
-            return dict(row) if row else None
+            if not row:
+                return None
+            p = dict(row)
+            p["stock"] = max(0.0, float(p.get("stock") or 0))
+            return p
 
     def save_product(self, data: Dict[str, Any]) -> str:
         product_id = data.get("id") or f"P{uuid.uuid4().hex[:8].upper()}"
@@ -435,7 +489,7 @@ class DatabaseManager:
                 product_id, sku, data.get("name", ""), data.get("name_bn", ""),
                 data.get("category", "পৌল্ট্রি খাদ্য"), data.get("unit", "বস্তা"),
                 float(data.get("buy_price", 0)), float(data.get("sell_price", 0)),
-                float(data.get("stock", 0)), float(data.get("alert_qty", 10)),
+                max(0.0, float(data.get("stock", 0))), float(data.get("alert_qty", 10)),
                 qr_code, data.get("image_url", ""), data.get("description", ""),
                 now_str, now_str
             ))
@@ -456,7 +510,7 @@ class DatabaseManager:
     def adjust_stock(self, product_id: str, delta_qty: float):
         with self._get_connection() as conn:
             cur = conn.cursor()
-            cur.execute("UPDATE products SET stock = stock + ?, updated_at = ? WHERE id = ? OR sku = ? OR qr_code = ?",
+            cur.execute("UPDATE products SET stock = MAX(0.0, stock + ?), updated_at = ? WHERE id = ? OR sku = ? OR qr_code = ?",
                         (delta_qty, datetime.now().strftime("%Y-%m-%d %H:%M:%S"), product_id, product_id, product_id))
             conn.commit()
 
@@ -526,6 +580,22 @@ class DatabaseManager:
                 int(data.get("total_batches", 0)), data.get("notes", ""),
                 data.get("status", "active"), now_str
             ))
+
+            # Automatically create an active shed for this farmer if none exists (Requirement 2 & 3)
+            cur.execute("SELECT COUNT(*) FROM batches WHERE farmer_id = ?", (farmer_id,))
+            if cur.fetchone()[0] == 0:
+                shed_id = f"SHED-{uuid.uuid4().hex[:6].upper()}"
+                farmer_name = data.get("name", "").strip() or "খামারি"
+                shed_title = (data.get("shed_name") or f"{farmer_name}-এর শেড").strip()
+                n_date = datetime.now().strftime("%Y-%m-%d")
+                cur.execute("""
+                INSERT INTO batches (
+                    id, batch_no, farmer_id, farmer_name, bird_type, chick_qty, chick_unit_cost, total_chick_cost,
+                    start_date, status, created_at
+                ) VALUES (?, ?, ?, ?, 'ব্রয়লার', ?, 0, 0, ?, 'active', ?)
+                """, (shed_id, shed_title, farmer_id, farmer_name, int(data.get("shed_capacity", 1000)), n_date, now_str))
+                cur.execute("UPDATE farmers SET total_batches = 1 WHERE id = ?", (farmer_id,))
+
             conn.commit()
 
         if self.is_firebase_active():
@@ -588,6 +658,34 @@ class DatabaseManager:
                 b["total_paid"] = float(b.get("total_paid", 0) or 0)
                 b["remaining_due"] = max(0.0, float(b.get("total_investment", 0)) - b["total_paid"])
                 results.append(b)
+
+            # If a farmer was queried but has no shed records yet, auto-create one from farmer registration info
+            if farmer_id and not results:
+                cur.execute("SELECT * FROM farmers WHERE id = ?", (farmer_id,))
+                farmer_row = cur.fetchone()
+                if farmer_row:
+                    f = dict(farmer_row)
+                    shed_id = f"SHED-{uuid.uuid4().hex[:6].upper()}"
+                    shed_title = (f.get("shed_name") or f"{f.get('name', 'খামারি')}-এর শেড").strip()
+                    n_date = datetime.now().strftime("%Y-%m-%d")
+                    n_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    cur.execute("""
+                    INSERT INTO batches (
+                        id, batch_no, farmer_id, farmer_name, bird_type, chick_qty, chick_unit_cost, total_chick_cost,
+                        start_date, status, created_at
+                    ) VALUES (?, ?, ?, ?, 'ব্রয়লার', ?, 0, 0, ?, 'active', ?)
+                    """, (shed_id, shed_title, f["id"], f["name"], int(f.get("shed_capacity") or 1000), n_date, n_str))
+                    cur.execute("UPDATE farmers SET total_batches = total_batches + 1 WHERE id = ?", (f["id"],))
+                    conn.commit()
+
+                    # Re-run query to retrieve the new shed
+                    cur.execute(query, params)
+                    for row in cur.fetchall():
+                        b = dict(row)
+                        b["total_paid"] = float(b.get("total_paid", 0) or 0)
+                        b["remaining_due"] = max(0.0, float(b.get("total_investment", 0)) - b["total_paid"])
+                        results.append(b)
+
             return results
 
     def get_batch_by_id(self, batch_id: str) -> Optional[Dict[str, Any]]:
@@ -791,7 +889,7 @@ class DatabaseManager:
             # If inventory item_id was specified and log_type is feed or medicine, deduct from product stock
             item_id = data.get("item_id")
             if item_id and log_type in ["feed", "medicine"]:
-                cur.execute("UPDATE products SET stock = stock - ?, updated_at = ? WHERE id = ? OR sku = ?",
+                cur.execute("UPDATE products SET stock = MAX(0.0, stock - ?), updated_at = ? WHERE id = ? OR sku = ?",
                             (qty, now_str, item_id, item_id))
 
             # Update farmer due if it's an expense borne by SR Enterprise
@@ -972,7 +1070,7 @@ class DatabaseManager:
                 category = it.get("category", "")
 
                 if prod_id:
-                    cur.execute("UPDATE products SET stock = stock - ?, updated_at = ? WHERE id = ? OR sku = ?",
+                    cur.execute("UPDATE products SET stock = MAX(0.0, stock - ?), updated_at = ? WHERE id = ? OR sku = ?",
                                 (qty, now_str, prod_id, prod_id))
 
                 if batch_id:
@@ -1420,6 +1518,103 @@ class DatabaseManager:
             for k, v in settings_dict.items():
                 cur.execute("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)", (k, str(v)))
             conn.commit()
+
+    # ==================== EXPENSES (OTHER EXPENSES / বিভিন্ন খরচ) ====================
+    def save_expense(self, data: Dict[str, Any]) -> str:
+        expense_id = data.get("id") or f"EXP-{uuid.uuid4().hex[:8].upper()}"
+        now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        expense_date = data.get("expense_date") or datetime.now().strftime("%Y-%m-%d")
+        amount = max(0.0, float(data.get("amount") or 0))
+
+        with self._get_connection() as conn:
+            cur = conn.cursor()
+            cur.execute("""
+            INSERT INTO expenses (id, expense_date, category, amount, payment_method, note, created_by, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET
+                expense_date = excluded.expense_date,
+                category = excluded.category,
+                amount = excluded.amount,
+                payment_method = excluded.payment_method,
+                note = excluded.note
+            """, (
+                expense_id, expense_date, data.get("category", "অন্যান্য বিবিধ খরচ"),
+                amount, data.get("payment_method", "cash"),
+                data.get("note", ""), data.get("created_by", "admin"), now_str
+            ))
+            conn.commit()
+        return expense_id
+
+    def get_expenses(self, start_date: Optional[str] = None, end_date: Optional[str] = None,
+                     category: Optional[str] = None, search: Optional[str] = None, limit: int = 500) -> List[Dict[str, Any]]:
+        with self._get_connection() as conn:
+            cur = conn.cursor()
+            query = "SELECT * FROM expenses WHERE 1=1"
+            params = []
+            if start_date:
+                query += " AND expense_date >= ?"
+                params.append(start_date)
+            if end_date:
+                query += " AND expense_date <= ?"
+                params.append(end_date)
+            if category and category != "all":
+                query += " AND category = ?"
+                params.append(category)
+            if search:
+                query += " AND (note LIKE ? OR category LIKE ?)"
+                params.extend([f"%{search}%", f"%{search}%"])
+            query += " ORDER BY expense_date DESC, created_at DESC LIMIT ?"
+            params.append(limit)
+            cur.execute(query, params)
+            return [dict(row) for row in cur.fetchall()]
+
+    def get_expense_by_id(self, expense_id: str) -> Optional[Dict[str, Any]]:
+        with self._get_connection() as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT * FROM expenses WHERE id = ?", (expense_id,))
+            row = cur.fetchone()
+            return dict(row) if row else None
+
+    def delete_expense(self, expense_id: str) -> bool:
+        with self._get_connection() as conn:
+            cur = conn.cursor()
+            cur.execute("DELETE FROM expenses WHERE id = ?", (expense_id,))
+            conn.commit()
+            return True
+
+    def get_expenses_summary(self) -> Dict[str, Any]:
+        with self._get_connection() as conn:
+            cur = conn.cursor()
+            today_str = datetime.now().strftime("%Y-%m-%d")
+            month_str = datetime.now().strftime("%Y-%m")
+
+            cur.execute("SELECT COALESCE(SUM(amount), 0) FROM expenses")
+            total_expense = cur.fetchone()[0]
+
+            cur.execute("SELECT COALESCE(SUM(amount), 0) FROM expenses WHERE expense_date LIKE ?", (f"{month_str}%",))
+            month_expense = cur.fetchone()[0]
+
+            cur.execute("SELECT COALESCE(SUM(amount), 0) FROM expenses WHERE expense_date = ?", (today_str,))
+            today_expense = cur.fetchone()[0]
+
+            cur.execute("SELECT COALESCE(SUM(amount), 0) FROM expenses WHERE category LIKE '%আপ্যায়ন%'")
+            entertainment_expense = cur.fetchone()[0]
+
+            cur.execute("SELECT COALESCE(SUM(amount), 0) FROM expenses WHERE category LIKE '%ভাড়া%'")
+            rent_expense = cur.fetchone()[0]
+
+            cur.execute("SELECT category, COALESCE(SUM(amount), 0) as total, COUNT(*) as count FROM expenses GROUP BY category ORDER BY total DESC")
+            by_category = [dict(row) for row in cur.fetchall()]
+
+            return {
+                "total_expense": total_expense,
+                "month_expense": month_expense,
+                "today_expense": today_expense,
+                "entertainment_expense": entertainment_expense,
+                "rent_expense": rent_expense,
+                "by_category": by_category,
+            }
+
 
 
 # Singleton database instance

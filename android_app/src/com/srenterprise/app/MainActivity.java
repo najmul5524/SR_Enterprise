@@ -17,7 +17,8 @@ import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.Toast;
 
-public class MainActivity extends Activity implements View.OnClickListener {
+public class MainActivity extends Activity implements View.OnClickListener, Runnable {
+    private String mPendingDocName = "SR_Enterprise_Invoice";
 
     public static final String APP_URL = "https://sr-enterprise.onrender.com/";
     public static final int REQUEST_CAMERA_PERMISSION = 1001;
@@ -96,7 +97,7 @@ public class MainActivity extends Activity implements View.OnClickListener {
         String defaultUA = settings.getUserAgentString();
         settings.setUserAgentString(defaultUA + " SREnterpriseMobileApp/1.0");
 
-        mWebView.addJavascriptInterface(new AppJsInterface(), "SRNativeApp");
+        mWebView.addJavascriptInterface(new AppJsInterface(this), "SRNativeApp");
 
         mWebView.setWebViewClient(new AppWebViewClient(this));
         mWebView.setWebChromeClient(new AppWebChromeClient(this));
@@ -138,6 +139,34 @@ public class MainActivity extends Activity implements View.OnClickListener {
                 Toast.makeText(this, "অ্যাপ বন্ধ করতে আবার ব্যাক চাপুন", Toast.LENGTH_SHORT).show();
                 backPressedTime = System.currentTimeMillis();
             }
+        }
+    }
+
+    public void triggerPrint(String docName) {
+        this.mPendingDocName = (docName != null && !docName.isEmpty()) ? docName : "SR_Enterprise_Invoice";
+        runOnUiThread(this);
+    }
+
+    @Override
+    public void run() {
+        printCurrentPage(this.mPendingDocName);
+    }
+
+    public void printCurrentPage(String docName) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+            android.print.PrintManager printManager = (android.print.PrintManager) getSystemService(android.content.Context.PRINT_SERVICE);
+            if (printManager != null && mWebView != null) {
+                String jobName = (docName != null && !docName.isEmpty()) ? docName : "SR_Enterprise_Invoice";
+                android.print.PrintDocumentAdapter printAdapter = mWebView.createPrintDocumentAdapter(jobName);
+                android.print.PrintAttributes attributes = new android.print.PrintAttributes.Builder()
+                        .setMediaSize(android.print.PrintAttributes.MediaSize.ISO_A4)
+                        .setResolution(new android.print.PrintAttributes.Resolution("sre_print", "Invoice Print", 300, 300))
+                        .setMinMargins(android.print.PrintAttributes.Margins.NO_MARGINS)
+                        .build();
+                printManager.print(jobName, printAdapter, attributes);
+            }
+        } else {
+            Toast.makeText(this, "প্রিন্ট সেবা বর্তমান ডিভাইসে সমর্থিত নয়", Toast.LENGTH_SHORT).show();
         }
     }
 

@@ -1,0 +1,262 @@
+{% extends "base.html" %}
+
+{% block title %}অন্যান্য ও বিবিধ খরচের হিসাব | {{ shop.shop_name if shop else "SR Enterprise" }}{% endblock %}
+
+{% block content %}
+<div class="space-y-5">
+
+  <!-- Header -->
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-5 rounded-3xl border-2 border-stone-200 shadow-sm">
+    <div>
+      <div class="flex items-center gap-2.5">
+        <span class="text-2xl">🧾</span>
+        <h1 class="text-xl font-black text-slate-900">অন্যান্য ও বিবিধ খরচের হিসাব</h1>
+      </div>
+      <p class="text-xs text-slate-500 mt-1">
+        দোকান/গোডাউন ভাড়া, খামারিদের আপ্যায়ন, বিদ্যুৎ বিল, পরিবহন ও বিবিধ অফিস খরচের খাতা
+      </p>
+    </div>
+
+    <button onclick="openExpenseModal()" class="inline-flex items-center gap-1.5 px-4 py-2.5 bg-gradient-to-r from-crimson-600 to-orangeBrand-500 hover:opacity-95 text-white rounded-2xl text-xs font-black shadow-md shadow-crimson-500/20 transition touch-press">
+      <span>➕</span> নতুন খরচ যুক্ত করুন
+    </button>
+  </div>
+
+  <!-- KPI SUMMARY CARDS (Distinct high-contrast borders) -->
+  <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+    
+    <!-- 1. Total All-time Expenses -->
+    <div class="bg-white p-4 rounded-3xl border-2 border-stone-300 shadow-sm relative overflow-hidden">
+      <div class="text-[11px] font-black text-slate-500 uppercase tracking-wider mb-1">সর্বমোট খরচ</div>
+      <div class="text-xl sm:text-2xl font-black text-slate-900">
+        ৳ {{ "{:,.0f}".format(summary.total_expense) }}
+      </div>
+      <p class="text-[10px] text-slate-400 font-medium mt-1">দোকানের সর্বমোট খরচের যোগফল</p>
+    </div>
+
+    <!-- 2. This Month's Expenses -->
+    <div class="bg-white p-4 rounded-3xl border-2 border-crimson-300 shadow-sm relative overflow-hidden">
+      <div class="text-[11px] font-black text-crimson-600 uppercase tracking-wider mb-1">চলতি মাসের খরচ</div>
+      <div class="text-xl sm:text-2xl font-black text-crimson-700">
+        ৳ {{ "{:,.0f}".format(summary.month_expense) }}
+      </div>
+      <p class="text-[10px] text-slate-400 font-medium mt-1">চলতি মাসের মোট খরচ</p>
+    </div>
+
+    <!-- 3. Today's Expenses -->
+    <div class="bg-white p-4 rounded-3xl border-2 border-orangeBrand-300 shadow-sm relative overflow-hidden">
+      <div class="text-[11px] font-black text-orangeBrand-600 uppercase tracking-wider mb-1">আজকের খরচ</div>
+      <div class="text-xl sm:text-2xl font-black text-orangeBrand-700">
+        ৳ {{ "{:,.0f}".format(summary.today_expense) }}
+      </div>
+      <p class="text-[10px] text-slate-400 font-medium mt-1">আজকের দিনের মোট ব্যয়</p>
+    </div>
+
+    <!-- 4. Entertainment (আপ্যায়ন) -->
+    <div class="bg-white p-4 rounded-3xl border-2 border-amber-300 shadow-sm relative overflow-hidden">
+      <div class="text-[11px] font-black text-amber-700 uppercase tracking-wider mb-1">☕ আপ্যায়ন ও নাস্তা</div>
+      <div class="text-xl sm:text-2xl font-black text-amber-800">
+        ৳ {{ "{:,.0f}".format(summary.entertainment_expense) }}
+      </div>
+      <p class="text-[10px] text-slate-400 font-medium mt-1">চা, মিষ্টি, খামারি আপ্যায়ন</p>
+    </div>
+
+    <!-- 5. Rent (ভাড়া) -->
+    <div class="bg-white p-4 rounded-3xl border-2 border-rose-300 shadow-sm relative overflow-hidden">
+      <div class="text-[11px] font-black text-rose-700 uppercase tracking-wider mb-1">🏢 দোকান/গোডাউন ভাড়া</div>
+      <div class="text-xl sm:text-2xl font-black text-rose-800">
+        ৳ {{ "{:,.0f}".format(summary.rent_expense) }}
+      </div>
+      <p class="text-[10px] text-slate-400 font-medium mt-1">প্রতিষ্ঠান ও গোডাউনের ভাড়া</p>
+    </div>
+
+  </div>
+
+  <!-- Filter & Search Bar -->
+  <div class="bg-white p-4 rounded-3xl border-2 border-stone-200 shadow-sm space-y-3">
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <!-- Category Pills -->
+      <div class="flex flex-wrap items-center gap-1.5 text-xs font-bold">
+        <a href="/admin/expenses" class="px-3 py-1.5 rounded-xl border transition {{ 'bg-slate-900 text-white border-slate-900' if selected_category == 'all' else 'bg-stone-50 text-slate-600 border-stone-200 hover:bg-stone-100' }}">
+          সকল খাত
+        </a>
+        <a href="/admin/expenses?category=আপ্যায়ন ও চা-নাস্তা" class="px-3 py-1.5 rounded-xl border transition {{ 'bg-amber-600 text-white border-amber-600' if 'আপ্যায়ন' in selected_category else 'bg-stone-50 text-slate-600 border-stone-200 hover:bg-stone-100' }}">
+          ☕ আপ্যায়ন ও চা-নাস্তা
+        </a>
+        <a href="/admin/expenses?category=দোকান / গোডাউন ভাড়া" class="px-3 py-1.5 rounded-xl border transition {{ 'bg-rose-700 text-white border-rose-700' if 'ভাড়া' in selected_category else 'bg-stone-50 text-slate-600 border-stone-200 hover:bg-stone-100' }}">
+          🏢 দোকান/গোডাউন ভাড়া
+        </a>
+        <a href="/admin/expenses?category=বিদ্যুৎ ও ইউটিলিটি বিল" class="px-3 py-1.5 rounded-xl border transition {{ 'bg-blue-600 text-white border-blue-600' if 'বিদ্যুৎ' in selected_category else 'bg-stone-50 text-slate-600 border-stone-200 hover:bg-stone-100' }}">
+          ⚡ বিদ্যুৎ বিল
+        </a>
+        <a href="/admin/expenses?category=পরিবহন ও লেবার" class="px-3 py-1.5 rounded-xl border transition {{ 'bg-emerald-700 text-white border-emerald-700' if 'পরিবহন' in selected_category else 'bg-stone-50 text-slate-600 border-stone-200 hover:bg-stone-100' }}">
+          🚚 পরিবহন ও লেবার
+        </a>
+        <a href="/admin/expenses?category=কর্মচারী বেতন" class="px-3 py-1.5 rounded-xl border transition {{ 'bg-purple-700 text-white border-purple-700' if 'বেতন' in selected_category else 'bg-stone-50 text-slate-600 border-stone-200 hover:bg-stone-100' }}">
+          👥 কর্মচারী বেতন
+        </a>
+        <a href="/admin/expenses?category=অন্যান্য বিবিধ খরচ" class="px-3 py-1.5 rounded-xl border transition {{ 'bg-stone-700 text-white border-stone-700' if 'অন্যান্য' in selected_category else 'bg-stone-50 text-slate-600 border-stone-200 hover:bg-stone-100' }}">
+          📦 অন্যান্য বিবিধ
+        </a>
+      </div>
+
+      <!-- Search Input -->
+      <form method="get" action="/admin/expenses" class="flex items-center gap-2 w-full sm:w-auto">
+        {% if selected_category and selected_category != 'all' %}
+          <input type="hidden" name="category" value="{{ selected_category }}">
+        {% endif %}
+        <input type="text" name="q" value="{{ search_query }}" placeholder="বিবরণ দিয়ে খুঁজুন..." class="px-3.5 py-1.5 text-xs bg-stone-50 border border-stone-200 rounded-xl focus:ring-2 focus:ring-crimson-500 focus:outline-none flex-1 sm:w-56 font-medium">
+        <button type="submit" class="px-3 py-1.5 bg-slate-800 text-white text-xs font-black rounded-xl hover:bg-black transition">
+          🔍 খুঁজুন
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- EXPENSES LIST TABLE -->
+  <div class="bg-white rounded-3xl border-2 border-stone-200 shadow-sm overflow-hidden">
+    <div class="p-5 border-b-2 border-stone-100 flex items-center justify-between">
+      <h2 class="font-black text-slate-900 text-base">খরচের বিস্তারিত হিসাব খাতা</h2>
+      <span class="text-xs font-bold text-slate-500">সর্বমোট {{ expenses|length }} টি এন্ট্রি</span>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-xs">
+        <thead class="bg-stone-50 text-slate-700 font-bold border-b border-stone-200">
+          <tr>
+            <th class="p-3 w-12 text-center">নং</th>
+            <th class="p-3">তারিখ</th>
+            <th class="p-3">খরচের খাত</th>
+            <th class="p-3">বিবরণ / নোট</th>
+            <th class="p-3 text-center">পেমেন্ট মাধ্যম</th>
+            <th class="p-3 text-right">টাকার পরিমাণ (৳)</th>
+            <th class="p-3 text-center w-20">অ্যাকশন</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-stone-100">
+          {% for exp in expenses %}
+          <tr class="hover:bg-orangeBrand-50/20 transition">
+            <td class="p-3 text-center font-bold text-slate-400">{{ loop.index }}</td>
+            <td class="p-3 font-mono text-slate-700 whitespace-nowrap">{{ exp.expense_date }}</td>
+            <td class="p-3 whitespace-nowrap">
+              <span class="px-2.5 py-1 rounded-xl text-[11px] font-black
+                {% if 'আপ্যায়ন' in exp.category %}bg-amber-100 text-amber-900 border border-amber-200
+                {% elif 'ভাড়া' in exp.category %}bg-rose-100 text-rose-900 border border-rose-200
+                {% elif 'বিদ্যুৎ' in exp.category %}bg-blue-100 text-blue-900 border border-blue-200
+                {% elif 'পরিবহন' in exp.category %}bg-emerald-100 text-emerald-900 border border-emerald-200
+                {% elif 'বেতন' in exp.category %}bg-purple-100 text-purple-900 border border-purple-200
+                {% else %}bg-stone-100 text-slate-800 border border-stone-200{% endif %}">
+                {{ exp.category }}
+              </span>
+            </td>
+            <td class="p-3 text-slate-700 font-medium max-w-xs sm:max-w-md">
+              {{ exp.note or "—" }}
+            </td>
+            <td class="p-3 text-center whitespace-nowrap">
+              <span class="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-stone-100 text-slate-700">
+                {% if exp.payment_method == 'cash' %}💵 নগদ ক্যাশ
+                {% elif exp.payment_method == 'bKash' %}📱 বিকাশ
+                {% elif exp.payment_method == 'bank' %}🏦 ব্যাংক
+                {% else %}{{ exp.payment_method }}{% endif %}
+              </span>
+            </td>
+            <td class="p-3 text-right font-black text-rose-700 text-sm whitespace-nowrap">
+              ৳ {{ "{:,.0f}".format(exp.amount) }}
+            </td>
+            <td class="p-3 text-center whitespace-nowrap">
+              <a href="/admin/expenses/delete/{{ exp.id }}" onclick="return confirm('আপনি কি এই খরচের এন্ট্রিটি মুছে ফেলতে চান?')" class="p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg font-black text-xs transition inline-flex items-center justify-center" title="মুছে ফেলুন">
+                🗑️
+              </a>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="7" class="p-8 text-center text-slate-400 font-medium">
+              কোনো খরচের রেকর্ড পাওয়া যায়নি। নতুন খরচ যোগ করতে উপরের বাটনে ক্লিক করুন।
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<!-- ADD EXPENSE MODAL -->
+<div id="addExpenseModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+  <div class="bg-white w-full max-w-md rounded-3xl shadow-2xl border-2 border-stone-200 overflow-hidden">
+    
+    <div class="p-5 bg-gradient-to-r from-maroon-900 via-crimson-700 to-orangeBrand-600 text-white flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <span class="text-xl">🧾</span>
+        <h3 class="font-black text-base">নতুন খরচ এন্ট্রি (Add Expense)</h3>
+      </div>
+      <button onclick="closeExpenseModal()" class="text-white/80 hover:text-white text-xl">✕</button>
+    </div>
+
+    <form method="post" action="/admin/expenses/save" class="p-6 space-y-4">
+      <div>
+        <label class="block text-xs font-black text-slate-700 mb-1">খরচের তারিখ *</label>
+        <input type="date" name="expense_date" value="{{ now_date }}" required class="w-full px-3.5 py-2.5 border-2 border-stone-200 rounded-2xl text-xs font-medium focus:ring-2 focus:ring-crimson-500 focus:outline-none">
+      </div>
+
+      <div>
+        <label class="block text-xs font-black text-slate-700 mb-1">খরচের খাত *</label>
+        <select name="category" required class="w-full px-3.5 py-2.5 border-2 border-stone-200 rounded-2xl text-xs font-bold text-slate-800 focus:ring-2 focus:ring-crimson-500 focus:outline-none">
+          <option value="আপ্যায়ন ও চা-নাস্তা">☕ আপ্যায়ন ও চা-নাস্তা (খামারি/কাস্টমার)</option>
+          <option value="দোকান / গোডাউন ভাড়া">🏢 দোকান / গোডাউন ভাড়া</option>
+          <option value="বিদ্যুৎ ও ইউটিলিটি বিল">⚡ বিদ্যুৎ ও ইউটিলিটি বিল</option>
+          <option value="পরিবহন ও লেবার">🚚 পরিবহন ও লেবার খরচ</option>
+          <option value="কর্মচারী বেতন">👥 কর্মচারী বেতন</option>
+          <option value="মোবাইল ও ইন্টারনেট বিল">📱 মোবাইল ও ইন্টারনেট বিল</option>
+          <option value="অফিস ও স্টেশনারি">📝 অফিস ও স্টেশনারি মালামাল</option>
+          <option value="মেরামত ও রক্ষণাবেক্ষণ">🔧 মেরামত ও রক্ষণাবেক্ষণ</option>
+          <option value="অন্যান্য বিবিধ খরচ">📦 অন্যান্য বিবিধ খরচ</option>
+        </select>
+      </div>
+
+      <div>
+        <label class="block text-xs font-black text-slate-700 mb-1">টাকার পরিমাণ (৳) *</label>
+        <input type="number" step="0.01" min="1" name="amount" placeholder="যেমন: ৫০০" required class="w-full px-3.5 py-2.5 border-2 border-stone-200 rounded-2xl text-sm font-black text-rose-700 focus:ring-2 focus:ring-crimson-500 focus:outline-none">
+      </div>
+
+      <div>
+        <label class="block text-xs font-black text-slate-700 mb-1">পেমেন্ট মাধ্যম</label>
+        <select name="payment_method" class="w-full px-3.5 py-2.5 border-2 border-stone-200 rounded-2xl text-xs font-bold text-slate-800 focus:ring-2 focus:ring-crimson-500 focus:outline-none">
+          <option value="cash">💵 নগদ ক্যাশ</option>
+          <option value="bKash">📱 বিকাশ (bKash)</option>
+          <option value="nagad">📱 নগদ (Nagad)</option>
+          <option value="bank">🏦 ব্যাংক একাউন্ট</option>
+        </select>
+      </div>
+
+      <div>
+        <label class="block text-xs font-black text-slate-700 mb-1">খরচের বিবরণ / নোট (ঐচ্ছিক)</label>
+        <textarea name="note" rows="2" placeholder="যেমন: কাপাসিয়া বাজারে খামারিদের মিষ্টি ও নাস্তা আপ্যায়ন" class="w-full px-3.5 py-2 border-2 border-stone-200 rounded-2xl text-xs font-medium focus:ring-2 focus:ring-crimson-500 focus:outline-none"></textarea>
+      </div>
+
+      <div class="pt-2 flex items-center justify-end gap-2 border-t border-stone-100">
+        <button type="button" onclick="closeExpenseModal()" class="px-4 py-2.5 bg-stone-100 hover:bg-stone-200 text-slate-700 rounded-xl text-xs font-bold transition">
+          বাতিল
+        </button>
+        <button type="submit" class="px-5 py-2.5 bg-gradient-to-r from-crimson-600 to-orangeBrand-500 hover:opacity-95 text-white rounded-xl text-xs font-black shadow-md transition touch-press">
+          খরচ সংরক্ষণ করুন
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  function openExpenseModal() {
+    const modal = document.getElementById('addExpenseModal');
+    if (modal) modal.classList.remove('hidden');
+  }
+
+  function closeExpenseModal() {
+    const modal = document.getElementById('addExpenseModal');
+    if (modal) modal.classList.add('hidden');
+  }
+</script>
+{% endblock %}

@@ -6,7 +6,7 @@
 <div class="space-y-5">
 
   <!-- Batch Header Card -->
-  <div class="bg-white p-5 sm:p-6 rounded-3xl border border-orange-100 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-6">
+  <div class="bg-white p-5 sm:p-6 rounded-3xl border-2 border-stone-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-6">
     <div class="flex items-start gap-4">
       <div class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-maroon-800 to-crimson-600 text-white flex flex-col items-center justify-center font-black flex-shrink-0 shadow-md">
         <span class="text-xl leading-none">{{ batch.age_days }}</span>
@@ -59,21 +59,21 @@
   <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
     
     <!-- Chick cost -->
-    <div class="bg-white p-4 sm:p-5 rounded-3xl border border-orange-100 shadow-sm">
+    <div class="bg-white p-4 sm:p-5 rounded-3xl border-2 border-stone-200 shadow-sm">
       <span class="text-[11px] font-bold text-slate-400 uppercase block">বাচ্চা খরচ</span>
       <div class="text-base sm:text-lg font-black text-slate-900 mt-1">৳ {{ "{:,.0f}".format(batch.total_chick_cost) }}</div>
       <div class="text-[11px] text-slate-500 mt-0.5">{{ batch.chick_qty }} টি @ ৳{{ batch.chick_unit_cost }}</div>
     </div>
 
     <!-- Feed cost -->
-    <div class="bg-white p-4 sm:p-5 rounded-3xl border border-orange-100 shadow-sm">
+    <div class="bg-white p-4 sm:p-5 rounded-3xl border-2 border-stone-200 shadow-sm">
       <span class="text-[11px] font-bold text-slate-400 uppercase block">খাদ্য (ফিড) খরচ</span>
       <div class="text-base sm:text-lg font-black text-orangeBrand-700 mt-1">৳ {{ "{:,.0f}".format(batch.total_feed_cost) }}</div>
       <div class="text-[11px] text-slate-500 mt-0.5">মোট {{ batch.total_feed_bags }} বস্তা খাদ্য</div>
     </div>
 
     <!-- Medicine cost -->
-    <div class="bg-white p-4 sm:p-5 rounded-3xl border border-orange-100 shadow-sm">
+    <div class="bg-white p-4 sm:p-5 rounded-3xl border-2 border-stone-200 shadow-sm">
       <span class="text-[11px] font-bold text-slate-400 uppercase block">ঔষধ ও অন্যান্য</span>
       <div class="text-base sm:text-lg font-black text-crimson-700 mt-1">৳ {{ "{:,.0f}".format(batch.total_med_cost + batch.total_other_cost) }}</div>
       <div class="text-[11px] text-slate-500 mt-0.5">ভ্যাকসিন ও আনুষঙ্গিক</div>
@@ -150,7 +150,7 @@
   {% endif %}
 
   <!-- BATCH TIMELINE LOGS -->
-  <div class="bg-white rounded-3xl border border-orange-100 shadow-sm overflow-hidden">
+  <div class="bg-white rounded-3xl border-2 border-stone-200 shadow-sm overflow-hidden">
     <div class="p-5 border-b border-orange-50 flex items-center justify-between">
       <div class="flex items-center gap-2.5">
         <span class="text-xl">📋</span>
@@ -221,7 +221,7 @@
   </div>
 
   <!-- PAYMENTS RECEIVED FOR THIS BATCH -->
-  <div class="bg-white rounded-3xl border border-orange-100 shadow-sm overflow-hidden">
+  <div class="bg-white rounded-3xl border-2 border-stone-200 shadow-sm overflow-hidden">
     <div class="p-5 border-b border-orange-50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
       <div class="flex items-center gap-2.5">
         <span class="text-xl">💰</span>
@@ -298,7 +298,7 @@
 
 <!-- ADD EXPENSE / LOG MODAL -->
 <div id="logModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-  <div class="bg-white w-full max-w-md rounded-3xl shadow-2xl border border-orange-100 overflow-hidden max-h-[90vh] flex flex-col">
+  <div class="bg-white w-full max-w-md rounded-3xl shadow-2xl border-2 border-stone-200 overflow-hidden max-h-[90vh] flex flex-col">
     <div class="p-5 bg-gradient-to-r from-maroon-900 via-crimson-700 to-orangeBrand-600 text-white flex items-center justify-between">
       <h3 class="font-black text-base">শেডে মালামাল / খরচ যুক্ত করুন</h3>
       <button onclick="closeLogModal()" class="text-white/80 hover:text-white text-xl">✕</button>
@@ -379,7 +379,7 @@
 
 <!-- BATCH PAYMENT MODAL -->
 <div id="batchPaymentModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-  <div class="bg-white w-full max-w-md rounded-3xl shadow-2xl border border-orange-100 overflow-hidden max-h-[90vh] flex flex-col">
+  <div class="bg-white w-full max-w-md rounded-3xl shadow-2xl border-2 border-stone-200 overflow-hidden max-h-[90vh] flex flex-col">
     <div class="p-5 bg-gradient-to-r from-maroon-900 via-crimson-700 to-orangeBrand-600 text-white flex items-center justify-between">
       <div>
         <h3 class="font-black text-base">💰 শেডের টাকা জমা গ্রহণ</h3>
@@ -464,7 +464,7 @@
 
 <!-- SETTLE HARVEST MODAL -->
 <div id="settleModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-  <div class="bg-white w-full max-w-lg rounded-3xl shadow-2xl border border-orange-100 overflow-hidden max-h-[90vh] flex flex-col">
+  <div class="bg-white w-full max-w-lg rounded-3xl shadow-2xl border-2 border-stone-200 overflow-hidden max-h-[90vh] flex flex-col">
     <div class="p-5 bg-gradient-to-r from-maroon-900 via-crimson-700 to-orangeBrand-600 text-white flex items-center justify-between">
       <h3 class="font-black text-base">⚖️ শেড সমাপনী ও মুরগী বিক্রয় হিসাব</h3>
       <button onclick="closeSettleModal()" class="text-white/80 hover:text-white text-xl">✕</button>
@@ -536,7 +536,7 @@
 
 <!-- EDIT EXPENSE / LOG MODAL -->
 <div id="editLogModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-  <div class="bg-white w-full max-w-md rounded-3xl shadow-2xl border border-orange-100 overflow-hidden max-h-[90vh] flex flex-col">
+  <div class="bg-white w-full max-w-md rounded-3xl shadow-2xl border-2 border-stone-200 overflow-hidden max-h-[90vh] flex flex-col">
     <div class="p-5 bg-gradient-to-r from-maroon-900 via-crimson-700 to-orangeBrand-600 text-white flex items-center justify-between">
       <h3 class="font-black text-base">খরচ এন্ট্রি সম্পাদনা (Edit Expense)</h3>
       <button onclick="closeEditLogModal()" class="text-white/80 hover:text-white text-xl">✕</button>
@@ -704,7 +704,7 @@
 
 <!-- EDIT BATCH MODAL -->
 <div id="editBatchModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-  <div class="bg-white w-full max-w-lg rounded-3xl shadow-2xl border border-orange-100 overflow-hidden max-h-[90vh] flex flex-col">
+  <div class="bg-white w-full max-w-lg rounded-3xl shadow-2xl border-2 border-stone-200 overflow-hidden max-h-[90vh] flex flex-col">
     
     <div class="p-5 bg-gradient-to-r from-maroon-900 via-crimson-700 to-orangeBrand-600 text-white flex items-center justify-between">
       <h3 class="font-black text-base flex items-center gap-2">

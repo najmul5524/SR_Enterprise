@@ -12,46 +12,65 @@
   <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   
   <script src="https://cdn.tailwindcss.com"></script>
+  <!-- html2pdf for direct 1-click A4 PDF export -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  
   <style>
     body {
       font-family: 'Hind Siliguri', sans-serif;
+    }
+    @page {
+      size: A4 portrait;
+      margin: 10mm;
     }
     @media print {
       .no-print {
         display: none !important;
       }
-      body {
-        background: #fff;
-        padding: 0;
+      html, body {
+        width: 210mm !important;
+        background: #ffffff !important;
+        margin: 0 auto !important;
+        padding: 0 !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
       }
       .memo-card {
         box-shadow: none !important;
-        border: 1px solid #e2e8f0 !important;
+        border: 1px solid #cbd5e1 !important;
         margin: 0 !important;
         width: 100% !important;
+        max-width: 100% !important;
+        padding: 20px !important;
+        border-radius: 8px !important;
       }
     }
   </style>
 </head>
-<body class="bg-stone-100 min-h-screen py-8 px-4 flex flex-col items-center">
+<body class="bg-stone-100 min-h-screen py-6 px-4 flex flex-col items-center">
 
-  <!-- Action Bar -->
-  <div class="max-w-2xl w-full mb-4 flex items-center justify-between no-print">
-    <a href="/admin/dispatch" class="px-4 py-2 bg-slate-800 text-white rounded-xl text-xs font-bold hover:bg-black transition">
-      ⬅️ নতুন চালান
+  <!-- Action Bar (High Contrast, Distinct Text & Background) -->
+  <div class="max-w-2xl w-full mb-4 flex flex-wrap items-center justify-between gap-2.5 no-print">
+    <a href="/admin/dispatch" class="px-4 py-2.5 bg-slate-800 text-white rounded-xl text-xs font-black hover:bg-black transition flex items-center gap-1.5 shadow-sm">
+      <span>⬅️</span> নতুন চালান
     </a>
     <div class="flex items-center gap-2">
-      <button onclick="window.print()" class="px-5 py-2.5 bg-gradient-to-r from-crimson-600 to-orange-500 hover:opacity-95 text-white rounded-xl text-xs font-black shadow-md transition flex items-center gap-1.5">
-        <span>🖨️</span> প্রিন্ট করুন (Print Memo)
+      <!-- Direct 1-Click A4 PDF Download Button -->
+      <button type="button" onclick="downloadPDF()" class="px-4 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-black shadow-md transition flex items-center gap-1.5 border border-emerald-900 cursor-pointer touch-press">
+        <span>📥</span> <span class="text-white font-extrabold tracking-wide">PDF সেভ করুন (A4)</span>
+      </button>
+      <!-- Native / Browser Print Button (High Contrast White on Maroon-900) -->
+      <button type="button" onclick="handlePrint()" class="px-4 py-2.5 bg-rose-950 hover:bg-rose-900 text-white rounded-xl text-xs font-black shadow-md transition flex items-center gap-1.5 border border-rose-900 cursor-pointer touch-press">
+        <span>🖨️</span> <span class="text-white font-extrabold tracking-wide">প্রিন্ট মেমো (Print)</span>
       </button>
     </div>
   </div>
 
-  <!-- Cash Memo Paper Card -->
-  <div class="memo-card max-w-2xl w-full bg-white rounded-3xl shadow-xl border border-orange-100 p-8 space-y-6">
+  <!-- Cash Memo Paper Card (Formatted strictly for A4) -->
+  <div id="printableMemo" class="memo-card max-w-2xl w-full bg-white rounded-3xl shadow-xl border-2 border-stone-200 p-8 space-y-6">
     
     <!-- Memo Header (Maroon / Crimson & Orange) -->
-    <div class="text-center border-b-2 border-crimson-600 pb-4 relative">
+    <div class="text-center border-b-2 border-rose-800 pb-4 relative">
       <div class="text-xs text-slate-400 font-bold uppercase tracking-widest mb-1.5">বিসমিল্লাহির রাহমানির রাহিম</div>
       <div class="flex items-center justify-center gap-3.5 my-2">
         <img src="/static/img/logo.png" alt="SR Enterprise Logo" class="w-16 h-16 object-contain flex-shrink-0">
@@ -74,9 +93,9 @@
         {% if farmer %}
         <p><span class="text-slate-500 font-medium">খামারির নাম:</span> <strong class="text-slate-900 text-sm font-black">{{ farmer.name }}</strong></p>
         <p><span class="text-slate-500 font-medium">মোবাইল:</span> <strong class="text-slate-800">{{ farmer.phone }}</strong></p>
-        <p><span class="text-slate-500 font-medium">শেডের নাম:</span> {{ farmer.shed_name or "খামার শেড" }}</p>
+        <p><span class="text-slate-500 font-medium">নিবন্ধিত শেড:</span> <strong class="text-slate-800 font-bold">{{ farmer.shed_name or "খামার শেড" }}</strong></p>
         {% if batch %}
-        <p><span class="text-slate-500 font-medium">নির্দিষ্ট ব্যাচ/শেড:</span> <strong class="text-crimson-800 font-black">{{ batch.batch_no }} ({{ batch.bird_type }})</strong></p>
+        <p><span class="text-slate-500 font-medium">নির্দিষ্ট শেড:</span> <strong class="text-rose-900 font-black">{{ batch.batch_no }} ({{ batch.bird_type }})</strong></p>
         {% endif %}
         <p><span class="text-slate-500 font-medium">ঠিকানা:</span> {{ farmer.address or "—" }}</p>
         {% else %}
@@ -173,6 +192,28 @@
     </div>
 
   </div>
+
+  <script>
+    function handlePrint() {
+      if (window.SRNativeApp && typeof window.SRNativeApp.printPage === 'function') {
+        window.SRNativeApp.printPage('Invoice_{{ invoice.invoice_no }}');
+      } else {
+        window.print();
+      }
+    }
+
+    function downloadPDF() {
+      const element = document.getElementById('printableMemo');
+      const opt = {
+        margin: [10, 10, 10, 10],
+        filename: 'Invoice_{{ invoice.invoice_no }}.pdf',
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      };
+      html2pdf().set(opt).from(element).save();
+    }
+  </script>
 
 </body>
 </html>

@@ -162,16 +162,19 @@
           <a href="/admin/farmers" class="nav-item px-3.5 py-1.5 rounded-2xl transition {{ 'bg-gradient-to-r from-maroon-900 to-crimson-700 text-white font-black shadow-md shadow-crimson-900/20 border border-crimson-600/40 active-nav' if current_path and current_path.startswith('/admin/farmer') else 'text-slate-600 hover:text-crimson-700 hover:bg-orangeBrand-50' }}">
             খামারিদের খাতা
           </a>
-          <a href="/admin/batches" class="nav-item px-3.5 py-1.5 rounded-2xl transition {{ 'bg-gradient-to-r from-maroon-900 to-crimson-700 text-white font-black shadow-md shadow-crimson-900/20 border border-crimson-600/40 active-nav' if current_path and current_path.startswith('/admin/batch') else 'text-slate-600 hover:text-crimson-700 hover:bg-orangeBrand-50' }}">
-            শেড / ব্যাচ
+          <a href="/admin/batches" class="nav-item px-3 py-1.5 rounded-2xl transition {{ 'bg-gradient-to-r from-maroon-900 to-crimson-700 text-white font-black shadow-md shadow-crimson-900/20 border border-crimson-600/40 active-nav' if current_path and current_path.startswith('/admin/batch') else 'text-slate-600 hover:text-crimson-700 hover:bg-orangeBrand-50' }}">
+            শেডসমূহ
           </a>
-          <a href="/admin/dispatch" class="nav-item px-3.5 py-1.5 rounded-2xl transition {{ 'bg-gradient-to-r from-maroon-900 to-crimson-700 text-white font-black shadow-md shadow-crimson-900/20 border border-crimson-600/40 active-nav' if current_path and (current_path.startswith('/admin/dispatch') or current_path.startswith('/admin/invoice')) else 'text-slate-600 hover:text-crimson-700 hover:bg-orangeBrand-50' }}">
+          <a href="/admin/dispatch" class="nav-item px-3 py-1.5 rounded-2xl transition {{ 'bg-gradient-to-r from-maroon-900 to-crimson-700 text-white font-black shadow-md shadow-crimson-900/20 border border-crimson-600/40 active-nav' if current_path and (current_path.startswith('/admin/dispatch') or current_path.startswith('/admin/invoice')) else 'text-slate-600 hover:text-crimson-700 hover:bg-orangeBrand-50' }}">
             চালান (POS)
           </a>
-          <a href="/admin/payments" class="nav-item px-3.5 py-1.5 rounded-2xl transition {{ 'bg-gradient-to-r from-maroon-900 to-crimson-700 text-white font-black shadow-md shadow-crimson-900/20 border border-crimson-600/40 active-nav' if current_path and current_path.startswith('/admin/payment') else 'text-slate-600 hover:text-crimson-700 hover:bg-orangeBrand-50' }}">
+          <a href="/admin/payments" class="nav-item px-3 py-1.5 rounded-2xl transition {{ 'bg-gradient-to-r from-maroon-900 to-crimson-700 text-white font-black shadow-md shadow-crimson-900/20 border border-crimson-600/40 active-nav' if current_path and current_path.startswith('/admin/payment') else 'text-slate-600 hover:text-crimson-700 hover:bg-orangeBrand-50' }}">
             টাকা আদায়
           </a>
-          <a href="/admin/settings" class="nav-item px-3.5 py-1.5 rounded-2xl transition {{ 'bg-gradient-to-r from-maroon-900 to-crimson-700 text-white font-black shadow-md shadow-crimson-900/20 border border-crimson-600/40 active-nav' if current_path and current_path.startswith('/admin/setting') else 'text-slate-600 hover:text-crimson-700 hover:bg-orangeBrand-50' }}">
+          <a href="/admin/expenses" class="nav-item px-3 py-1.5 rounded-2xl transition {{ 'bg-gradient-to-r from-maroon-900 to-crimson-700 text-white font-black shadow-md shadow-crimson-900/20 border border-crimson-600/40 active-nav' if current_path and current_path.startswith('/admin/expense') else 'text-slate-600 hover:text-crimson-700 hover:bg-orangeBrand-50' }}">
+            খরচের হিসাব
+          </a>
+          <a href="/admin/settings" class="nav-item px-3 py-1.5 rounded-2xl transition {{ 'bg-gradient-to-r from-maroon-900 to-crimson-700 text-white font-black shadow-md shadow-crimson-900/20 border border-crimson-600/40 active-nav' if current_path and current_path.startswith('/admin/setting') else 'text-slate-600 hover:text-crimson-700 hover:bg-orangeBrand-50' }}">
             সেটিংস
           </a>
         </nav>

@@ -6,7 +6,7 @@
 <div class="space-y-5">
 
   <!-- Farmer Overview Card -->
-  <div class="bg-white p-5 sm:p-6 rounded-3xl border border-orange-100 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-6">
+  <div class="bg-white p-5 sm:p-6 rounded-3xl border-2 border-stone-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-6">
     <div class="flex items-start gap-4">
       <div class="w-20 h-20 rounded-2xl bg-orangeBrand-50 border border-orangeBrand-200 overflow-hidden flex-shrink-0 flex items-center justify-center">
         {% if farmer.image_url %}
@@ -69,50 +69,80 @@
     </div>
   </div>
 
-  <!-- ACTIVE SHED STATUS (IF ANY) -->
-  {% if active_batch %}
-  <div class="bg-gradient-to-r from-maroon-950 via-maroon-800 to-orangeBrand-600 text-white p-5 sm:p-6 rounded-3xl shadow-lg relative overflow-hidden">
-    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10">
-      <div>
-        <div class="flex items-center gap-2">
-          <span class="text-xl">🐣</span>
-          <span class="text-xs font-bold uppercase tracking-wider text-orangeBrand-200">চলতি শেড চলমান</span>
-          <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-white/20 text-white">{{ active_batch.bird_type }}</span>
-        </div>
-        <h2 class="text-xl font-black mt-1">{{ active_batch.batch_no }}</h2>
-        <div class="text-xs text-orangeBrand-100 mt-2 flex flex-wrap gap-x-4 gap-y-1 font-medium">
-          <span>📅 শুরুর তারিখ: <strong>{{ active_batch.start_date }}</strong></span>
-          <span>⏳ শেডের বয়স: <strong class="bg-white/20 px-2 py-0.5 rounded font-black">{{ active_batch.age_days }} দিন</strong></span>
-          <span>🐣 বাচ্চা: <strong>{{ active_batch.chick_qty }} টি</strong></span>
-          <span>🥣 খাদ্য: <strong>{{ active_batch.total_feed_bags }} বস্তা</strong></span>
-          <span>💀 মর্টালিটি: <strong>{{ active_batch.mortality_count }} টি</strong></span>
+  <!-- ALL SHEDS OF THIS FARMER (Requirement 2: সকল খামারির শেড আলাদা আলাদা ভাবে দেখাবে) -->
+  <div class="bg-white rounded-3xl border-2 border-stone-200 shadow-sm overflow-hidden p-5 space-y-4">
+    <div class="flex items-center justify-between pb-3 border-b-2 border-stone-100">
+      <div class="flex items-center gap-2">
+        <span class="text-2xl">🏘️</span>
+        <div>
+          <h2 class="font-black text-slate-900 text-base">এই খামারির শেডসমূহ (Sheds)</h2>
+          <p class="text-xs text-slate-500">খামারির প্রতিটি শেডের বাচ্চা, খাদ্য, ঔষধ ও মোট খরচের আলাদা আলাদা হিসাব</p>
         </div>
       </div>
+      <a href="/admin/batches" class="px-3.5 py-2 bg-gradient-to-r from-crimson-600 to-orangeBrand-500 hover:opacity-95 text-white rounded-xl text-xs font-black shadow-sm transition touch-press">
+        ➕ নতুন শেড যোগ করুন
+      </a>
+    </div>
 
-      <div class="text-left md:text-right flex flex-col md:items-end justify-center border-t md:border-t-0 pt-3 md:pt-0 border-white/10">
-        <div class="text-xs text-orangeBrand-200 font-bold uppercase tracking-wide">SR এর মোট বিনিয়োগ</div>
-        <div class="text-2xl font-black text-amberBrand-300">৳ {{ "{:,.0f}".format(active_batch.total_investment) }}</div>
-        <div class="mt-3 flex items-center gap-2">
-          <a href="/admin/batch/{{ active_batch.id }}" class="px-4 py-2 bg-white text-maroon-950 rounded-xl text-xs font-black hover:bg-orangeBrand-50 transition shadow-sm touch-press">
-            শেডের বিস্তারিত ও খরচ ➔
+    {% if batches %}
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {% for b in batches %}
+      <div class="p-4 rounded-2xl border-2 {{ 'border-orangeBrand-300 bg-orangeBrand-50/20' if b.status == 'active' else 'border-stone-200 bg-stone-50/30' }} flex flex-col justify-between space-y-3">
+        <div>
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-1.5">
+              <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black {{ 'bg-emerald-100 text-emerald-800 border border-emerald-200' if b.status == 'active' else 'bg-slate-200 text-slate-700' }}">
+                {{ '🟢 চলতি শেড' if b.status == 'active' else '⚪ হিসাব সম্পন্ন' }}
+              </span>
+              <span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-stone-100 text-slate-700">
+                {{ b.bird_type }}
+              </span>
+            </div>
+            <span class="text-[11px] font-mono text-slate-400">শুরু: {{ b.start_date }}</span>
+          </div>
+
+          <h3 class="text-base font-black text-slate-900 mt-2">{{ b.batch_no }}</h3>
+          
+          <div class="grid grid-cols-2 gap-2 mt-2 text-xs">
+            <div class="p-2 bg-white rounded-xl border border-stone-100">
+              <span class="text-slate-500 text-[10px]">বাচ্চার সংখ্যা</span>
+              <div class="font-bold text-slate-900">{{ b.chick_qty }} টি</div>
+            </div>
+            <div class="p-2 bg-white rounded-xl border border-stone-100">
+              <span class="text-slate-500 text-[10px]">খাদ্য সরবরাহ</span>
+              <div class="font-bold text-slate-900">{{ b.total_feed_bags }} বস্তা</div>
+            </div>
+            <div class="p-2 bg-white rounded-xl border border-stone-100">
+              <span class="text-slate-500 text-[10px]">মোট বিনিয়োগ</span>
+              <div class="font-black text-rose-800">৳ {{ "{:,.0f}".format(b.total_investment) }}</div>
+            </div>
+            <div class="p-2 bg-white rounded-xl border border-stone-100">
+              <span class="text-slate-500 text-[10px]">পরিশোধিত</span>
+              <div class="font-bold text-emerald-700">৳ {{ "{:,.0f}".format(b.total_paid or 0) }}</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between gap-2 pt-2 border-t border-stone-100">
+          <a href="/admin/dispatch?farmer_id={{ farmer.id }}&batch_id={{ b.id }}" class="flex-1 py-1.5 bg-orangeBrand-50 hover:bg-orangeBrand-100 text-orangeBrand-800 border border-orangeBrand-200 rounded-xl text-center text-xs font-bold transition">
+            📝 খাদ্য/ঔষধ চালান
+          </a>
+          <a href="/admin/batch/{{ b.id }}" class="flex-1 py-1.5 bg-slate-900 hover:bg-black text-white rounded-xl text-center text-xs font-black transition">
+            শেড হিসাব ➔
           </a>
         </div>
       </div>
+      {% endfor %}
     </div>
-  </div>
-  {% else %}
-  <div class="p-4 bg-orangeBrand-50/60 rounded-2xl border border-orangeBrand-200 flex items-center justify-between">
-    <div class="text-xs text-slate-700 font-medium">
-      এই খামারির বর্তমানে কোন সক্রিয় শেড চলমান নেই।
+    {% else %}
+    <div class="p-6 text-center text-slate-400 font-medium">
+      এই খামারির কোনো শেড নেই। উপরের বাটনে ক্লিক করে নতুন শেড চালু করুন।
     </div>
-    <a href="/admin/batches" class="px-3.5 py-2 bg-gradient-to-r from-crimson-600 to-orangeBrand-500 text-white rounded-xl text-xs font-black touch-press">
-      + নতুন শেড চালু করুন
-    </a>
+    {% endif %}
   </div>
-  {% endif %}
 
   <!-- LEDGER: INVOICES & PAYMENTS STATEMENT -->
-  <div class="bg-white rounded-3xl border border-orange-100 shadow-sm overflow-hidden">
+  <div class="bg-white rounded-3xl border-2 border-stone-200 shadow-sm overflow-hidden">
     <div class="p-5 border-b border-orange-50 flex items-center justify-between">
       <div class="flex items-center gap-2.5">
         <span class="text-xl">📒</span>
@@ -250,7 +280,7 @@
 
 <!-- PAYMENT COLLECTION MODAL -->
 <div id="paymentModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-  <div class="bg-white w-full max-w-md rounded-3xl shadow-2xl border border-orange-100 overflow-hidden max-h-[90vh] flex flex-col">
+  <div class="bg-white w-full max-w-md rounded-3xl shadow-2xl border-2 border-stone-200 overflow-hidden max-h-[90vh] flex flex-col">
     
     <div class="p-5 bg-gradient-to-r from-maroon-900 via-crimson-700 to-orangeBrand-600 text-white flex items-center justify-between">
       <h3 class="font-black text-base">টাকা জমা গ্রহণ (Payment Collection)</h3>
@@ -341,7 +371,7 @@
 
 <!-- EDIT FARMER MODAL -->
 <div id="editFarmerModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-  <div class="bg-white w-full max-w-lg rounded-3xl shadow-2xl border border-orange-100 overflow-hidden max-h-[90vh] flex flex-col">
+  <div class="bg-white w-full max-w-lg rounded-3xl shadow-2xl border-2 border-stone-200 overflow-hidden max-h-[90vh] flex flex-col">
     
     <div class="p-5 bg-gradient-to-r from-maroon-900 via-crimson-700 to-orangeBrand-600 text-white flex items-center justify-between">
       <h3 class="font-black text-base flex items-center gap-2">

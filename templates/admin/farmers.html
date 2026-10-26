@@ -6,7 +6,7 @@
 <div class="space-y-5">
 
   <!-- Header -->
-  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-5 rounded-3xl border border-orange-100 shadow-sm">
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-5 rounded-3xl border-2 border-stone-200 shadow-sm">
     <div>
       <div class="flex items-center gap-2.5">
         <span class="text-2xl">👨‍🌾</span>
@@ -23,7 +23,7 @@
   </div>
 
   <!-- Search Bar with Live Dropdown -->
-  <div class="relative bg-white p-3 rounded-2xl border border-orange-100 shadow-sm flex items-center gap-2">
+  <div class="relative bg-white p-3 rounded-2xl border-2 border-stone-200 shadow-sm flex items-center gap-2">
     <span class="text-slate-400 pl-2">🔍</span>
     <input type="text" name="q" id="farmerSearchInput" value="{{ search_query }}" data-live-search="farmers" autocomplete="off"
       placeholder="খামারির নাম, মোবাইল নাম্বার বা শেডের নাম লিখলেই নিচে ড্রপডাউন চলে আসবে..."
@@ -39,7 +39,7 @@
   <!-- FARMERS GRID -->
   <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
     {% for f in farmers %}
-    <div class="bg-white rounded-3xl border border-orange-100/90 shadow-sm overflow-hidden flex flex-col justify-between hover:border-orangeBrand-300 transition-all">
+    <div class="bg-white rounded-3xl border-2 border-stone-200 shadow-sm overflow-hidden flex flex-col justify-between hover:border-orangeBrand-300 transition-all">
       
       <div class="p-5">
         <div class="flex items-start gap-3.5">
@@ -121,7 +121,7 @@
 
 <!-- ADD FARMER MODAL -->
 <div id="farmerModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-  <div class="bg-white w-full max-w-lg rounded-3xl shadow-2xl border border-orange-100 overflow-hidden max-h-[90vh] flex flex-col">
+  <div class="bg-white w-full max-w-lg rounded-3xl shadow-2xl border-2 border-stone-200 overflow-hidden max-h-[90vh] flex flex-col">
     
     <div class="p-5 bg-gradient-to-r from-maroon-900 via-crimson-700 to-orangeBrand-600 text-white flex items-center justify-between">
       <h3 class="font-black text-base">নতুন খামারি নিবন্ধন করুন</h3>
@@ -194,7 +194,7 @@
 
 <!-- EDIT FARMER MODAL -->
 <div id="editFarmerModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-  <div class="bg-white w-full max-w-lg rounded-3xl shadow-2xl border border-orange-100 overflow-hidden max-h-[90vh] flex flex-col">
+  <div class="bg-white w-full max-w-lg rounded-3xl shadow-2xl border-2 border-stone-200 overflow-hidden max-h-[90vh] flex flex-col">
     
     <div class="p-5 bg-gradient-to-r from-maroon-900 via-crimson-700 to-orangeBrand-600 text-white flex items-center justify-between">
       <h3 class="font-black text-base flex items-center gap-2">

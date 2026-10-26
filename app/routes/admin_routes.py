@@ -59,10 +59,28 @@ async def admin_dashboard(request: Request):
         except Exception:
             b["age_days"] = 0
 
-    recent_invoices = db.get_invoices(limit=6)
+    recent_invoices = db.get_invoices(limit=15)
     low_stock_products = db.get_products(low_stock_only=True)
     recent_payments = db.get_payments(limit=5)
     feed_requests = db.get_feed_requests(status="pending")
+
+    # Detailed data for KPI modals (Requirement 8)
+    all_farmers = db.get_farmers()
+    farmers_with_dues = []
+    for f in all_farmers:
+        f_sheds = db.get_batches(farmer_id=f["id"])
+        f["sheds"] = f_sheds
+        shed_names = [s["batch_no"] for s in f_sheds if s.get("status") == "active"]
+        if not shed_names and f_sheds:
+            shed_names = [s["batch_no"] for s in f_sheds]
+        f["active_sheds_names"] = ", ".join(shed_names) if shed_names else (f.get("shed_name") or "শেড ১")
+        if f.get("total_due", 0) > 0 or len(f_sheds) > 0:
+            farmers_with_dues.append(f)
+    farmers_with_dues.sort(key=lambda x: x.get("total_due", 0), reverse=True)
+
+    today_str = datetime.now().strftime("%Y-%m-%d")
+    all_today_invoices = db.get_invoices(limit=50)
+    today_invoices = [inv for inv in all_today_invoices if str(inv.get("invoice_date", "")).startswith(today_str)]
 
     return render_template(request, "admin/dashboard.html", {
         "stats": stats,
@@ -71,6 +89,8 @@ async def admin_dashboard(request: Request):
         "low_stock_products": low_stock_products,
         "recent_payments": recent_payments,
         "pending_requests_count": len(feed_requests),
+        "farmers_with_dues": farmers_with_dues,
+        "today_invoices": today_invoices,
     })
 
 # ==================== INVENTORY ====================
@@ -795,3 +815,52 @@ async def change_admin_password(
         print(f"[SETTINGS] Could not write .env: {e}")
 
     return RedirectResponse(url="/admin/settings?pwd_msg=অ্যাডমিন+পাসওয়ার্ড+সফলভাবে+পরিবর্তন+করা+হয়েছে!", status_code=303)
+
+
+# ==================== EXPENSES (বিবিধ ও অন্যান্য খরচ) ====================
+@router.get("/expenses", response_class=HTMLResponse)
+async def expenses_page(
+    request: Request,
+    category: Optional[str] = None,
+    q: Optional[str] = None,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None
+):
+    expenses = db.get_expenses(start_date=start_date, end_date=end_date, category=category, search=q)
+    summary = db.get_expenses_summary()
+    return render_template(request, "admin/expenses.html", {
+        "expenses": expenses,
+        "summary": summary,
+        "selected_category": category or "all",
+        "search_query": q or "",
+        "start_date": start_date or "",
+        "end_date": end_date or "",
+    })
+
+@router.post("/expenses/save")
+async def save_expense_handler(
+    request: Request,
+    id: Optional[str] = Form(None),
+    category: str = Form(...),
+    amount: float = Form(...),
+    expense_date: Optional[str] = Form(None),
+    payment_method: str = Form("cash"),
+    note: Optional[str] = Form("")
+):
+    data = {
+        "category": category.strip(),
+        "amount": max(0.0, float(amount)),
+        "expense_date": expense_date or datetime.now().strftime("%Y-%m-%d"),
+        "payment_method": payment_method,
+        "note": (note or "").strip(),
+    }
+    if id:
+        data["id"] = id
+    db.save_expense(data)
+    return RedirectResponse(url="/admin/expenses?saved=1", status_code=303)
+
+@router.get("/expenses/delete/{expense_id}")
+@router.post("/expenses/delete/{expense_id}")
+async def delete_expense_handler(request: Request, expense_id: str):
+    db.delete_expense(expense_id)
+    return RedirectResponse(url="/admin/expenses?deleted=1", status_code=303)

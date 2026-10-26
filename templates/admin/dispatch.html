@@ -6,7 +6,7 @@
 <div class="space-y-5">
 
   <!-- Header -->
-  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-5 rounded-3xl border border-orange-100 shadow-sm">
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-5 rounded-3xl border-2 border-stone-200 shadow-sm">
     <div>
       <div class="flex items-center gap-2.5">
         <span class="text-2xl">📝</span>
@@ -30,7 +30,7 @@
     <div class="lg:col-span-2 space-y-4">
       
       <!-- 1. Farmer / Customer Selection Card -->
-      <div class="bg-white p-5 rounded-3xl border border-orange-100 shadow-sm space-y-4">
+      <div class="bg-white p-5 rounded-3xl border-2 border-stone-200 shadow-sm space-y-4">
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b pb-3">
           <h2 class="text-xs font-black uppercase tracking-wider text-slate-400">১. কাস্টমার / খামারি নির্বাচন</h2>
           
@@ -71,7 +71,7 @@
             <div>
               <div class="flex items-center justify-between mb-1">
                 <label class="block text-xs font-black text-slate-700">
-                  শেড / ব্যাচে যুক্ত হবে (খরচ যোগ হবে)
+                  শেডে যুক্ত হবে (খরচ যোগ হবে)
                 </label>
                 <span id="batchCountBadge" class="{{ '' if farmer_batches and farmer_batches|length > 1 else 'hidden' }} text-[10px] font-black px-2 py-0.5 rounded-full bg-orangeBrand-100 text-orangeBrand-800 border border-orangeBrand-200">
                   {{ farmer_batches|length }}টি শেড রয়েছে
@@ -92,7 +92,7 @@
                   {% if active_batch %}
                     চালানের খাদ্য/ঔষধ খরচ স্বয়ংক্রিয়ভাবে <strong>{{ active_batch.batch_no }} ({{ active_batch.bird_type }})</strong> শেডের মোট খরচে যোগ হবে।
                   {% else %}
-                    খামারি নির্বাচন করলে তার রানিং শেড/ব্যাচসমূহ এই ড্রপডাউনে প্রদর্শিত হবে।
+                    খামারি নির্বাচন করলে তার রানিং শেডসমূহ এই ড্রপডাউনে প্রদর্শিত হবে।
                   {% endif %}
                 </span>
               </div>
@@ -152,7 +152,7 @@
       </div>
 
       <!-- 2. Product Addition Bar -->
-      <div class="bg-white p-5 rounded-3xl border border-orange-100 shadow-sm space-y-4">
+      <div class="bg-white p-5 rounded-3xl border-2 border-stone-200 shadow-sm space-y-4">
         <div class="flex items-center justify-between flex-wrap gap-2">
           <div class="flex items-center gap-2">
             <h2 class="text-xs font-black uppercase tracking-wider text-slate-400">২. মালামাল (খাদ্য/ঔষধ) নির্বাচন করুন</h2>
@@ -256,7 +256,7 @@
 
     <!-- Right Col: Financial Summary & Final Dispatch (Maroon / Crimson Card) -->
     <div class="space-y-4">
-      <div class="bg-white p-5 rounded-3xl border border-orange-100 shadow-sm space-y-4 sticky top-20">
+      <div class="bg-white p-5 rounded-3xl border-2 border-stone-200 shadow-sm space-y-4 sticky top-20">
         <h2 class="text-xs font-black uppercase tracking-wider text-slate-400">৩. চালান মোট ও পেমেন্ট হিসাব</h2>
 
         <div class="space-y-2.5 text-xs">
@@ -611,7 +611,7 @@
     if (!farmerId) {
       if (batchSelect) batchSelect.innerHTML = '<option value="">-- প্রথমে খামারি নির্বাচন করুন --</option>';
       if (badge) badge.classList.add('hidden');
-      if (noticeText) noticeText.innerHTML = 'খামারি নির্বাচন করলে তার রানিং শেড/ব্যাচসমূহ এই ড্রপডাউনে প্রদর্শিত হবে।';
+      if (noticeText) noticeText.innerHTML = 'খামারি নির্বাচন করলে তার রানিং শেডসমূহ এই ড্রপডাউনে প্রদর্শিত হবে।';
       return;
     }
 

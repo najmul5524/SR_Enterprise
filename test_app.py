@@ -415,9 +415,10 @@ async def run_tests():
         # --- 14. Testing Multiple Sheds per Farmer & Automatic Cost Attribution in Dispatch ---
         print("\n--- 14. Testing Multiple Sheds per Farmer & Automatic Cost Attribution ---")
         # Create farmer with 2 active sheds
+        f_multi_phone = f"017{uuid.uuid4().hex[:8]}"
         f_multi_id = db.save_farmer({
             "name": "মাল্টি-শেড খামারি",
-            "phone": "01799887766",
+            "phone": f_multi_phone,
             "address": "গাজীপুর সদর",
             "shed_capacity": 4000
         })
@@ -446,7 +447,7 @@ async def run_tests():
         res = await client.get(f"/api/farmer/{f_multi_id}/batches")
         assert res.status_code == 200
         data = res.json()
-        assert data["count"] == 2
+        assert data["count"] >= 2
         batch_ids = [b["id"] for b in data["all_batches"]]
         assert batch_1_id in batch_ids and batch_2_id in batch_ids
         print(f"GET /api/farmer/{f_multi_id}/batches -> Status 200, Found {data['count']} sheds for farmer")
@@ -504,7 +505,7 @@ async def run_tests():
         # Verify Multi-Shed Farmer Portal Sync & Feed Request with Shed Selection
         print("\n--- 14b. Testing Multi-Shed Farmer Portal Sync & Dropdown Feed Request ---")
         client.cookies.clear()
-        res = await client.post("/login/farmer", data={"phone": "01799887766", "pin": "1234"}, follow_redirects=False)
+        res = await client.post("/login/farmer", data={"phone": f_multi_phone, "pin": "1234"}, follow_redirects=False)
         assert res.status_code == 303
         multi_farmer_cookie = res.cookies["sre_session"]
         client.cookies.set("sre_session", multi_farmer_cookie)
@@ -696,6 +697,50 @@ async def run_tests():
             db.delete_payment(p["id"])
         db.delete_batch(b_shed_id)
         db.delete_farmer(f_shed_id)
+
+        # --- 17. Testing Stock >= 0, Farmer Registration Shed Auto-Creation & Expenses Section ---
+        print("\n--- 17. Testing Stock Limit >= 0, Auto-Shed Creation & Expenses Management ---")
+        
+        # Test 17a: Stock cannot drop below 0
+        db.adjust_stock("P001", -99999)
+        prod = db.get_product_by_id("P001")
+        assert prod["stock"] >= 0.0, f"Stock dropped below 0: {prod['stock']}"
+        db.adjust_stock("P001", 100) # Restore stock
+        print(f"Stock >= 0 constraint verified! Current stock: {db.get_product_by_id('P001')['stock']}")
+
+        # Test 17b: Farmer Registration immediately creates a shed in batches table
+        test_ph = f"017{uuid.uuid4().hex[:8]}"
+        f_reg_id = db.save_farmer({
+            "name": "রেজিস্টার্ড খামারি",
+            "phone": test_ph,
+            "shed_name": "উত্তর পাড়া ব্রয়লার শেড",
+            "shed_capacity": 2500
+        })
+        reg_sheds = db.get_batches(farmer_id=f_reg_id)
+        assert len(reg_sheds) >= 1, "Registered farmer has no sheds!"
+        assert reg_sheds[0]["batch_no"] == "উত্তর পাড়া ব্রয়লার শেড", "Shed name mismatch!"
+        print(f"Auto-shed registration passed! Shed: {reg_sheds[0]['batch_no']}")
+        
+        # Test 17c: Expenses Section CRUD & Summary
+        exp_id = db.save_expense({
+            "category": "আপ্যায়ন ও চা-নাস্তা",
+            "amount": 750.0,
+            "payment_method": "cash",
+            "note": "টেস্ট আপ্যায়ন খরচ"
+        })
+        exp_list = db.get_expenses(category="আপ্যায়ন ও চা-নাস্তা")
+        assert any(e["id"] == exp_id for e in exp_list), "Expense not found in list!"
+        exp_summary = db.get_expenses_summary()
+        assert exp_summary["total_expense"] > 0, "Expense summary returned 0!"
+        res_exp_page = await client.get("/admin/expenses")
+        assert res_exp_page.status_code == 200, f"Expenses page status: {res_exp_page.status_code}"
+        db.delete_expense(exp_id)
+        print("Expenses management & summary verified successfully!")
+
+        # Clean up registered farmer
+        for s in reg_sheds:
+            db.delete_batch(s["id"])
+        db.delete_farmer(f_reg_id)
 
         print("\n=======================================================")
         print("ALL TESTS PASSED SUCCESSFULLY! 100% VERIFIED!")

@@ -3,11 +3,10 @@
 {% block title %}ডিলার ড্যাশবোর্ড | {{ shop.shop_name if shop else "SR Enterprise" }}{% endblock %}
 
 {% block content %}
-<div class="space-y-5">
+<div class="space-y-6">
 
   <!-- Welcome Banner Card (Vibrant Maroon-to-Orange App Banner) -->
-  <div class="bg-gradient-to-r from-maroon-900 via-crimson-800 to-orangeBrand-600 p-5 sm:p-6 rounded-3xl text-white shadow-lg shadow-crimson-900/15 relative overflow-hidden flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-    <!-- Background subtle circles -->
+  <div class="bg-gradient-to-r from-maroon-900 via-crimson-800 to-orangeBrand-600 p-5 sm:p-6 rounded-3xl text-white shadow-lg shadow-crimson-900/15 relative overflow-hidden flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-2 border-crimson-900">
     <div class="absolute -top-10 -right-10 w-40 h-40 bg-orangeBrand-400/20 rounded-full blur-2xl pointer-events-none"></div>
 
     <div class="flex items-center gap-3.5 relative z-10">
@@ -27,9 +26,9 @@
       </div>
     </div>
 
-    <!-- Quick Action Shortcut Buttons for Mobile & Desktop -->
+    <!-- Quick Action Shortcut Buttons -->
     <div class="flex flex-wrap items-center gap-2 relative z-10">
-      <a href="/admin/dispatch" class="inline-flex items-center gap-1.5 px-3.5 py-2 sm:px-4 sm:py-2.5 bg-maroon-950/80 hover:bg-black text-white rounded-2xl text-xs font-bold border border-white/20 touch-press transition">
+      <a href="/admin/dispatch" class="inline-flex items-center gap-1.5 px-3.5 py-2 sm:px-4 sm:py-2.5 bg-maroon-950/80 hover:bg-black text-white rounded-2xl text-xs font-bold border border-white/20 touch-press transition shadow-sm">
         <span>📝</span> নতুন চালান
       </a>
       <a href="/admin/batches" class="inline-flex items-center gap-1.5 px-3.5 py-2 sm:px-4 sm:py-2.5 bg-orangeBrand-500 hover:bg-orangeBrand-600 text-white rounded-2xl text-xs font-black shadow-md touch-press transition">
@@ -38,84 +37,99 @@
       <a href="/admin/payments" class="inline-flex items-center gap-1.5 px-3.5 py-2 sm:px-4 sm:py-2.5 bg-amberBrand-500 hover:bg-amberBrand-600 text-maroon-950 rounded-2xl text-xs font-black shadow-md touch-press transition">
         <span>💰</span> টাকা আদায়
       </a>
+      <a href="/admin/expenses" class="inline-flex items-center gap-1.5 px-3.5 py-2 sm:px-4 sm:py-2.5 bg-white/20 hover:bg-white/30 text-white rounded-2xl text-xs font-black border border-white/30 touch-press transition backdrop-blur-sm shadow-sm" title="খরচের হিসাব">
+        <span>🧾</span> খরচের হিসাব
+      </a>
       <a href="/admin/settings" class="inline-flex items-center gap-1.5 px-3.5 py-2 sm:px-4 sm:py-2.5 bg-white/20 hover:bg-white/30 text-white rounded-2xl text-xs font-black border border-white/30 touch-press transition backdrop-blur-sm shadow-sm" title="ডিলার সেটিংস প্যানেল">
         <span>⚙️</span> সেটিংস
       </a>
     </div>
   </div>
 
-  <!-- 4 PRIMARY KPI METRICS (Maroon, Orange, Red, Amber combination) -->
+  <!-- 4 PRIMARY KPI METRICS (Distinct High-Contrast Borders & Click-to-Detail, Requirement 6 & 8) -->
   <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
     
-    <!-- 1. Total Outstanding Farmer Dues (Maroon & Crimson) -->
-    <div class="bg-white p-4 sm:p-5 rounded-3xl border border-crimson-200 shadow-sm shadow-crimson-500/5 relative overflow-hidden">
+    <!-- 1. Total Outstanding Farmer Dues (Interactive Modal Trigger) -->
+    <div onclick="openKpiModal('dues')" class="bg-white p-4 sm:p-5 rounded-3xl border-2 border-crimson-300 hover:border-crimson-600 shadow-sm hover:shadow-md cursor-pointer transition transform hover:-translate-y-0.5 relative overflow-hidden group" title="ক্লিক করে খামারিভিত্তিক বকেয়া বিস্তারিত দেখুন">
       <div class="flex items-center justify-between text-crimson-600 mb-2">
         <span class="text-xs font-black uppercase tracking-wider">মোট খামারি বকেয়া</span>
-        <div class="w-8 h-8 rounded-xl bg-crimson-100 text-crimson-700 flex items-center justify-center text-sm font-bold">
+        <div class="w-8 h-8 rounded-xl bg-crimson-100 text-crimson-700 flex items-center justify-center text-sm font-bold group-hover:scale-110 transition">
           🔴
         </div>
       </div>
-      <div class="text-xl sm:text-2xl font-black text-maroon-900">
+      <div class="text-xl sm:text-2xl font-black text-maroon-900 group-hover:text-crimson-700 transition">
         ৳ {{ "{:,.0f}".format(stats.total_farmer_dues) }}
       </div>
-      <p class="text-[11px] text-slate-500 mt-1 font-medium">
-        মোট <span class="font-black text-crimson-700">{{ stats.active_farmers }}</span> জন সক্রিয় খামারির কাছে পাওনা
-      </p>
+      <div class="flex items-center justify-between mt-2 pt-1 border-t border-crimson-100">
+        <p class="text-[11px] text-slate-500 font-medium">
+          <span class="font-black text-crimson-700">{{ stats.active_farmers }}</span> জন সক্রিয় খামারি
+        </p>
+        <span class="text-[10px] font-black text-crimson-600 group-hover:underline">বিস্তারিত ➔</span>
+      </div>
     </div>
 
-    <!-- 2. Live Shed Investment (Orange & Amber) -->
-    <div class="bg-white p-4 sm:p-5 rounded-3xl border border-orangeBrand-200 shadow-sm shadow-orangeBrand-500/5 relative overflow-hidden">
+    <!-- 2. Live Shed Investment (Interactive Modal Trigger) -->
+    <div onclick="openKpiModal('investment')" class="bg-white p-4 sm:p-5 rounded-3xl border-2 border-orangeBrand-300 hover:border-orangeBrand-600 shadow-sm hover:shadow-md cursor-pointer transition transform hover:-translate-y-0.5 relative overflow-hidden group" title="ক্লিক করে শেডভিত্তিক বিনিয়োগ বিস্তারিত দেখুন">
       <div class="flex items-center justify-between text-orangeBrand-600 mb-2">
         <span class="text-xs font-black uppercase tracking-wider">চলতি শেডে বিনিয়োগ</span>
-        <div class="w-8 h-8 rounded-xl bg-orangeBrand-100 text-orangeBrand-700 flex items-center justify-center text-sm">
+        <div class="w-8 h-8 rounded-xl bg-orangeBrand-100 text-orangeBrand-700 flex items-center justify-center text-sm group-hover:scale-110 transition">
           🐣
         </div>
       </div>
-      <div class="text-xl sm:text-2xl font-black text-orangeBrand-700">
+      <div class="text-xl sm:text-2xl font-black text-orangeBrand-700 group-hover:text-orangeBrand-800 transition">
         ৳ {{ "{:,.0f}".format(stats.live_shed_investment) }}
       </div>
-      <p class="text-[11px] text-slate-500 mt-1 font-medium">
-        <span class="font-black text-orangeBrand-700">{{ stats.active_sheds }}</span> টি শেডে খাদ্য ও ঔষধ সরবরাহ
-      </p>
+      <div class="flex items-center justify-between mt-2 pt-1 border-t border-orangeBrand-100">
+        <p class="text-[11px] text-slate-500 font-medium">
+          <span class="font-black text-orangeBrand-700">{{ stats.active_sheds }}</span> টি রানিং শেড
+        </p>
+        <span class="text-[10px] font-black text-orangeBrand-600 group-hover:underline">বিস্তারিত ➔</span>
+      </div>
     </div>
 
-    <!-- 3. Today's Delivery / Sales (Amber & Coral) -->
-    <div class="bg-white p-4 sm:p-5 rounded-3xl border border-amberBrand-200 shadow-sm shadow-amberBrand-500/5 relative overflow-hidden">
-      <div class="flex items-center justify-between text-amberBrand-600 mb-2">
+    <!-- 3. Today's Delivery / Sales (Interactive Modal Trigger) -->
+    <div onclick="openKpiModal('dispatches')" class="bg-white p-4 sm:p-5 rounded-3xl border-2 border-amber-300 hover:border-amber-600 shadow-sm hover:shadow-md cursor-pointer transition transform hover:-translate-y-0.5 relative overflow-hidden group" title="ক্লিক করে আজকের চালান ও ডেলিভারি বিস্তারিত দেখুন">
+      <div class="flex items-center justify-between text-amber-600 mb-2">
         <span class="text-xs font-black uppercase tracking-wider">আজকের চালান ডেলিভারি</span>
-        <div class="w-8 h-8 rounded-xl bg-amberBrand-100 text-amberBrand-700 flex items-center justify-center text-sm">
+        <div class="w-8 h-8 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center text-sm group-hover:scale-110 transition">
           📦
         </div>
       </div>
-      <div class="text-xl sm:text-2xl font-black text-slate-900">
+      <div class="text-xl sm:text-2xl font-black text-slate-900 group-hover:text-amber-800 transition">
         ৳ {{ "{:,.0f}".format(stats.today_dispatch) }}
       </div>
-      <p class="text-[11px] text-slate-500 mt-1 font-medium">
-        আজকের আদায়: <span class="font-black text-emerald-600">৳ {{ "{:,.0f}".format(stats.today_received) }}</span>
-      </p>
+      <div class="flex items-center justify-between mt-2 pt-1 border-t border-amber-100">
+        <p class="text-[11px] text-slate-500 font-medium">
+          আদায়: <span class="font-black text-emerald-600">৳ {{ "{:,.0f}".format(stats.today_received) }}</span>
+        </p>
+        <span class="text-[10px] font-black text-amber-700 group-hover:underline">বিস্তারিত ➔</span>
+      </div>
     </div>
 
-    <!-- 4. Low Stock Alert (Crimson Alert) -->
-    <div class="bg-white p-4 sm:p-5 rounded-3xl border border-rose-200 shadow-sm relative overflow-hidden">
+    <!-- 4. Low Stock Alert (Interactive Modal Trigger) -->
+    <div onclick="openKpiModal('lowstock')" class="bg-white p-4 sm:p-5 rounded-3xl border-2 border-rose-300 hover:border-rose-600 shadow-sm hover:shadow-md cursor-pointer transition transform hover:-translate-y-0.5 relative overflow-hidden group" title="ক্লিক করে কম স্টকে থাকা পণ্যের তালিকা দেখুন">
       <div class="flex items-center justify-between text-rose-600 mb-2">
         <span class="text-xs font-black uppercase tracking-wider">কম স্টক অ্যালার্ট</span>
-        <div class="w-8 h-8 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center text-sm">
+        <div class="w-8 h-8 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center text-sm group-hover:scale-110 transition">
           ⚠️
         </div>
       </div>
-      <div class="text-xl sm:text-2xl font-black text-rose-600">
+      <div class="text-xl sm:text-2xl font-black text-rose-600 group-hover:text-rose-700 transition">
         {{ stats.low_stock_count }} <span class="text-sm font-bold text-slate-500">আইটেম কম</span>
       </div>
-      <p class="text-[11px] text-slate-500 mt-1 font-medium">
-        মোট পণ্য: <span class="font-bold text-slate-800">{{ stats.total_products }}</span> টি • <a href="/admin/inventory?low_stock=true" class="text-rose-600 underline font-black">অ্যালার্ট দেখুন</a>
-      </p>
+      <div class="flex items-center justify-between mt-2 pt-1 border-t border-rose-100">
+        <p class="text-[11px] text-slate-500 font-medium">
+          মোট পণ্য: <span class="font-bold text-slate-800">{{ stats.total_products }}</span> টি
+        </p>
+        <span class="text-[10px] font-black text-rose-600 group-hover:underline">বিস্তারিত ➔</span>
+      </div>
     </div>
 
   </div>
 
-  <!-- ACTIVE SHEDS / BATCHES SECTION -->
-  <div class="bg-white rounded-3xl border border-orange-100 shadow-sm overflow-hidden">
-    <div class="p-5 border-b border-orange-50 flex items-center justify-between bg-gradient-to-r from-orangeBrand-50/60 to-white">
+  <!-- ACTIVE SHEDS MANAGEMENT SECTION (Clear, distinct high-contrast border, Requirement 6) -->
+  <div class="bg-white rounded-3xl border-2 border-stone-200 shadow-sm overflow-hidden">
+    <div class="p-5 border-b-2 border-stone-100 flex items-center justify-between bg-stone-50/50">
       <div class="flex items-center gap-2.5">
         <span class="text-2xl">🐣</span>
         <div>
@@ -123,19 +137,18 @@
           <p class="text-xs text-slate-500">বাচ্চা উঠানো থেকে মুরগী বিক্রি পর্যন্ত SR Enterprise এর মোট বিনিয়োগ</p>
         </div>
       </div>
-      <a href="/admin/batches" class="text-xs font-black text-crimson-600 hover:text-crimson-700 flex items-center gap-1">
+      <a href="/admin/batches" class="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-800 rounded-xl text-xs font-black border border-rose-200 transition">
         সকল শেড ➔
       </a>
     </div>
 
     {% if active_batches %}
-    <div class="divide-y divide-orange-50">
+    <div class="divide-y divide-stone-100">
       {% for b in active_batches %}
-      <div class="p-4 sm:p-5 hover:bg-orangeBrand-50/30 transition flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div class="p-4 sm:p-5 hover:bg-orangeBrand-50/20 transition flex flex-col md:flex-row md:items-center justify-between gap-4">
         
         <div class="flex items-start gap-3.5">
-          <!-- Visual Age Badge (Orange & Maroon) -->
-          <div class="w-13 h-13 rounded-2xl bg-gradient-to-br from-orangeBrand-500 to-crimson-600 text-white flex flex-col items-center justify-center font-black flex-shrink-0 shadow-md shadow-orangeBrand-500/20">
+          <div class="w-13 h-13 rounded-2xl bg-gradient-to-br from-orangeBrand-500 to-crimson-600 text-white flex flex-col items-center justify-center font-black flex-shrink-0 shadow-md">
             <span class="text-base leading-none">{{ b.age_days }}</span>
             <span class="text-[9px] uppercase font-bold text-orangeBrand-100 mt-0.5">দিন</span>
           </div>
@@ -149,16 +162,16 @@
             <div class="text-xs text-slate-600 mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 font-medium">
               <span>👨‍🌾 <a href="/admin/farmer/{{ b.farmer_id }}" class="hover:underline font-bold text-slate-900">{{ b.farmer_name }}</a></span>
               <span>🐣 বাচ্চা: <strong class="text-slate-800">{{ b.chick_qty }}</strong> টি</span>
-              <span>💀 মৃত্যু: <strong class="text-crimson-600">{{ b.mortality_count }}</strong> টি</span>
+              <span>💀 মৃত্যু: <strong class="text-rose-600">{{ b.mortality_count }}</strong> টি</span>
               <span>🥣 খাদ্য: <strong class="text-slate-800">{{ b.total_feed_bags }}</strong> বস্তা</span>
             </div>
           </div>
         </div>
 
-        <div class="flex items-center justify-between md:justify-end gap-4 border-t md:border-t-0 pt-3 md:pt-0 border-orange-50">
+        <div class="flex items-center justify-between md:justify-end gap-4 border-t md:border-t-0 pt-3 md:pt-0 border-stone-100">
           <div class="text-left md:text-right">
             <div class="text-[11px] text-slate-500 font-bold uppercase tracking-wide">SR এর মোট খরচ</div>
-            <div class="text-lg font-black text-maroon-900">৳ {{ "{:,.0f}".format(b.total_investment) }}</div>
+            <div class="text-lg font-black text-rose-900">৳ {{ "{:,.0f}".format(b.total_investment) }}</div>
           </div>
           <a href="/admin/batch/{{ b.id }}" class="px-4 py-2 bg-gradient-to-r from-maroon-900 to-crimson-700 hover:opacity-95 text-white text-xs font-black rounded-xl shadow-md transition touch-press">
             শেডের খতিয়ান ➔
@@ -177,29 +190,29 @@
     {% endif %}
   </div>
 
-  <!-- TWO COLUMN: LOW STOCK ALERT & RECENT INVOICES -->
+  <!-- TWO COLUMN: LOW STOCK ALERT & RECENT INVOICES (High-contrast distinct borders, Requirement 6) -->
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
 
     <!-- Low Stock Alert -->
-    <div class="bg-white rounded-3xl border border-rose-200 shadow-sm p-5">
-      <div class="flex items-center justify-between pb-3 border-b border-rose-100 mb-3">
+    <div class="bg-white rounded-3xl border-2 border-rose-300 shadow-sm p-5">
+      <div class="flex items-center justify-between pb-3 border-b-2 border-rose-100 mb-3">
         <div class="flex items-center gap-2">
           <span class="text-lg">⚠️</span>
           <h3 class="font-black text-slate-900 text-sm">কম স্টক অ্যালার্ট (Low Stock)</h3>
         </div>
-        <a href="/admin/inventory?low_stock=true" class="text-xs font-black text-crimson-600 hover:underline">সকল স্টক</a>
+        <a href="/admin/inventory?low_stock=true" class="text-xs font-black text-rose-700 hover:underline">সকল স্টক ➔</a>
       </div>
 
       {% if low_stock_products %}
       <div class="space-y-2">
         {% for p in low_stock_products[:5] %}
-        <div class="flex items-center justify-between p-3 rounded-2xl bg-rose-50/60 border border-rose-200/60 text-xs">
+        <div class="flex items-center justify-between p-3 rounded-2xl bg-rose-50/70 border border-rose-200 text-xs">
           <div>
             <div class="font-bold text-slate-900">{{ p.name_bn }}</div>
             <div class="text-[11px] text-slate-500">{{ p.category }} • দর: ৳{{ p.sell_price }}</div>
           </div>
           <div class="text-right">
-            <div class="font-black text-rose-600 text-sm">{{ p.stock }} {{ p.unit }}</div>
+            <div class="font-black text-rose-700 text-sm">{{ p.stock }} {{ p.unit }}</div>
             <span class="text-[10px] text-rose-800 font-bold">সীমা: {{ p.alert_qty }}</span>
           </div>
         </div>
@@ -211,19 +224,19 @@
     </div>
 
     <!-- Recent Delivery Invoices -->
-    <div class="bg-white rounded-3xl border border-orange-100 shadow-sm p-5">
-      <div class="flex items-center justify-between pb-3 border-b border-orange-100 mb-3">
+    <div class="bg-white rounded-3xl border-2 border-stone-200 shadow-sm p-5">
+      <div class="flex items-center justify-between pb-3 border-b-2 border-stone-100 mb-3">
         <div class="flex items-center gap-2">
           <span class="text-lg">📝</span>
           <h3 class="font-black text-slate-900 text-sm">সাম্প্রতিক চালান (Recent Invoices)</h3>
         </div>
-        <a href="/admin/dispatch" class="text-xs font-black text-orangeBrand-600 hover:underline">+ নতুন চালান</a>
+        <a href="/admin/dispatch" class="text-xs font-black text-orangeBrand-600 hover:underline">+ নতুন চালান ➔</a>
       </div>
 
       {% if recent_invoices %}
       <div class="space-y-2">
         {% for inv in recent_invoices[:5] %}
-        <div class="flex items-center justify-between p-3 rounded-2xl hover:bg-orangeBrand-50/40 border border-slate-100 text-xs transition">
+        <div class="flex items-center justify-between p-3 rounded-2xl hover:bg-orangeBrand-50/40 border border-stone-200 text-xs transition cursor-pointer" onclick="window.location.href='/admin/invoice/{{ inv.id }}/print'">
           <div>
             <div class="font-bold text-slate-900 flex items-center gap-1.5">
               <span>{{ inv.invoice_no }}</span>
@@ -233,7 +246,7 @@
           </div>
           <div class="text-right">
             <div class="font-black text-slate-900 text-sm">৳ {{ "{:,.0f}".format(inv.net_total) }}</div>
-            <a href="/admin/invoice/{{ inv.id }}/print" class="text-[11px] font-black text-crimson-600 hover:underline">মেমো প্রিন্ট ➔</a>
+            <span class="text-[11px] font-black text-crimson-600 hover:underline">মেমো দেখুন ➔</span>
           </div>
         </div>
         {% endfor %}
@@ -246,4 +259,321 @@
   </div>
 
 </div>
+
+<!-- COMPREHENSIVE KPI BREAKDOWN MODAL (Requirement 8) -->
+<div id="kpiDetailModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
+  <div class="bg-white w-full max-w-4xl rounded-3xl shadow-2xl border-2 border-stone-200 overflow-hidden max-h-[92vh] flex flex-col">
+    
+    <!-- Modal Header -->
+    <div class="p-4 sm:p-5 bg-gradient-to-r from-maroon-900 via-crimson-800 to-orangeBrand-600 text-white flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <span id="kpiModalIcon" class="text-2xl">📊</span>
+        <div>
+          <h3 id="kpiModalTitle" class="font-black text-base leading-tight">বিস্তারিত বিবরণ</h3>
+          <p id="kpiModalSubtitle" class="text-xs text-orangeBrand-100 mt-0.5 font-medium">ক্লিককৃত বিষয়ের পূর্ণাঙ্গ তালিকা ও খতিয়ান</p>
+        </div>
+      </div>
+      <button onclick="closeKpiModal()" class="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 text-white flex items-center justify-center text-lg font-bold transition">
+        ✕
+      </button>
+    </div>
+
+    <!-- Modal Tab Selector -->
+    <div class="flex items-center gap-1.5 p-3 bg-stone-50 border-b border-stone-200 overflow-x-auto text-xs font-bold">
+      <button type="button" onclick="switchKpiTab('dues')" id="tabBtn_dues" class="px-3.5 py-1.5 rounded-xl transition whitespace-nowrap">
+        🔴 মোট খামারি বকেয়া
+      </button>
+      <button type="button" onclick="switchKpiTab('investment')" id="tabBtn_investment" class="px-3.5 py-1.5 rounded-xl transition whitespace-nowrap">
+        🐣 চলতি শেডে বিনিয়োগ
+      </button>
+      <button type="button" onclick="switchKpiTab('dispatches')" id="tabBtn_dispatches" class="px-3.5 py-1.5 rounded-xl transition whitespace-nowrap">
+        📦 আজকের চালান
+      </button>
+      <button type="button" onclick="switchKpiTab('lowstock')" id="tabBtn_lowstock" class="px-3.5 py-1.5 rounded-xl transition whitespace-nowrap">
+        ⚠️ কম স্টক অ্যালার্ট
+      </button>
+    </div>
+
+    <!-- Modal Content Panels (Scrollable) -->
+    <div class="p-4 sm:p-6 overflow-y-auto space-y-4 flex-1">
+      
+      <!-- 1. DUES PANEL -->
+      <div id="kpiPanel_dues" class="space-y-4">
+        <div class="p-4 bg-crimson-50 rounded-2xl border-2 border-crimson-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <span class="text-xs font-bold text-crimson-800 uppercase tracking-wider">মোট খামারি বকেয়ার পরিমাণ</span>
+            <div class="text-2xl font-black text-rose-900">৳ {{ "{:,.0f}".format(stats.total_farmer_dues) }}</div>
+          </div>
+          <div class="flex items-center gap-2">
+            <a href="/admin/payments" class="px-4 py-2 bg-crimson-700 hover:bg-crimson-800 text-white rounded-xl text-xs font-black shadow-sm transition">
+              💰 টাকা আদায় করুন
+            </a>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto rounded-2xl border-2 border-stone-200">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-stone-100 text-slate-700 font-bold border-b border-stone-200">
+              <tr>
+                <th class="p-3">খামারির নাম</th>
+                <th class="p-3">মোবাইল</th>
+                <th class="p-3">নিবন্ধিত শেডসমূহ</th>
+                <th class="p-3 text-right">মোট বকেয়া (৳)</th>
+                <th class="p-3 text-center">অ্যাকশন</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-stone-100">
+              {% for f in farmers_with_dues %}
+              <tr class="hover:bg-crimson-50/30 transition">
+                <td class="p-3 font-bold text-slate-900">
+                  <a href="/admin/farmer/{{ f.id }}" class="hover:underline text-rose-950 font-black">{{ f.name }}</a>
+                </td>
+                <td class="p-3 font-mono text-slate-600">{{ f.phone }}</td>
+                <td class="p-3">
+                  <span class="px-2 py-0.5 rounded-lg text-[11px] font-bold bg-amber-50 text-amber-900 border border-amber-200">
+                    {{ f.active_sheds_names }}
+                  </span>
+                </td>
+                <td class="p-3 text-right font-black text-rose-700 text-sm">
+                  ৳ {{ "{:,.0f}".format(f.total_due) }}
+                </td>
+                <td class="p-3 text-center whitespace-nowrap">
+                  <a href="/admin/payments?farmer_id={{ f.id }}" class="px-2.5 py-1 bg-crimson-50 hover:bg-crimson-100 text-crimson-700 rounded-lg font-bold text-[11px] transition mr-1">
+                    টাকা জমা
+                  </a>
+                  <a href="/admin/farmer/{{ f.id }}" class="px-2.5 py-1 bg-stone-100 hover:bg-stone-200 text-slate-700 rounded-lg font-bold text-[11px] transition">
+                    খতিয়ান
+                  </a>
+                </td>
+              </tr>
+              {% else %}
+              <tr>
+                <td colspan="5" class="p-6 text-center text-slate-400 font-medium">কোনো খামারির বকেয়া পাওয়া যায়নি।</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 2. INVESTMENT PANEL -->
+      <div id="kpiPanel_investment" class="hidden space-y-4">
+        <div class="p-4 bg-orangeBrand-50 rounded-2xl border-2 border-orangeBrand-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <span class="text-xs font-bold text-orangeBrand-800 uppercase tracking-wider">চলতি শেডে মোট খাদ্য/ঔষধ বিনিয়োগ</span>
+            <div class="text-2xl font-black text-orangeBrand-900">৳ {{ "{:,.0f}".format(stats.live_shed_investment) }}</div>
+          </div>
+          <a href="/admin/batches" class="px-4 py-2 bg-orangeBrand-600 hover:bg-orangeBrand-700 text-white rounded-xl text-xs font-black shadow-sm transition">
+            🐣 সকল শেড তালিকা
+          </a>
+        </div>
+
+        <div class="overflow-x-auto rounded-2xl border-2 border-stone-200">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-stone-100 text-slate-700 font-bold border-b border-stone-200">
+              <tr>
+                <th class="p-3">শেডের নাম</th>
+                <th class="p-3">খামারির নাম</th>
+                <th class="p-3">জাত ও বাচ্চা</th>
+                <th class="p-3 text-center">বয়স</th>
+                <th class="p-3 text-right">খাদ্য খরচ</th>
+                <th class="p-3 text-right">ঔষধ খরচ</th>
+                <th class="p-3 text-right">মোট বিনিয়োগ (৳)</th>
+                <th class="p-3 text-center">অ্যাকশন</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-stone-100">
+              {% for b in active_batches %}
+              <tr class="hover:bg-orangeBrand-50/30 transition">
+                <td class="p-3 font-bold text-slate-900">
+                  <a href="/admin/batch/{{ b.id }}" class="hover:underline font-black text-orangeBrand-900">{{ b.batch_no }}</a>
+                </td>
+                <td class="p-3 text-slate-700 font-medium">{{ b.farmer_name }}</td>
+                <td class="p-3 text-slate-600">{{ b.bird_type }} ({{ b.chick_qty }}টি)</td>
+                <td class="p-3 text-center font-bold text-slate-800">{{ b.age_days }} দিন</td>
+                <td class="p-3 text-right text-slate-700 font-medium">৳ {{ "{:,.0f}".format(b.total_feed_cost) }}</td>
+                <td class="p-3 text-right text-slate-700 font-medium">৳ {{ "{:,.0f}".format(b.total_med_cost) }}</td>
+                <td class="p-3 text-right font-black text-orangeBrand-800 text-sm">৳ {{ "{:,.0f}".format(b.total_investment) }}</td>
+                <td class="p-3 text-center">
+                  <a href="/admin/batch/{{ b.id }}" class="px-2.5 py-1 bg-orangeBrand-100 hover:bg-orangeBrand-200 text-orangeBrand-900 rounded-lg font-bold text-[11px] transition">
+                    শেড হিসাব
+                  </a>
+                </td>
+              </tr>
+              {% else %}
+              <tr>
+                <td colspan="8" class="p-6 text-center text-slate-400 font-medium">বর্তমানে কোনো রানিং শেড নেই।</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 3. TODAY'S DISPATCHES PANEL -->
+      <div id="kpiPanel_dispatches" class="hidden space-y-4">
+        <div class="p-4 bg-amber-50 rounded-2xl border-2 border-amber-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <span class="text-xs font-bold text-amber-800 uppercase tracking-wider">আজকের মোট চালান ও আদায়</span>
+            <div class="text-2xl font-black text-slate-900">ডেলিভারি: ৳ {{ "{:,.0f}".format(stats.today_dispatch) }} <span class="text-sm text-emerald-700 font-bold">| আদায়: ৳ {{ "{:,.0f}".format(stats.today_received) }}</span></div>
+          </div>
+          <a href="/admin/dispatch" class="px-4 py-2 bg-slate-900 hover:bg-black text-white rounded-xl text-xs font-black shadow-sm transition">
+            📝 নতুন চালান প্রদান
+          </a>
+        </div>
+
+        <div class="overflow-x-auto rounded-2xl border-2 border-stone-200">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-stone-100 text-slate-700 font-bold border-b border-stone-200">
+              <tr>
+                <th class="p-3">চালান নং</th>
+                <th class="p-3">খামারি / ক্রেতা</th>
+                <th class="p-3 text-right">মোট বিল (৳)</th>
+                <th class="p-3 text-right">নগদ জমা (৳)</th>
+                <th class="p-3 text-right">বাকি (৳)</th>
+                <th class="p-3 text-center">অ্যাকশন</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-stone-100">
+              {% for inv in today_invoices %}
+              <tr class="hover:bg-amber-50/30 transition">
+                <td class="p-3 font-mono font-bold text-slate-900">{{ inv.invoice_no }}</td>
+                <td class="p-3 font-bold text-slate-800">{{ inv.farmer_name }}</td>
+                <td class="p-3 text-right font-black text-slate-900">৳ {{ "{:,.0f}".format(inv.net_total) }}</td>
+                <td class="p-3 text-right font-bold text-emerald-700">৳ {{ "{:,.0f}".format(inv.paid_amount) }}</td>
+                <td class="p-3 text-right font-black text-rose-700">৳ {{ "{:,.0f}".format(inv.due_amount) }}</td>
+                <td class="p-3 text-center whitespace-nowrap">
+                  <a href="/admin/invoice/{{ inv.id }}/print" class="px-2.5 py-1 bg-slate-900 hover:bg-black text-white rounded-lg font-bold text-[11px] transition">
+                    🖨️ মেমো দেখুন
+                  </a>
+                </td>
+              </tr>
+              {% else %}
+              <tr>
+                <td colspan="6" class="p-6 text-center text-slate-400 font-medium">আজকে এখনো কোনো চালান তৈরি করা হয়নি।</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 4. LOW STOCK PANEL -->
+      <div id="kpiPanel_lowstock" class="hidden space-y-4">
+        <div class="p-4 bg-rose-50 rounded-2xl border-2 border-rose-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <span class="text-xs font-bold text-rose-800 uppercase tracking-wider">সীমার নিচে থাকা কম স্টকের পণ্য</span>
+            <div class="text-2xl font-black text-rose-900">{{ stats.low_stock_count }} টি আইটেমের মজুদ দ্রুত শেষ হচ্ছে</div>
+          </div>
+          <a href="/admin/inventory" class="px-4 py-2 bg-rose-700 hover:bg-rose-800 text-white rounded-xl text-xs font-black shadow-sm transition">
+            📦 ইনভেন্টরিতে স্টক আপডেট
+          </a>
+        </div>
+
+        <div class="overflow-x-auto rounded-2xl border-2 border-stone-200">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-stone-100 text-slate-700 font-bold border-b border-stone-200">
+              <tr>
+                <th class="p-3">SKU কোড</th>
+                <th class="p-3">পণ্যের নাম</th>
+                <th class="p-3">ক্যাটাগরি</th>
+                <th class="p-3 text-center">বর্তমান স্টক</th>
+                <th class="p-3 text-center">অ্যালার্ট সীমা</th>
+                <th class="p-3 text-right">বিক্রয় মূল্য</th>
+                <th class="p-3 text-center">অ্যাকশন</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-stone-100">
+              {% for p in low_stock_products %}
+              <tr class="hover:bg-rose-50/30 transition">
+                <td class="p-3 font-mono font-bold text-slate-500">{{ p.sku }}</td>
+                <td class="p-3 font-black text-slate-900">{{ p.name_bn }}</td>
+                <td class="p-3 text-slate-600">{{ p.category }}</td>
+                <td class="p-3 text-center font-black text-rose-700 text-sm">{{ p.stock }} {{ p.unit }}</td>
+                <td class="p-3 text-center font-bold text-slate-600">{{ p.alert_qty }} {{ p.unit }}</td>
+                <td class="p-3 text-right font-bold text-slate-800">৳ {{ p.sell_price }}</td>
+                <td class="p-3 text-center">
+                  <a href="/admin/inventory" class="px-2.5 py-1 bg-rose-100 hover:bg-rose-200 text-rose-900 rounded-lg font-bold text-[11px] transition">
+                    স্টক যোগ করুন
+                  </a>
+                </td>
+              </tr>
+              {% else %}
+              <tr>
+                <td colspan="7" class="p-6 text-center text-slate-400 font-medium">বর্তমানে কোনো পণ্যের কম স্টক নেই। ✅</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+</div>
+
+<script>
+  const kpiMeta = {
+    dues: {
+      icon: '🔴',
+      title: 'মোট খামারি বকেয়ার বিস্তারিত তালিকা',
+      subtitle: 'কোন খামারির কোন শেডে কত টাকা বকেয়া রয়েছে তার পূর্ণাঙ্গ তালিকা'
+    },
+    investment: {
+      icon: '🐣',
+      title: 'চলতি শেডে মোট বিনিয়োগের তালিকা',
+      subtitle: 'সকল রানিং শেডে খাদ্য, ঔষধ ও মোট খরচের বিস্তারিত বিবরণ'
+    },
+    dispatches: {
+      icon: '📦',
+      title: 'আজকের ডেলিভারি ও চালানের বিবরণ',
+      subtitle: 'আজকে ইস্যুকৃত সকল মেমো ও আদায়ের তালিকা'
+    },
+    lowstock: {
+      icon: '⚠️',
+      title: 'কম স্টক অ্যালার্ট — প্রয়োজনীয় খাদ্য ও ঔষধ',
+      subtitle: 'যে সকল পণ্যের মজুদ নির্ধারিত সতর্কতামূলক সীমার নিচে রয়েছে'
+    }
+  };
+
+  function openKpiModal(tabName) {
+    const modal = document.getElementById('kpiDetailModal');
+    if (modal) {
+      modal.classList.remove('hidden');
+      switchKpiTab(tabName || 'dues');
+    }
+  }
+
+  function closeKpiModal() {
+    const modal = document.getElementById('kpiDetailModal');
+    if (modal) modal.classList.add('hidden');
+  }
+
+  function switchKpiTab(tabName) {
+    const tabs = ['dues', 'investment', 'dispatches', 'lowstock'];
+    tabs.forEach(t => {
+      const panel = document.getElementById(`kpiPanel_${t}`);
+      const btn = document.getElementById(`tabBtn_${t}`);
+      if (panel) panel.classList.add('hidden');
+      if (btn) {
+        btn.classList.remove('bg-slate-900', 'text-white', 'shadow-sm');
+        btn.classList.add('bg-white', 'text-slate-600', 'border', 'border-stone-200');
+      }
+    });
+
+    const activePanel = document.getElementById(`kpiPanel_${tabName}`);
+    const activeBtn = document.getElementById(`tabBtn_${tabName}`);
+    if (activePanel) activePanel.classList.remove('hidden');
+    if (activeBtn) {
+      activeBtn.classList.remove('bg-white', 'text-slate-600', 'border', 'border-stone-200');
+      activeBtn.classList.add('bg-slate-900', 'text-white', 'shadow-sm');
+    }
+
+    const meta = kpiMeta[tabName] || kpiMeta.dues;
+    document.getElementById('kpiModalIcon').innerText = meta.icon;
+    document.getElementById('kpiModalTitle').innerText = meta.title;
+    document.getElementById('kpiModalSubtitle').innerText = meta.subtitle;
+  }
+</script>
 {% endblock %}

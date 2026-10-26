@@ -6,7 +6,7 @@
 <div class="space-y-5">
 
   <!-- Top Action Header -->
-  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-5 rounded-3xl border border-orange-100 shadow-sm">
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-5 rounded-3xl border-2 border-stone-200 shadow-sm">
     <div>
       <div class="flex items-center gap-2.5">
         <span class="text-2xl">📦</span>
@@ -25,7 +25,7 @@
   </div>
 
   <!-- Live Search Bar with Instant Dropdown -->
-  <div class="relative bg-white p-3 rounded-2xl border border-orange-100 shadow-sm flex items-center gap-2">
+  <div class="relative bg-white p-3 rounded-2xl border-2 border-stone-200 shadow-sm flex items-center gap-2">
     <span class="text-slate-400 pl-2">🔍</span>
     <input type="text" id="inventorySearchInput" data-live-search="inventory" autocomplete="off"
       placeholder="খাদ্য, ঔষধের নাম বা SKU নম্বর লিখলেই সাথে সাথে নিচে ড্রপডাউন চলে আসবে..."
@@ -66,7 +66,7 @@
   <!-- PRODUCTS GRID -->
   <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
     {% for p in products %}
-    <div id="product-{{ p.id }}" class="bg-white rounded-3xl border border-orange-100/90 shadow-sm overflow-hidden flex flex-col justify-between hover:border-orangeBrand-300 transition-all">
+    <div id="product-{{ p.id }}" class="bg-white rounded-3xl border-2 border-stone-200 shadow-sm overflow-hidden flex flex-col justify-between hover:border-orangeBrand-300 transition-all">
       
       <!-- Card Header & Image -->
       <div class="p-5">
@@ -108,7 +108,7 @@
           <div>
             <div class="text-[10px] text-slate-400 font-bold uppercase">বর্তমান স্টক</div>
             <div class="text-xs font-black {{ 'text-rose-600' if p.stock <= p.alert_qty else 'text-slate-900' }}">
-              {{ p.stock }} <span class="text-[9px] font-normal text-slate-500">{{ p.unit }}</span>
+              {{ p.stock if p.stock > 0 else 0 }} <span class="text-[9px] font-normal text-slate-500">{{ p.unit }}</span>
             </div>
           </div>
         </div>
@@ -163,7 +163,7 @@
 
 <!-- ADD / EDIT PRODUCT MODAL -->
 <div id="productModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-  <div class="bg-white w-full max-w-lg rounded-3xl shadow-2xl border border-orange-100 overflow-hidden max-h-[90vh] flex flex-col">
+  <div class="bg-white w-full max-w-lg rounded-3xl shadow-2xl border-2 border-stone-200 overflow-hidden max-h-[90vh] flex flex-col">
     
     <div class="p-5 bg-gradient-to-r from-maroon-900 via-crimson-700 to-orangeBrand-600 text-white flex items-center justify-between">
       <h3 id="modalTitle" class="font-black text-base">নতুন পণ্য যুক্ত করুন</h3>
@@ -266,7 +266,7 @@
 
 <!-- QR PREVIEW & PRINT LABEL MODAL -->
 <div id="qrModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-  <div class="bg-white w-full max-w-sm rounded-3xl shadow-2xl border border-orange-100 overflow-hidden text-center p-6">
+  <div class="bg-white w-full max-w-sm rounded-3xl shadow-2xl border-2 border-stone-200 overflow-hidden text-center p-6">
     <div class="w-14 h-14 rounded-2xl bg-orangeBrand-50 text-orangeBrand-600 flex items-center justify-center text-2xl mx-auto mb-2 border border-orangeBrand-100">
       📷
     </div>
@@ -274,7 +274,7 @@
     <p id="qrModalSku" class="text-xs text-slate-500 font-mono mb-4">SKU</p>
 
     <!-- QR Code Image -->
-    <div class="p-4 bg-orangeBrand-50/50 rounded-3xl border border-orange-100 inline-block mx-auto mb-4">
+    <div class="p-4 bg-orangeBrand-50/50 rounded-3xl border-2 border-stone-200 inline-block mx-auto mb-4">
       <img id="qrModalImg" src="" alt="QR Code" class="w-48 h-48 mx-auto">
     </div>
     
