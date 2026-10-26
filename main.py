@@ -52,6 +52,19 @@ app.include_router(admin_router)
 app.include_router(farmer_router)
 app.include_router(api_router)
 
+@app.get("/download/apk")
+async def download_apk(request: Request, local: int = 0):
+    """
+    Serves the signed Android APK.
+    By default redirects to GitHub's raw CDN to consume 0 bytes of Render's 5GB free monthly bandwidth limit!
+    """
+    github_cdn_apk = "https://raw.githubusercontent.com/najmul5524/SR_Enterprise/main/static/apk/SR_Enterprise.apk"
+    if local == 1:
+        local_apk = settings.BASE_DIR / "static" / "apk" / "SR_Enterprise.apk"
+        if local_apk.exists():
+            return FileResponse(local_apk, filename="SR_Enterprise.apk", media_type="application/vnd.android.package-archive")
+    return RedirectResponse(url=github_cdn_apk, status_code=302)
+
 @app.get("/")
 async def root(request: Request):
     user = get_current_user(request)

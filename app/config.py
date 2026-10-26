@@ -18,10 +18,24 @@ class Settings:
     ADMIN_PHONE: str = os.getenv("ADMIN_PHONE", "01700000000")
     
     # Cloudinary Config (Save Render Bandwidth)
+    CLOUDINARY_URL: str = os.getenv("CLOUDINARY_URL", "").strip()
     CLOUDINARY_CLOUD_NAME: str = os.getenv("CLOUDINARY_CLOUD_NAME", "").strip()
     CLOUDINARY_API_KEY: str = os.getenv("CLOUDINARY_API_KEY", "").strip()
     CLOUDINARY_API_SECRET: str = os.getenv("CLOUDINARY_API_SECRET", "").strip()
     CLOUDINARY_FOLDER: str = os.getenv("CLOUDINARY_FOLDER", "sr_enterprise").strip()
+    
+    def __init__(self):
+        # Auto-parse CLOUDINARY_URL if provided
+        if self.CLOUDINARY_URL and (not self.CLOUDINARY_CLOUD_NAME or not self.CLOUDINARY_API_KEY):
+            try:
+                from urllib.parse import urlparse
+                parsed = urlparse(self.CLOUDINARY_URL)
+                if parsed.scheme == "cloudinary":
+                    self.CLOUDINARY_API_KEY = parsed.username or self.CLOUDINARY_API_KEY
+                    self.CLOUDINARY_API_SECRET = parsed.password or self.CLOUDINARY_API_SECRET
+                    self.CLOUDINARY_CLOUD_NAME = parsed.hostname or self.CLOUDINARY_CLOUD_NAME
+            except Exception as e:
+                print(f"[CONFIG] Failed to parse CLOUDINARY_URL: {e}")
     
     # Firebase Firestore Config
     FIREBASE_CREDENTIALS_JSON: str = os.getenv("FIREBASE_CREDENTIALS_JSON", "").strip()

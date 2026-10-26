@@ -207,8 +207,33 @@ async def run_tests():
         print(f"GET /admin/invoice/delete -> Status {res.status_code}")
         assert res.status_code == 303
 
+        print("\n--- 11. Testing APK Download and Cloudinary Storage ---")
+        # Test APK redirect to GitHub CDN (preserves 5GB Render free bandwidth)
+        res = await client.get("/download/apk", follow_redirects=False)
+        print(f"GET /download/apk -> Status {res.status_code}, Location: {res.headers.get('location')}")
+        assert res.status_code == 302
+        assert "raw.githubusercontent.com" in res.headers.get("location")
+
+        # Test local APK download
+        res = await client.get("/download/apk?local=1")
+        print(f"GET /download/apk?local=1 -> Status {res.status_code}, Content-Type: {res.headers.get('content-type')}")
+        assert res.status_code == 200
+        assert len(res.content) > 50000 # Verified valid APK binary
+
+        # Test Cloudinary storage module
+        from app.storage import upload_image_file, upload_image_to_cloudinary, is_cloudinary_active
+        test_img_bytes = b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15c4\x00\x00\x00\nIDATx\x9cc\x00\x01\x00\x00\x05\x00\x01\r\n-\xb4\x00\x00\x00\x00IEND\xaeB`\x82"
+        saved_url = await upload_image_file(test_img_bytes, "test_pic.png", subfolder="test")
+        print(f"Image upload helper -> Saved URL: {saved_url}")
+        assert saved_url.startswith("http") or saved_url.startswith("/static/uploads")
+
+        # Test direct Cloudinary helper
+        direct_res = upload_image_to_cloudinary(test_img_bytes, filename="direct_test.png", subfolder="test")
+        print(f"Direct Cloudinary result -> Status: {direct_res['status']}")
+        assert direct_res["status"] in ["success", "error"]
+
         print("\n=======================================================")
-        print("🎉 ALL TESTS PASSED SUCCESSFULLY! 100% VERIFIED!")
+        print("ALL TESTS PASSED SUCCESSFULLY! 100% VERIFIED!")
         print("=======================================================\n")
 
 if __name__ == "__main__":

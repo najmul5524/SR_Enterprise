@@ -25,6 +25,65 @@ else:
 def is_cloudinary_active() -> bool:
     return _cloudinary_available
 
+def upload_image_to_cloudinary(
+    file_source,
+    filename: str = "image.jpg",
+    subfolder: str = "general",
+    public_id: str = None
+) -> dict:
+    """
+    Synchronous / Direct function to upload an image to Cloudinary.
+    file_source can be:
+      - bytes / bytearray
+      - file-like object (with .read())
+      - filepath string or Path
+    Returns a dict with 'url', 'public_id', 'format', and 'status'.
+    """
+    if not _cloudinary_available:
+        return {"status": "error", "message": "Cloudinary is not configured", "url": None}
+    
+    try:
+        import cloudinary.uploader
+        folder_path = f"{settings.CLOUDINARY_FOLDER}/{subfolder}"
+        options = {
+            "folder": folder_path,
+            "resource_type": "image",
+            "transformation": [{"quality": "auto", "fetch_format": "auto"}]
+        }
+        if public_id:
+            options["public_id"] = public_id
+
+        # If file_source is a file-like object with read()
+        if hasattr(file_source, "read"):
+            data = file_source.read()
+            if hasattr(file_source, "seek"):
+                file_source.seek(0)
+            res = cloudinary.uploader.upload(data, **options)
+        else:
+            res = cloudinary.uploader.upload(file_source, **options)
+
+        return {
+            "status": "success",
+            "url": res.get("secure_url") or res.get("url"),
+            "public_id": res.get("public_id"),
+            "format": res.get("format"),
+            "bytes": res.get("bytes")
+        }
+    except Exception as err:
+        print(f"[STORAGE] Direct Cloudinary upload failed: {err}")
+        return {"status": "error", "message": str(err), "url": None}
+
+async def save_image_to_cloudinary(
+    file_bytes: bytes,
+    filename: str = "image.jpg",
+    subfolder: str = "general"
+) -> str:
+    """
+    Async helper to save an image to Cloudinary.
+    Returns the secure HTTPS URL, or fallback URL if Cloudinary fails.
+    """
+    return await upload_image_file(file_bytes, filename, subfolder)
+
 async def upload_image_file(file_bytes: bytes, filename: str, subfolder: str = "general") -> str:
     """
     Uploads image to Cloudinary to preserve Render 5GB free egress limit.
