@@ -1,6 +1,45 @@
 {% extends "base.html" %}
 
-{% block title %}আমার খামার ড্যাশবোর্ড | {{ shop.shop_name if shop else "SR Enterprise" }}{% endblock %}
+{% block title %}আমার খামার ড্যাশবোর্ড | {{ shop.shop_name if shop else "SR Enterprise" }}
+<!-- FARMER MEMO PHOTO MODAL -->
+<div id="farmerMemoModal" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-4" onclick="closeFarmerMemoModal()">
+  <div class="bg-white max-w-lg w-full rounded-3xl overflow-hidden shadow-2xl border" onclick="event.stopPropagation()">
+    <div class="p-3 bg-slate-900 text-white flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <span>📸</span>
+        <span id="farmerModalTitle" class="text-xs font-black text-white">মেমোর ছবি</span>
+      </div>
+      <button onclick="closeFarmerMemoModal()" class="text-white hover:text-rose-400 text-xl font-bold p-1">✕</button>
+    </div>
+    <div class="p-2 bg-stone-900 flex justify-center max-h-[70vh] overflow-auto">
+      <img id="farmerModalImg" src="" alt="Memo Photo" class="max-h-[65vh] w-auto object-contain rounded-xl">
+    </div>
+    <div class="p-3 bg-stone-50 flex justify-between items-center">
+      <a id="farmerModalDownload" href="" target="_blank" download class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black inline-flex items-center gap-1 shadow-sm">
+        <span>📥</span> <span>ছবি ডাউনলোড</span>
+      </a>
+      <button onclick="closeFarmerMemoModal()" class="px-4 py-2 bg-stone-200 text-slate-700 rounded-xl text-xs font-black">
+        বন্ধ করুন
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+  function openFarmerMemoModal(imgUrl, title) {
+    document.getElementById('farmerModalImg').src = imgUrl;
+    document.getElementById('farmerModalTitle').textContent = (title || 'চালান মেমো') + ' এর মূল ছবি';
+    document.getElementById('farmerModalDownload').href = imgUrl;
+    document.getElementById('farmerMemoModal').classList.remove('hidden');
+  }
+
+  function closeFarmerMemoModal() {
+    document.getElementById('farmerMemoModal').classList.add('hidden');
+    document.getElementById('farmerModalImg').src = '';
+  }
+</script>
+
+{% endblock %}
 
 {% block content %}
 <div class="space-y-4 max-w-2xl mx-auto">
@@ -188,6 +227,66 @@
   </div>
   {% endif %}
 
+  <!-- RECENT INVOICES & MEMO PHOTOS SECTION -->
+  {% if recent_invoices %}
+  <div class="bg-white rounded-3xl border border-orangeBrand-200 shadow-sm p-5 space-y-3">
+    <div class="flex items-center justify-between pb-2 border-b border-orange-50">
+      <div class="flex items-center gap-2">
+        <span class="text-xl">📜</span>
+        <div>
+          <h3 class="text-sm font-black text-slate-900">সাম্প্রতিক চালানের বিবরণ ও মেমো</h3>
+          <p class="text-[10px] text-slate-500 font-medium">দোকান থেকে সরবরাহকৃত মালামাল ও মেমোর কপি</p>
+        </div>
+      </div>
+      <a href="/farmer/ledger" class="text-xs font-black text-crimson-700 hover:underline">
+        সম্পূর্ণ খতিয়ান ➔
+      </a>
+    </div>
+
+    <div class="space-y-2">
+      {% for inv in recent_invoices %}
+      <div class="p-3 bg-stone-50 hover:bg-orangeBrand-50/40 rounded-2xl border border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 transition">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="font-mono font-black text-xs text-slate-900">{{ inv.invoice_no }}</span>
+            <span class="text-[10px] text-slate-400 font-medium">{{ inv.invoice_date }}</span>
+          </div>
+          <div class="text-xs text-slate-600 mt-0.5 font-medium truncate max-w-sm">
+            {% for item in inv.get('items', []) %}
+              <span class="inline-block bg-white px-1.5 py-0.5 rounded text-[10px] mr-1 border border-slate-200 text-slate-700 font-bold">
+                {{ item.name_bn or item.name }} ({{ item.qty }} {{ item.unit }})
+              </span>
+            {% endfor %}
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between sm:justify-end gap-3 flex-shrink-0">
+          <div class="text-right">
+            <div class="text-xs font-black text-slate-900">৳ {{ "{:,.0f}".format(inv.net_total) }}</div>
+            {% if inv.due_amount > 0 %}
+            <div class="text-[10px] font-bold text-rose-600">বাকি: ৳ {{ "{:,.0f}".format(inv.due_amount) }}</div>
+            {% else %}
+            <div class="text-[10px] font-bold text-emerald-700">পরিশোধিত</div>
+            {% endif %}
+          </div>
+
+          <div class="flex items-center gap-1.5">
+            <a href="/admin/invoice/{{ inv.id }}/print" target="_blank" class="px-2.5 py-1.5 bg-stone-200 hover:bg-stone-300 text-slate-800 rounded-xl text-[11px] font-black transition">
+              মেমো
+            </a>
+            {% if inv.receipt_image_url %}
+            <button type="button" onclick="openFarmerMemoModal('{{ inv.receipt_image_url }}', 'চালান #{{ inv.invoice_no }}')" class="px-2.5 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-[11px] font-black shadow-sm flex items-center gap-1 transition touch-press" title="মেমোর ছবি দেখতে চাপুন">
+              <span>📸</span> <span>ছবি</span>
+            </button>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
   <!-- Farmer QR Card for In-Store Scanning -->
   <div class="bg-white p-5 rounded-3xl border border-orange-100 shadow-sm flex items-center justify-between gap-4">
     <div>
@@ -207,4 +306,43 @@
   </div>
 
 </div>
+
+<!-- FARMER MEMO PHOTO MODAL -->
+<div id="farmerMemoModal" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-4" onclick="closeFarmerMemoModal()">
+  <div class="bg-white max-w-lg w-full rounded-3xl overflow-hidden shadow-2xl border" onclick="event.stopPropagation()">
+    <div class="p-3 bg-slate-900 text-white flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <span>📸</span>
+        <span id="farmerModalTitle" class="text-xs font-black text-white">মেমোর ছবি</span>
+      </div>
+      <button onclick="closeFarmerMemoModal()" class="text-white hover:text-rose-400 text-xl font-bold p-1">✕</button>
+    </div>
+    <div class="p-2 bg-stone-900 flex justify-center max-h-[70vh] overflow-auto">
+      <img id="farmerModalImg" src="" alt="Memo Photo" class="max-h-[65vh] w-auto object-contain rounded-xl">
+    </div>
+    <div class="p-3 bg-stone-50 flex justify-between items-center">
+      <a id="farmerModalDownload" href="" target="_blank" download class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black inline-flex items-center gap-1 shadow-sm">
+        <span>📥</span> <span>ছবি ডাউনলোড</span>
+      </a>
+      <button onclick="closeFarmerMemoModal()" class="px-4 py-2 bg-stone-200 text-slate-700 rounded-xl text-xs font-black">
+        বন্ধ করুন
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+  function openFarmerMemoModal(imgUrl, title) {
+    document.getElementById('farmerModalImg').src = imgUrl;
+    document.getElementById('farmerModalTitle').textContent = (title || 'চালান মেমো') + ' এর মূল ছবি';
+    document.getElementById('farmerModalDownload').href = imgUrl;
+    document.getElementById('farmerMemoModal').classList.remove('hidden');
+  }
+
+  function closeFarmerMemoModal() {
+    document.getElementById('farmerMemoModal').classList.add('hidden');
+    document.getElementById('farmerModalImg').src = '';
+  }
+</script>
+
 {% endblock %}

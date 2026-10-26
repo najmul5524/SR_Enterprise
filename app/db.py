@@ -1271,6 +1271,7 @@ class DatabaseManager:
             new_due = max(0.0, net_total - paid_amount)
             delta_due = new_due - old_due
 
+            receipt_image_url = data.get("receipt_image_url", old_inv.get("receipt_image_url", ""))
             cur.execute("""
             UPDATE invoices SET
                 invoice_date = ?,
@@ -1279,13 +1280,15 @@ class DatabaseManager:
                 net_total = ?,
                 paid_amount = ?,
                 due_amount = ?,
-                note = ?
+                note = ?,
+                receipt_image_url = ?
             WHERE id = ?
             """, (
                 data.get("invoice_date", old_inv.get("invoice_date")),
                 data.get("payment_type", old_inv.get("payment_type", "credit")),
                 discount, net_total, paid_amount, new_due,
                 data.get("note", old_inv.get("note", "")),
+                receipt_image_url,
                 invoice_id
             ))
 

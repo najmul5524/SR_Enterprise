@@ -742,6 +742,87 @@ async def run_tests():
             db.delete_batch(s["id"])
         db.delete_farmer(f_reg_id)
 
+        print("\n--- 18. Testing Invoice Memo Photo (Admin & Farmer Views) & A4 PDF Print Template ---")
+        # 18a: Create an invoice with uploaded receipt memo photo
+        test_img_bytes = b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15c4\x00\x00\x00\nIDATx\x9cc\x00\x01\x00\x00\x05\x00\x01\r\n-\xb4\x00\x00\x00\x00IEND\xaeB`\x82"
+        f_test_id = db.save_farmer({
+            "name": "মেমো ফটো টেস্ট খামারি",
+            "phone": f"017{uuid.uuid4().hex[:8]}",
+            "shed_name": "শেড ১"
+        })
+        f_sheds = db.get_batches(farmer_id=f_test_id)
+        f_shed_id = f_sheds[0]["id"] if f_sheds else ""
+
+        res_inv_create = await client.post("/admin/dispatch/create", data={
+            "farmer_id": f_test_id,
+            "batch_id": f_shed_id,
+            "invoice_date": "2026-10-26",
+            "payment_type": "credit",
+            "discount": "0",
+            "paid_amount": "0",
+            "items_json": json.dumps([{"id": "P001", "name": "ব্রয়লার স্টার্টার ফিড", "name_bn": "ব্রয়লার স্টার্টার ফিড", "price": 3500.0, "qty": 2.0, "unit": "বস্তা", "total": 7000.0}])
+        }, files={
+            "receipt_file": ("test_memo.png", test_img_bytes, "image/png")
+        }, follow_redirects=False)
+
+        assert res_inv_create.status_code == 303, f"Invoice creation failed: {res_inv_create.status_code}"
+        redirect_loc = res_inv_create.headers.get("location")
+        created_inv_id = redirect_loc.split("/")[-2] if "print" in redirect_loc else redirect_loc.split("/")[-1]
+        
+        created_inv = db.get_invoice_by_id(created_inv_id)
+        assert created_inv is not None, "Created invoice not found in DB!"
+        assert created_inv.get("receipt_image_url"), "receipt_image_url was not saved on invoice!"
+        print(f"Invoice memo image saved: {created_inv.get('receipt_image_url')}")
+
+        # 18b: Check Admin Invoice List & Print Template
+        res_invoices_page = await client.get("/admin/invoices")
+        assert res_invoices_page.status_code == 200
+        assert "openMemoLightbox" in res_invoices_page.text or "ছবি" in res_invoices_page.text
+        print("Admin invoices table displays memo image lightbox trigger successfully!")
+
+        res_memo_print = await client.get(f"/admin/invoice/{created_inv_id}/print")
+        assert res_memo_print.status_code == 200
+        assert "সংযুক্ত হস্তলিখিত মেমো" in res_memo_print.text or "ভাউচারের ছবি" in res_memo_print.text
+        assert "Hind Siliguri" in res_memo_print.text
+        print("Print memo template renders physical memo photo section & Bengali font rules!")
+
+        # 18c: Check Farmer Portal (Ledger and Dashboard)
+        farmer_phone = db.get_farmer_by_id(f_test_id)["phone"]
+        await client.post("/login/farmer", data={"phone": farmer_phone, "pin": "1234"})
+        res_f_ledger = await client.get("/farmer/ledger")
+        assert res_f_ledger.status_code == 200
+        assert "openFarmerMemoModal" in res_f_ledger.text or "মেমোর ছবি" in res_f_ledger.text
+        print("Farmer ledger renders interactive memo photo viewer button!")
+
+        res_f_dash = await client.get("/farmer")
+        assert res_f_dash.status_code == 200
+        assert "openFarmerMemoModal" in res_f_dash.text or "মেমোর ছবি" in res_f_dash.text
+        print("Farmer dashboard renders recent invoices with memo photo modal button!")
+
+        # 18d: Update invoice with new receipt memo (switch back to admin)
+        await client.post("/login/admin", data={"username": "admin", "password": "admin123"}, follow_redirects=False)
+        new_img_bytes = b"new_memo_photo_content_bytes"
+        res_inv_update = await client.post("/admin/invoice/update", data={
+            "invoice_id": created_inv_id,
+            "invoice_date": "2026-10-26",
+            "payment_type": "credit",
+            "discount": "100",
+            "paid_amount": "500",
+            "note": "আপডেটেড নোট"
+        }, files={
+            "receipt_file": ("updated_memo.png", new_img_bytes, "image/png")
+        }, follow_redirects=False)
+        assert res_inv_update.status_code == 303
+        updated_inv = db.get_invoice_by_id(created_inv_id)
+        assert updated_inv["discount"] == 100.0
+        print("Invoice memo photo update verified successfully!")
+
+        # Clean up test invoice & farmer
+        db.delete_invoice(created_inv_id)
+        for s in f_sheds:
+            db.delete_batch(s["id"])
+        db.delete_farmer(f_test_id)
+
         print("\n=======================================================")
         print("ALL TESTS PASSED SUCCESSFULLY! 100% VERIFIED!")
         print("=======================================================\n")

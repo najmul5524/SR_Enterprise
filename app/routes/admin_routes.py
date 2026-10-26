@@ -597,12 +597,13 @@ async def update_invoice_route(
     discount: float = Form(0),
     paid_amount: float = Form(0),
     note: Optional[str] = Form(""),
-    redirect_to: Optional[str] = Form(None)
+    redirect_to: Optional[str] = Form(None),
+    receipt_file: Optional[UploadFile] = File(None)
 ):
     inv = db.get_invoice_by_id(invoice_id)
     if inv:
         subtotal = float(inv.get("subtotal", 0))
-        db.update_invoice(invoice_id, {
+        update_data = {
             "invoice_date": invoice_date,
             "payment_type": payment_type,
             "subtotal": subtotal,
@@ -610,7 +611,14 @@ async def update_invoice_route(
             "net_total": subtotal - discount,
             "paid_amount": paid_amount,
             "note": note or ""
-        })
+        }
+        if receipt_file and receipt_file.filename:
+            content = await receipt_file.read()
+            if content:
+                uploaded_url = await upload_image_file(content, receipt_file.filename, subfolder="invoices")
+                if uploaded_url:
+                    update_data["receipt_image_url"] = uploaded_url
+        db.update_invoice(invoice_id, update_data)
     return RedirectResponse(url=redirect_to or "/admin/invoices", status_code=303)
 
 @router.get("/invoice/delete/{invoice_id}")

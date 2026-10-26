@@ -9,15 +9,20 @@
   
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700;800&family=Noto+Sans+Bengali:wght@400;600;700;900&display=swap" rel="stylesheet">
   
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- html2pdf for direct 1-click A4 PDF export -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   
   <style>
-    body {
-      font-family: 'Hind Siliguri', sans-serif;
+    body, #printableMemo, table, th, td, h1, p, span, div {
+      font-family: 'Hind Siliguri', 'Noto Sans Bengali', 'SolaimanLipi', 'Kalpurush', system-ui, sans-serif !important;
+      text-rendering: optimizeLegibility !important;
+      -webkit-font-smoothing: antialiased !important;
+      font-feature-settings: "liga" 1, "kern" 1 !important;
+      letter-spacing: normal !important;
+      word-spacing: normal !important;
     }
     @page {
       size: A4 portrait;
@@ -50,21 +55,48 @@
 <body class="bg-stone-100 min-h-screen py-6 px-4 flex flex-col items-center">
 
   <!-- Action Bar (High Contrast, Distinct Text & Background) -->
-  <div class="max-w-2xl w-full mb-4 flex flex-wrap items-center justify-between gap-2.5 no-print">
+  <div class="max-w-2xl w-full mb-2 flex flex-wrap items-center justify-between gap-2.5 no-print">
     <a href="/admin/dispatch" class="px-4 py-2.5 bg-slate-800 text-white rounded-xl text-xs font-black hover:bg-black transition flex items-center gap-1.5 shadow-sm">
       <span>⬅️</span> নতুন চালান
     </a>
     <div class="flex items-center gap-2">
-      <!-- Direct 1-Click A4 PDF Download Button -->
+      <!-- Direct 1-Click A4 PDF Download Button with ForeignObject support -->
       <button type="button" onclick="downloadPDF()" class="px-4 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-black shadow-md transition flex items-center gap-1.5 border border-emerald-900 cursor-pointer touch-press">
-        <span>📥</span> <span class="text-white font-extrabold tracking-wide">PDF সেভ করুন (A4)</span>
+        <span>📥</span> <span class="text-white font-extrabold tracking-wide">সরাসরি PDF ডাউনলোড</span>
       </button>
-      <!-- Native / Browser Print Button (High Contrast White on Maroon-900) -->
+      <!-- Native / Browser Print Button (High Contrast White on Maroon-950 - 100% Vector Perfect Bangla) -->
       <button type="button" onclick="handlePrint()" class="px-4 py-2.5 bg-rose-950 hover:bg-rose-900 text-white rounded-xl text-xs font-black shadow-md transition flex items-center gap-1.5 border border-rose-900 cursor-pointer touch-press">
-        <span>🖨️</span> <span class="text-white font-extrabold tracking-wide">প্রিন্ট মেমো (Print)</span>
+        <span>🖨️</span> <span class="text-white font-extrabold tracking-wide">প্রিন্ট / PDF সেভ (A4)</span>
       </button>
     </div>
   </div>
+
+  <!-- Helpful Print/PDF tip -->
+  <div class="max-w-2xl w-full mb-4 p-3 bg-amber-50 border border-amber-200 rounded-2xl text-[11px] text-amber-900 font-bold flex items-center gap-2 no-print shadow-sm">
+    <span class="text-base flex-shrink-0">💡</span>
+    <span>মোবাইল বা কম্পিউটারে বাংলা যুক্তবর্ণ একদম নিখুঁত ও স্পষ্ট রাখতে <strong>"প্রিন্ট / PDF সেভ"</strong> বাটনে ক্লিক করে ডেস্টিনেশন হিসেবে <strong>"Save as PDF"</strong> নির্বাচন করুন।</span>
+  </div>
+
+  {% if invoice.receipt_image_url %}
+  <!-- Physical Memo / Voucher Photo Section (Admin & Dealer) -->
+  <div class="max-w-2xl w-full bg-white rounded-3xl p-5 border-2 border-stone-200 shadow-md mb-4 no-print space-y-3">
+    <div class="flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <span class="text-xl">📸</span>
+        <div>
+          <span class="text-sm font-black text-slate-800 block">সংযুক্ত হস্তলিখিত মেমো / ভাউচারের ছবি</span>
+          <span class="text-[10px] text-slate-500 font-medium">মোবাইল ক্যামেরা বা গ্যালারি থেকে আপলোডকৃত মূল স্লিপ</span>
+        </div>
+      </div>
+      <a href="{{ invoice.receipt_image_url }}" target="_blank" download class="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-black transition inline-flex items-center gap-1 shadow-sm">
+        <span>🔍</span> <span>বড় করে দেখুন</span>
+      </a>
+    </div>
+    <div class="rounded-2xl overflow-hidden border border-slate-200 bg-stone-900 flex justify-center p-2 cursor-pointer group" onclick="openPhotoModal('{{ invoice.receipt_image_url }}')">
+      <img src="{{ invoice.receipt_image_url }}" alt="Original Physical Memo" class="max-h-72 w-auto object-contain rounded-xl group-hover:scale-[1.02] transition duration-200">
+    </div>
+  </div>
+  {% endif %}
 
   <!-- Cash Memo Paper Card (Formatted strictly for A4) -->
   <div id="printableMemo" class="memo-card max-w-2xl w-full bg-white rounded-3xl shadow-xl border-2 border-stone-200 p-8 space-y-6">
@@ -193,6 +225,27 @@
 
   </div>
 
+  <!-- Photo Lightbox Modal -->
+  <div id="photoModal" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-4" onclick="closePhotoModal()">
+    <div class="relative max-w-2xl w-full bg-white rounded-3xl overflow-hidden shadow-2xl border" onclick="event.stopPropagation()">
+      <div class="p-3 bg-slate-900 text-white flex items-center justify-between">
+        <span class="text-xs font-black">চালান #{{ invoice.invoice_no }} এর মূল ভাউচার ছবি</span>
+        <button onclick="closePhotoModal()" class="text-white text-xl font-bold p-1">✕</button>
+      </div>
+      <div class="p-2 bg-stone-900 flex justify-center max-h-[75vh] overflow-auto">
+        <img id="modalPhotoImg" src="" alt="Full Memo Photo" class="max-h-[70vh] object-contain rounded-xl">
+      </div>
+      <div class="p-3 bg-stone-50 flex justify-between items-center">
+        <a id="modalDownloadLink" href="" target="_blank" download class="px-4 py-2 bg-emerald-600 text-white rounded-xl text-xs font-black">
+          📥 ছবি ডাউনলোড
+        </a>
+        <button onclick="closePhotoModal()" class="px-4 py-2 bg-stone-200 text-slate-700 rounded-xl text-xs font-black">
+          বন্ধ করুন
+        </button>
+      </div>
+    </div>
+  </div>
+
   <script>
     function handlePrint() {
       if (window.SRNativeApp && typeof window.SRNativeApp.printPage === 'function') {
@@ -202,16 +255,49 @@
       }
     }
 
-    function downloadPDF() {
-      const element = document.getElementById('printableMemo');
-      const opt = {
-        margin: [10, 10, 10, 10],
-        filename: 'Invoice_{{ invoice.invoice_no }}.pdf',
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-      };
-      html2pdf().set(opt).from(element).save();
+    async function downloadPDF() {
+      const btn = event.currentTarget;
+      const originalText = btn.innerHTML;
+      btn.innerHTML = '<span>⏳</span> <span class="text-white font-bold">PDF তৈরি হচ্ছে...</span>';
+      btn.disabled = true;
+
+      try {
+        if (document.fonts && document.fonts.ready) {
+          await document.fonts.ready;
+        }
+        const element = document.getElementById('printableMemo');
+        const opt = {
+          margin: [10, 10, 10, 10],
+          filename: 'Invoice_{{ invoice.invoice_no }}.pdf',
+          image: { type: 'jpeg', quality: 0.98 },
+          html2canvas: {
+            scale: 2,
+            useCORS: true,
+            foreignObjectRendering: true,
+            letterRendering: false,
+            logging: false
+          },
+          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        };
+        await html2pdf().set(opt).from(element).save();
+      } catch(err) {
+        console.warn('foreignObject export note:', err);
+        handlePrint();
+      } finally {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+      }
+    }
+
+    function openPhotoModal(imgUrl) {
+      document.getElementById('modalPhotoImg').src = imgUrl;
+      document.getElementById('modalDownloadLink').href = imgUrl;
+      document.getElementById('photoModal').classList.remove('hidden');
+    }
+
+    function closePhotoModal() {
+      document.getElementById('photoModal').classList.add('hidden');
+      document.getElementById('modalPhotoImg').src = '';
     }
   </script>
 

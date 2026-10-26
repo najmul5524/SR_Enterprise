@@ -1,6 +1,37 @@
 {% extends "base.html" %}
 
-{% block title %}সকল চালান ও বিক্রয় ইতিহাস (Invoices) | {{ shop.shop_name if shop else "SR Enterprise" }}{% endblock %}
+{% block title %}সকল চালান ও বিক্রয় ইতিহাস (Invoices) | {{ shop.shop_name if shop else "SR Enterprise" }}
+<!-- MEMO IMAGE LIGHTBOX MODAL -->
+<div id="memoLightboxModal" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+  <div class="bg-white w-full max-w-lg rounded-3xl shadow-2xl border border-stone-200 overflow-hidden flex flex-col max-h-[92vh]">
+    <div class="p-4 bg-slate-900 text-white flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <span class="text-xl">📸</span>
+        <div>
+          <h3 id="lightboxTitle" class="font-black text-sm text-white">মেমোর ছবি</h3>
+          <p id="lightboxSubtitle" class="text-[10px] text-slate-300 font-medium"></p>
+        </div>
+      </div>
+      <button onclick="closeMemoLightbox()" class="text-white hover:text-rose-400 text-2xl font-black p-1">✕</button>
+    </div>
+    <div class="p-3 bg-stone-900 flex items-center justify-center overflow-auto flex-1 max-h-[70vh]">
+      <img id="lightboxImg" src="" alt="Memo Image" class="max-h-[65vh] w-auto object-contain rounded-xl shadow-lg">
+    </div>
+    <div class="p-3 bg-stone-50 border-t border-slate-200 flex items-center justify-between gap-2">
+      <a id="lightboxDownloadBtn" href="" target="_blank" download class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black inline-flex items-center gap-1.5 shadow-sm">
+        <span>📥</span> <span>ছবি ডাউনলোড</span>
+      </a>
+      <a id="lightboxNewTabBtn" href="" target="_blank" class="px-4 py-2 bg-slate-800 hover:bg-black text-white rounded-xl text-xs font-black inline-flex items-center gap-1.5 shadow-sm">
+        <span>🔍</span> <span>নতুন ট্যাবে দেখুন</span>
+      </a>
+      <button onclick="closeMemoLightbox()" class="px-4 py-2 bg-stone-200 hover:bg-stone-300 text-slate-700 rounded-xl text-xs font-black">
+        বন্ধ করুন
+      </button>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
 
 {% block content %}
 <div class="space-y-5">
@@ -59,6 +90,7 @@
             <th class="p-3 text-right">মোট বিল (৳)</th>
             <th class="p-3 text-right">নগদ প্রদান (৳)</th>
             <th class="p-3 text-right">বাকি (৳)</th>
+            <th class="p-3 text-center">মেমো ছবি</th>
             <th class="p-3 text-center">অ্যাকশন</th>
           </tr>
         </thead>
@@ -91,6 +123,16 @@
             <td class="p-3 text-right font-black text-slate-900">৳ {{ "{:,.0f}".format(inv.net_total) }}</td>
             <td class="p-3 text-right font-bold text-emerald-700">৳ {{ "{:,.0f}".format(inv.paid_amount) }}</td>
             <td class="p-3 text-right font-black text-rose-600">৳ {{ "{:,.0f}".format(inv.due_amount) }}</td>
+            <td class="p-3 text-center whitespace-nowrap" onclick="event.stopPropagation();">
+              {% if inv.receipt_image_url %}
+              <button type="button" onclick="openMemoLightbox('{{ inv.receipt_image_url }}', '{{ inv.invoice_no }}', '{{ inv.farmer_name }}', '{{ inv.invoice_date }}')"
+                class="px-2.5 py-1 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-black text-[11px] shadow-sm inline-flex items-center gap-1 touch-press" title="মেমোর ছবি দেখতে ক্লিক করুন">
+                <span>📸</span> <span>ছবি</span>
+              </button>
+              {% else %}
+              <span class="text-slate-300 text-xs">—</span>
+              {% endif %}
+            </td>
             <td class="p-3 text-center whitespace-nowrap">
               <div class="inline-flex items-center gap-1.5" onclick="event.stopPropagation();">
                 <a href="/admin/invoice/{{ inv.id }}/print" class="px-3 py-1.5 bg-slate-900 hover:bg-black text-white rounded-xl font-black text-[11px] shadow-sm transition inline-flex items-center gap-1" title="ক্যাশ মেমো প্রিন্ট">
@@ -128,7 +170,7 @@
       <button onclick="closeEditInvoiceModal()" class="text-white/80 hover:text-white text-xl">✕</button>
     </div>
 
-    <form action="/admin/invoice/update" method="POST" class="p-5 space-y-4 overflow-y-auto">
+    <form action="/admin/invoice/update" method="POST" enctype="multipart/form-data" class="p-5 space-y-4 overflow-y-auto">
       <input type="hidden" id="editInvId" name="invoice_id">
 
       <div>
@@ -167,6 +209,15 @@
         <input type="text" id="editInvNote" name="note" placeholder="চালানের মন্তব্য..." class="w-full px-3.5 py-2.5 border rounded-2xl text-xs">
       </div>
 
+      <div>
+        <label class="block text-xs font-black text-slate-700 mb-1">মেমোর ছবি যুক্ত / পরিবর্তন করুন</label>
+        <div id="currentMemoImgWrap" class="hidden mb-2 p-2 bg-stone-50 rounded-xl border border-stone-200 flex items-center gap-2">
+          <img id="currentMemoImg" src="" alt="Current Memo" class="w-12 h-12 object-cover rounded-lg border">
+          <div class="text-[11px] font-bold text-slate-600">বর্তমান মেমোর ছবি সংরক্ষিত আছে</div>
+        </div>
+        <input type="file" name="receipt_file" accept="image/*" class="w-full text-xs text-slate-500 file:mr-2 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-orangeBrand-50 file:text-orangeBrand-700">
+      </div>
+
       <div class="flex items-center justify-end gap-2 pt-3 border-t">
         <button type="button" onclick="closeEditInvoiceModal()" class="px-4 py-2.5 border rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50">
           বাতিল
@@ -181,7 +232,29 @@
 </div>
 
 <script>
+  
+  function openMemoLightbox(imgUrl, invoiceNo, farmerName, date) {
+    document.getElementById('lightboxImg').src = imgUrl;
+    document.getElementById('lightboxTitle').textContent = 'চালান মেমো #' + invoiceNo + ' এর ছবি';
+    document.getElementById('lightboxSubtitle').textContent = farmerName + ' • ' + date;
+    document.getElementById('lightboxDownloadBtn').href = imgUrl;
+    document.getElementById('lightboxNewTabBtn').href = imgUrl;
+    document.getElementById('memoLightboxModal').classList.remove('hidden');
+  }
+
+  function closeMemoLightbox() {
+    document.getElementById('memoLightboxModal').classList.add('hidden');
+    document.getElementById('lightboxImg').src = '';
+  }
+
   function openEditInvoiceModal(inv) {
+    if (inv.receipt_image_url) {
+      document.getElementById('currentMemoImg').src = inv.receipt_image_url;
+      document.getElementById('currentMemoImgWrap').classList.remove('hidden');
+    } else {
+      document.getElementById('currentMemoImgWrap').classList.add('hidden');
+    }
+
     document.getElementById('editInvId').value = inv.id;
     document.getElementById('editInvNo').value = inv.invoice_no;
     document.getElementById('editInvDate').value = inv.invoice_date;
@@ -196,4 +269,35 @@
     document.getElementById('editInvoiceModal').classList.add('hidden');
   }
 </script>
+
+<!-- MEMO IMAGE LIGHTBOX MODAL -->
+<div id="memoLightboxModal" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+  <div class="bg-white w-full max-w-lg rounded-3xl shadow-2xl border border-stone-200 overflow-hidden flex flex-col max-h-[92vh]">
+    <div class="p-4 bg-slate-900 text-white flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <span class="text-xl">📸</span>
+        <div>
+          <h3 id="lightboxTitle" class="font-black text-sm text-white">মেমোর ছবি</h3>
+          <p id="lightboxSubtitle" class="text-[10px] text-slate-300 font-medium"></p>
+        </div>
+      </div>
+      <button onclick="closeMemoLightbox()" class="text-white hover:text-rose-400 text-2xl font-black p-1">✕</button>
+    </div>
+    <div class="p-3 bg-stone-900 flex items-center justify-center overflow-auto flex-1 max-h-[70vh]">
+      <img id="lightboxImg" src="" alt="Memo Image" class="max-h-[65vh] w-auto object-contain rounded-xl shadow-lg">
+    </div>
+    <div class="p-3 bg-stone-50 border-t border-slate-200 flex items-center justify-between gap-2">
+      <a id="lightboxDownloadBtn" href="" target="_blank" download class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black inline-flex items-center gap-1.5 shadow-sm">
+        <span>📥</span> <span>ছবি ডাউনলোড</span>
+      </a>
+      <a id="lightboxNewTabBtn" href="" target="_blank" class="px-4 py-2 bg-slate-800 hover:bg-black text-white rounded-xl text-xs font-black inline-flex items-center gap-1.5 shadow-sm">
+        <span>🔍</span> <span>নতুন ট্যাবে দেখুন</span>
+      </a>
+      <button onclick="closeMemoLightbox()" class="px-4 py-2 bg-stone-200 hover:bg-stone-300 text-slate-700 rounded-xl text-xs font-black">
+        বন্ধ করুন
+      </button>
+    </div>
+  </div>
+</div>
+
 {% endblock %}

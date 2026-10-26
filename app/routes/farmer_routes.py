@@ -88,9 +88,12 @@ async def farmer_ledger(request: Request):
             "date": inv["invoice_date"],
             "type": "debit", # Maalamal / Expense
             "title": f"চালান #{inv['invoice_no']}",
+            "invoice_no": inv["invoice_no"],
             "details": f"{len(inv.get('items', []))} টি পণ্য মালামাল",
             "amount": inv["net_total"],
-            "ref_id": inv["id"]
+            "ref_id": inv["id"],
+            "receipt_image_url": inv.get("receipt_image_url"),
+            "items": inv.get("items", [])
         })
     for p in payments:
         shed_info = f" • শেড: {p.get('batch_no')}" if p.get("batch_no") else ""

@@ -187,10 +187,15 @@
               <td class="p-3 text-right font-black text-slate-900">৳{{ "{:,.0f}".format(inv.net_total) }}</td>
               <td class="p-3 text-right text-emerald-700 font-bold">৳{{ "{:,.0f}".format(inv.paid_amount) }}</td>
               <td class="p-3 text-right font-black text-crimson-600">৳{{ "{:,.0f}".format(inv.due_amount) }}</td>
-              <td class="p-3 text-center no-print">
+              <td class="p-3 text-center no-print whitespace-nowrap">
                 <a href="/admin/invoice/{{ inv.id }}/print" class="px-2.5 py-1 bg-stone-100 hover:bg-stone-200 rounded-lg font-black text-[10px] text-slate-800 touch-press">
                   মেমো ➔
                 </a>
+                {% if inv.receipt_image_url %}
+                <a href="{{ inv.receipt_image_url }}" target="_blank" class="ml-1 px-2 py-1 bg-amber-500 hover:bg-amber-600 text-white rounded-lg font-black text-[10px] shadow-sm inline-flex items-center gap-0.5" title="মেমোর ছবি দেখুন">
+                  <span>📸</span> <span>ছবি</span>
+                </a>
+                {% endif %}
               </td>
               <td class="p-3 text-center no-print">
                 <a href="/admin/invoice/delete/{{ inv.id }}?redirect_to=/admin/farmer/{{ farmer.id }}" onclick="return confirm('সতর্কতা: চালানটি মুছে ফেললে পণ্যের স্টক ইনভেন্টরিতে ফেরত যাবে এবং বাকি পাওনা কমে যাবে। নিশ্চিত?')" class="p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg font-black text-[11px] transition" title="চালান মুছুন">
