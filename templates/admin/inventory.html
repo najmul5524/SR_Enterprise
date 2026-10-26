@@ -27,6 +27,17 @@
     </div>
   </div>
 
+  <!-- Live Search Bar with Instant Dropdown -->
+  <div class="relative bg-white p-3 rounded-2xl border border-orange-100 shadow-sm flex items-center gap-2">
+    <span class="text-slate-400 pl-2">🔍</span>
+    <input type="text" id="inventorySearchInput" data-live-search="inventory" autocomplete="off"
+      placeholder="খাদ্য, ঔষধের নাম বা SKU নম্বর লিখলেই সাথে সাথে নিচে ড্রপডাউন চলে আসবে..."
+      class="flex-1 py-1.5 text-xs font-semibold focus:outline-none text-slate-800">
+    <button type="button" onclick="document.getElementById('inventorySearchInput').dispatchEvent(new Event('input'))" class="px-5 py-2.5 bg-gradient-to-r from-maroon-900 to-crimson-700 hover:opacity-95 text-white text-xs font-black rounded-xl transition touch-press">
+      খুঁজুন
+    </button>
+  </div>
+
   <!-- Filter Pills (Vibrant Colors) -->
   <div class="flex flex-wrap items-center gap-2 text-xs font-black">
     <a href="/admin/inventory" 
@@ -58,7 +69,7 @@
   <!-- PRODUCTS GRID -->
   <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
     {% for p in products %}
-    <div class="bg-white rounded-3xl border border-orange-100/90 shadow-sm overflow-hidden flex flex-col justify-between hover:border-orangeBrand-300 transition-all">
+    <div id="product-{{ p.id }}" class="bg-white rounded-3xl border border-orange-100/90 shadow-sm overflow-hidden flex flex-col justify-between hover:border-orangeBrand-300 transition-all">
       
       <!-- Card Header & Image -->
       <div class="p-5">

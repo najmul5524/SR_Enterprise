@@ -232,6 +232,67 @@ async def run_tests():
         print(f"Direct Cloudinary result -> Status: {direct_res['status']}")
         assert direct_res["status"] in ["success", "error"]
 
+        print("\n--- 12. Testing Farmer Edit, Delete & Live Autocomplete Search APIs ---")
+        # 1. Create a test farmer
+        new_farmer_id = db.save_farmer({
+            "name": "টেস্ট খামারি রহিম",
+            "phone": "01999888777",
+            "pin": "5555",
+            "shed_name": "রহিম পোল্ট্রি ফার্ম",
+            "address": "গাজীপুর সদর",
+            "shed_capacity": 2000,
+            "status": "active"
+        })
+        print(f"Created farmer for testing: {new_farmer_id}")
+
+        # 2. Update farmer
+        res = await client.post("/admin/farmer/update", data={
+            "farmer_id": new_farmer_id,
+            "name": "টেস্ট খামারি রহিম (আপডেটেড)",
+            "phone": "01999888777",
+            "pin": "9999",
+            "shed_name": "রহিম পোল্ট্রি ফার্ম - শেড ২",
+            "address": "জয়দেবপুর, গাজীপুর",
+            "shed_capacity": 2500,
+            "status": "active",
+            "notes": "আপডেটেড নোটস"
+        }, follow_redirects=False)
+        print(f"POST /admin/farmer/update -> Status {res.status_code}")
+        assert res.status_code == 303
+        updated_f = db.get_farmer_by_id(new_farmer_id)
+        assert updated_f["name"] == "টেস্ট খামারি রহিম (আপডেটেড)"
+        assert updated_f["pin"] == "9999"
+
+        # 3. Test Search APIs
+        res = await client.get("/api/farmers/search?q=রহিম")
+        print(f"GET /api/farmers/search?q=রহিম -> Status {res.status_code}, Found: {len(res.json()['data'])}")
+        assert res.status_code == 200
+        assert len(res.json()["data"]) >= 1
+
+        res = await client.get("/api/inventory/search?q=ব্রয়লার")
+        print(f"GET /api/inventory/search?q=ব্রয়লার -> Status {res.status_code}, Found: {len(res.json()['data'])}")
+        assert res.status_code == 200
+        assert len(res.json()["data"]) >= 1
+
+        res = await client.get("/api/batches/search?q=BATCH")
+        print(f"GET /api/batches/search?q=BATCH -> Status {res.status_code}, Found: {len(res.json()['data'])}")
+        assert res.status_code == 200
+
+        res = await client.get("/api/invoices/search?q=INV")
+        print(f"GET /api/invoices/search?q=INV -> Status {res.status_code}, Found: {len(res.json()['data'])}")
+        assert res.status_code == 200
+
+        res = await client.get("/api/global/search?q=নুরিশ")
+        print(f"GET /api/global/search?q=নুরিশ -> Status {res.status_code}, Results: {list(res.json()['data'].keys())}")
+        assert res.status_code == 200
+
+        # 4. Delete farmer
+        res = await client.get(f"/admin/farmer/delete/{new_farmer_id}", follow_redirects=False)
+        print(f"GET /admin/farmer/delete -> Status {res.status_code}")
+        assert res.status_code == 303
+        assert db.get_farmer_by_id(new_farmer_id) is None
+        print(f"Farmer {new_farmer_id} successfully deleted from database!")
+
         print("\n=======================================================")
         print("ALL TESTS PASSED SUCCESSFULLY! 100% VERIFIED!")
         print("=======================================================\n")

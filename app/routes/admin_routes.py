@@ -201,6 +201,57 @@ async def save_farmer(
     farmer_id = db.save_farmer(data)
     return RedirectResponse(url=f"/admin/farmer/{farmer_id}", status_code=303)
 
+@router.post("/farmer/update")
+async def update_farmer_handler(
+    request: Request,
+    farmer_id: str = Form(...),
+    name: str = Form(...),
+    phone: str = Form(...),
+    pin: Optional[str] = Form("1234"),
+    shed_name: Optional[str] = Form(""),
+    address: Optional[str] = Form(""),
+    shed_capacity: int = Form(1000),
+    status: Optional[str] = Form("active"),
+    notes: Optional[str] = Form(""),
+    image_file: Optional[UploadFile] = File(None)
+):
+    existing = db.get_farmer_by_id(farmer_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="খামারি খুঁজে পাওয়া যায়নি")
+
+    image_url = ""
+    if image_file and image_file.filename:
+        content = await image_file.read()
+        if content:
+            image_url = await upload_image_file(content, image_file.filename, subfolder="farmers")
+
+    data = {
+        "id": farmer_id,
+        "name": name.strip(),
+        "phone": phone.strip(),
+        "pin": pin.strip() if pin else existing.get("pin", "1234"),
+        "shed_name": (shed_name or existing.get("shed_name") or f"{name}-এর শেড").strip(),
+        "address": address.strip() if address else existing.get("address", ""),
+        "shed_capacity": shed_capacity,
+        "status": status.strip() if status else "active",
+        "notes": notes.strip() if notes else "",
+    }
+    if image_url:
+        data["image_url"] = image_url
+
+    db.save_farmer(data)
+    return RedirectResponse(url=f"/admin/farmer/{farmer_id}", status_code=303)
+
+@router.get("/farmer/delete/{farmer_id}")
+@router.post("/farmer/delete/{farmer_id}")
+async def delete_farmer_handler(request: Request, farmer_id: str):
+    farmer = db.get_farmer_by_id(farmer_id)
+    if not farmer:
+        raise HTTPException(status_code=404, detail="খামারি খুঁজে পাওয়া যায়নি")
+    
+    db.delete_farmer(farmer_id)
+    return RedirectResponse(url="/admin/farmers?deleted=1", status_code=303)
+
 @router.get("/farmer/{farmer_id}", response_class=HTMLResponse)
 async def farmer_detail(request: Request, farmer_id: str):
     farmer = db.get_farmer_by_id(farmer_id)

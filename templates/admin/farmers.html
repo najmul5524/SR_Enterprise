@@ -22,18 +22,19 @@
     </button>
   </div>
 
-  <!-- Search Bar -->
-  <form action="/admin/farmers" method="GET" class="bg-white p-3 rounded-2xl border border-orange-100 shadow-sm flex items-center gap-2">
+  <!-- Search Bar with Live Dropdown -->
+  <div class="relative bg-white p-3 rounded-2xl border border-orange-100 shadow-sm flex items-center gap-2">
     <span class="text-slate-400 pl-2">🔍</span>
-    <input type="text" name="q" value="{{ search_query }}" placeholder="খামারির নাম, মোবাইল নাম্বার বা শেডের নাম দিয়ে খুঁজুন..."
+    <input type="text" name="q" id="farmerSearchInput" value="{{ search_query }}" data-live-search="farmers" autocomplete="off"
+      placeholder="খামারির নাম, মোবাইল নাম্বার বা শেডের নাম লিখলেই নিচে ড্রপডাউন চলে আসবে..."
       class="flex-1 py-1.5 text-xs font-semibold focus:outline-none text-slate-800">
-    <button type="submit" class="px-5 py-2.5 bg-gradient-to-r from-maroon-900 to-crimson-700 hover:opacity-95 text-white text-xs font-black rounded-xl transition touch-press">
+    <button type="button" onclick="document.getElementById('farmerSearchInput').dispatchEvent(new Event('input'))" class="px-5 py-2.5 bg-gradient-to-r from-maroon-900 to-crimson-700 hover:opacity-95 text-white text-xs font-black rounded-xl transition touch-press">
       খুঁজুন
     </button>
     {% if search_query %}
       <a href="/admin/farmers" class="px-3.5 py-2 bg-stone-100 text-slate-600 text-xs font-bold rounded-xl">রিসেট</a>
     {% endif %}
-  </form>
+  </div>
 
   <!-- FARMERS GRID -->
   <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -53,7 +54,17 @@
 
           <!-- Farmer Bio -->
           <div class="flex-1 min-w-0">
-            <h3 class="font-black text-slate-900 text-base truncate">{{ f.name }}</h3>
+            <div class="flex items-start justify-between gap-1">
+              <h3 class="font-black text-slate-900 text-base truncate">{{ f.name }}</h3>
+              <div class="flex items-center gap-1 flex-shrink-0">
+                <button type="button" onclick='openEditFarmerModal({{ f|tojson }})' class="p-1.5 hover:bg-orangeBrand-100 text-slate-500 hover:text-orangeBrand-700 rounded-lg transition" title="তথ্য সম্পাদনা করুন">
+                  ✏️
+                </button>
+                <button type="button" onclick="confirmDeleteFarmer('{{ f.id }}', '{{ f.name }}')" class="p-1.5 hover:bg-rose-100 text-slate-400 hover:text-rose-600 rounded-lg transition" title="খামারি ডিলিট করুন">
+                  🗑️
+                </button>
+              </div>
+            </div>
             <div class="text-xs text-slate-600 flex items-center gap-1 mt-0.5 font-medium">
               <span>📱 {{ f.phone }}</span>
             </div>
@@ -181,12 +192,122 @@
   </div>
 </div>
 
+<!-- EDIT FARMER MODAL -->
+<div id="editFarmerModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+  <div class="bg-white w-full max-w-lg rounded-3xl shadow-2xl border border-orange-100 overflow-hidden max-h-[90vh] flex flex-col">
+    
+    <div class="p-5 bg-gradient-to-r from-maroon-900 via-crimson-700 to-orangeBrand-600 text-white flex items-center justify-between">
+      <h3 class="font-black text-base flex items-center gap-2">
+        <span>✏️</span> খামারির তথ্য সম্পাদনা
+      </h3>
+      <button onclick="closeEditFarmerModal()" class="text-white/80 hover:text-white text-xl">✕</button>
+    </div>
+
+    <form action="/admin/farmer/update" method="POST" enctype="multipart/form-data" class="p-5 space-y-4 overflow-y-auto">
+      <input type="hidden" name="farmer_id" id="edit_farmer_id">
+
+      <div>
+        <label class="block text-xs font-black text-slate-700 mb-1">খামারির পুরো নাম *</label>
+        <input type="text" name="name" id="edit_farmer_name" required
+          class="w-full px-3.5 py-2.5 border rounded-2xl text-sm focus:ring-2 focus:ring-crimson-500 focus:outline-none font-medium">
+      </div>
+
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-black text-slate-700 mb-1">মোবাইল নাম্বার *</label>
+          <input type="tel" name="phone" id="edit_farmer_phone" required
+            class="w-full px-3.5 py-2.5 border rounded-2xl text-sm font-bold">
+        </div>
+        <div>
+          <label class="block text-xs font-black text-slate-700 mb-1">লগইন পিন / PIN (৪ ডিজিট)</label>
+          <input type="text" name="pin" id="edit_farmer_pin" required
+            class="w-full px-3.5 py-2.5 border rounded-2xl text-sm font-mono font-black">
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-black text-slate-700 mb-1">শেডের নাম</label>
+          <input type="text" name="shed_name" id="edit_farmer_shed_name"
+            class="w-full px-3.5 py-2.5 border rounded-2xl text-sm">
+        </div>
+        <div>
+          <label class="block text-xs font-black text-slate-700 mb-1">শেডের ধারণক্ষমতা</label>
+          <input type="number" step="100" name="shed_capacity" id="edit_farmer_shed_capacity"
+            class="w-full px-3.5 py-2.5 border rounded-2xl text-sm font-bold">
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-black text-slate-700 mb-1">ঠিকানা / অবস্থান</label>
+          <input type="text" name="address" id="edit_farmer_address"
+            class="w-full px-3.5 py-2.5 border rounded-2xl text-sm">
+        </div>
+        <div>
+          <label class="block text-xs font-black text-slate-700 mb-1">অবস্থা (Status)</label>
+          <select name="status" id="edit_farmer_status" class="w-full px-3.5 py-2.5 border rounded-2xl text-sm font-bold">
+            <option value="active">সক্রিয় (Active)</option>
+            <option value="inactive">নিষ্ক্রিয় (Inactive)</option>
+          </select>
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-xs font-black text-slate-700 mb-1">নতুন ছবি পরিবর্তন (Cloudinary তে আপলোড হবে)</label>
+        <input type="file" name="image_file" accept="image/*"
+          class="w-full text-xs text-slate-500 file:mr-2 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-orangeBrand-50 file:text-orangeBrand-700 hover:file:bg-orangeBrand-100">
+      </div>
+
+      <div>
+        <label class="block text-xs font-black text-slate-700 mb-1">নোট / বিশেষ শর্তাবলী</label>
+        <textarea name="notes" id="edit_farmer_notes" rows="2"
+          class="w-full px-3.5 py-2.5 border rounded-2xl text-sm"></textarea>
+      </div>
+
+      <div class="flex items-center justify-end gap-2 pt-3 border-t">
+        <button type="button" onclick="closeEditFarmerModal()" class="px-4 py-2.5 border rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50">
+          বাতিল
+        </button>
+        <button type="submit" class="px-5 py-2.5 bg-gradient-to-r from-maroon-900 to-crimson-700 hover:opacity-95 text-white rounded-xl text-xs font-black shadow-md shadow-crimson-900/20 touch-press">
+          আপডেট করুন ➔
+        </button>
+      </div>
+    </form>
+
+  </div>
+</div>
+
 <script>
   function openAddFarmerModal() {
     document.getElementById('farmerModal').classList.remove('hidden');
   }
   function closeFarmerModal() {
     document.getElementById('farmerModal').classList.add('hidden');
+  }
+
+  function openEditFarmerModal(farmer) {
+    if (!farmer) return;
+    document.getElementById('edit_farmer_id').value = farmer.id || '';
+    document.getElementById('edit_farmer_name').value = farmer.name || '';
+    document.getElementById('edit_farmer_phone').value = farmer.phone || '';
+    document.getElementById('edit_farmer_pin').value = farmer.pin || '1234';
+    document.getElementById('edit_farmer_shed_name').value = farmer.shed_name || '';
+    document.getElementById('edit_farmer_shed_capacity').value = farmer.shed_capacity || 1000;
+    document.getElementById('edit_farmer_address').value = farmer.address || '';
+    document.getElementById('edit_farmer_status').value = farmer.status || 'active';
+    document.getElementById('edit_farmer_notes').value = farmer.notes || '';
+    document.getElementById('editFarmerModal').classList.remove('hidden');
+  }
+
+  function closeEditFarmerModal() {
+    document.getElementById('editFarmerModal').classList.add('hidden');
+  }
+
+  function confirmDeleteFarmer(farmerId, farmerName) {
+    if (confirm(`আপনি কি নিশ্চিতভাবে খামারি "${farmerName}"-কে ডিলিট করতে চান?\n\nসতর্কতা: এটি ডিলিট করলে খামারির প্রোফাইল ও খাতা মুছে যাবে।`)) {
+      window.location.href = `/admin/farmer/delete/${farmerId}`;
+    }
   }
 </script>
 {% endblock %}

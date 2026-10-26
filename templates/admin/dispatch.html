@@ -36,8 +36,13 @@
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label class="block text-xs font-black text-slate-700 mb-1">খামারি বাছাই করুন *</label>
+            <div class="relative mb-2">
+              <input type="text" id="dispatchFarmerSearch" autocomplete="off"
+                placeholder="🔍 দ্রুত খামারি খুঁজুন (নাম বা মোবাইল লিখুন)..."
+                class="w-full px-3.5 py-2 border rounded-xl text-xs font-medium focus:ring-2 focus:ring-crimson-500 focus:outline-none bg-orangeBrand-50/50">
+            </div>
             <select id="farmerSelect" name="farmer_id" onchange="onFarmerSelectChange()" required class="w-full px-3.5 py-2.5 border rounded-2xl text-sm font-black">
-              <option value="">-- খামারি নির্বাচন করুন --</option>
+              <option value="">-- অথবা তালিকা থেকে খামারি নির্বাচন করুন --</option>
               {% for f in farmers %}
                 <option value="{{ f.id }}" data-due="{{ f.total_due }}" {{ 'selected' if selected_farmer and selected_farmer.id == f.id else '' }}>
                   {{ f.name }} ({{ f.phone }})
@@ -120,6 +125,13 @@
           <div id="checkoutScanMsg" class="mt-2.5 text-center text-xs text-orangeBrand-200 font-bold bg-white/5 py-1.5 px-3 rounded-xl">
             📷 পণ্যের প্যাকেটের কিউআর কোড (SKU) ক্যামেরার সামনে ধরুন
           </div>
+        </div>
+
+        <!-- Live Instant Search Bar for Products -->
+        <div class="relative">
+          <input type="text" id="dispatchProductSearch" autocomplete="off"
+            placeholder="🔍 দ্রুত খাদ্য বা ঔষধ খুঁজুন (নাম বা SKU নম্বর লিখলেই সাথে সাথে নিচে রেজাল্ট চলে আসবে)..."
+            class="w-full px-3.5 py-2.5 border rounded-2xl text-xs font-semibold focus:ring-2 focus:ring-crimson-500 focus:outline-none bg-orangeBrand-50/40">
         </div>
 
         <div class="flex flex-col sm:flex-row items-center gap-2">
@@ -552,5 +564,36 @@
       stock: {{ initial_product.stock }}
     }, 1);
   {% endif %}
+
+  // Initialize Live Dropdown Search for Farmer and Product
+  document.addEventListener("DOMContentLoaded", () => {
+    const farmerInput = document.getElementById('dispatchFarmerSearch');
+    if (farmerInput) {
+      attachLiveSearch(farmerInput, {
+        type: 'farmers',
+        onSelect: (farmer) => {
+          const sel = document.getElementById('farmerSelect');
+          sel.value = farmer.id;
+          farmerInput.value = `${farmer.name} (${farmer.phone})`;
+          onFarmerSelectChange();
+          showToast(`খামারি "${farmer.name}" নির্বাচিত হয়েছে`, 'success');
+        }
+      });
+    }
+
+    const prodInput = document.getElementById('dispatchProductSearch');
+    if (prodInput) {
+      attachLiveSearch(prodInput, {
+        type: 'inventory',
+        onSelect: (prod) => {
+          const sel = document.getElementById('quickProductSelect');
+          sel.value = prod.id;
+          prodInput.value = `${prod.name_bn || prod.name} (৳${prod.sell_price})`;
+          document.getElementById('quickQty').focus();
+          showToast(`"${prod.name_bn || prod.name}" নির্বাচিত হয়েছে। পরিমাণ দিয়ে "যুক্ত করুন" চাপুন।`, 'info');
+        }
+      });
+    }
+  });
 </script>
 {% endblock %}

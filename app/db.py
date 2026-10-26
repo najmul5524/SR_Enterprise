@@ -594,6 +594,22 @@ class DatabaseManager:
 
         return farmer_id
 
+    def delete_farmer(self, farmer_id: str) -> bool:
+        """
+        Deletes a farmer record from local database and Firestore.
+        """
+        with self._get_connection() as conn:
+            cur = conn.cursor()
+            cur.execute("DELETE FROM farmers WHERE id = ?", (farmer_id,))
+            conn.commit()
+
+        if self.is_firebase_active():
+            try:
+                _firestore_client.collection("farmers").document(farmer_id).delete()
+            except Exception as e:
+                print(f"[FIRESTORE FARMER DELETE ERROR] {e}")
+        return True
+
     def update_farmer_due(self, farmer_id: str, delta_amount: float):
         with self._get_connection() as conn:
             cur = conn.cursor()

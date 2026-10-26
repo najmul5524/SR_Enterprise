@@ -24,12 +24,13 @@
     </div>
   </div>
 
-  <!-- Search Filter Bar -->
-  <div class="bg-white p-4 rounded-3xl border border-orange-100 shadow-sm">
-    <form method="GET" action="/admin/invoices" class="flex items-center gap-2">
-      <input type="text" name="q" value="{{ search_query }}" placeholder="চালান নং বা খামারির নাম দিয়ে খুঁজুন..."
+  <!-- Search Filter Bar with Live Dropdown -->
+  <div class="relative bg-white p-4 rounded-3xl border border-orange-100 shadow-sm">
+    <div class="flex items-center gap-2">
+      <input type="text" name="q" id="invoiceSearchInput" value="{{ search_query }}" data-live-search="invoices" autocomplete="off"
+        placeholder="চালান নং বা খামারির নাম লিখলেই সাথে সাথে নিচে ড্রপডাউন চলে আসবে..."
         class="flex-1 px-4 py-2.5 border rounded-2xl text-xs font-medium focus:ring-2 focus:ring-crimson-500 focus:outline-none">
-      <button type="submit" class="px-5 py-2.5 bg-maroon-900 hover:bg-black text-white text-xs font-black rounded-2xl transition touch-press">
+      <button type="button" onclick="document.getElementById('invoiceSearchInput').dispatchEvent(new Event('input'))" class="px-5 py-2.5 bg-maroon-900 hover:bg-black text-white text-xs font-black rounded-2xl transition touch-press">
         🔍 খুঁজুন
       </button>
       {% if search_query %}
@@ -37,7 +38,7 @@
         ক্লিয়ার
       </a>
       {% endif %}
-    </form>
+    </div>
   </div>
 
   <!-- INVOICES TABLE -->

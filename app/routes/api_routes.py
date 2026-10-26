@@ -67,6 +67,72 @@ async def search_inventory(q: str = Query("")):
         results = products[:20]
     return JSONResponse({"status": "success", "data": results})
 
+@router.get("/farmers/search")
+async def search_farmers(q: str = Query("")):
+    farmers = db.get_farmers()
+    term = q.strip().lower()
+    if term:
+        results = [
+            f for f in farmers
+            if term in f.get("name", "").lower()
+            or term in f.get("phone", "").lower()
+            or term in f.get("shed_name", "").lower()
+            or term in f.get("address", "").lower()
+        ]
+    else:
+        results = farmers[:20]
+    return JSONResponse({"status": "success", "data": results})
+
+@router.get("/batches/search")
+async def search_batches(q: str = Query("")):
+    batches = db.get_batches()
+    term = q.strip().lower()
+    if term:
+        results = [
+            b for b in batches
+            if term in b.get("batch_no", "").lower()
+            or term in b.get("farmer_name", "").lower()
+            or term in b.get("bird_type", "").lower()
+        ]
+    else:
+        results = batches[:20]
+    return JSONResponse({"status": "success", "data": results})
+
+@router.get("/invoices/search")
+async def search_invoices(q: str = Query("")):
+    invoices = db.get_invoices(limit=100)
+    term = q.strip().lower()
+    if term:
+        results = [
+            inv for inv in invoices
+            if term in inv.get("invoice_no", "").lower()
+            or term in inv.get("farmer_name", "").lower()
+        ]
+    else:
+        results = invoices[:20]
+    return JSONResponse({"status": "success", "data": results})
+
+@router.get("/global/search")
+async def global_search(q: str = Query("")):
+    term = q.strip().lower()
+    if not term:
+        return JSONResponse({"status": "success", "data": {"products": [], "farmers": [], "batches": [], "invoices": []}})
+    
+    products = [p for p in db.get_products() if term in p.get("name_bn", "").lower() or term in p.get("sku", "").lower()][:5]
+    farmers = [f for f in db.get_farmers() if term in f.get("name", "").lower() or term in f.get("phone", "").lower()][:5]
+    batches = [b for b in db.get_batches() if term in b.get("batch_no", "").lower() or term in b.get("farmer_name", "").lower()][:5]
+    invoices = [inv for inv in db.get_invoices(limit=50) if term in inv.get("invoice_no", "").lower() or term in inv.get("farmer_name", "").lower()][:5]
+    
+    return JSONResponse({
+        "status": "success",
+        "data": {
+            "products": products,
+            "farmers": farmers,
+            "batches": batches,
+            "invoices": invoices
+        }
+    })
+
 @router.get("/farmer/{farmer_id}/active-batch")
 async def get_farmer_active_batch(farmer_id: str):
     batches = db.get_batches(status="active", farmer_id=farmer_id)
