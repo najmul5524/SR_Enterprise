@@ -859,12 +859,17 @@ class DatabaseManager:
     def get_invoices(self, farmer_id: Optional[str] = None, limit: int = 50) -> List[Dict[str, Any]]:
         with self._get_connection() as conn:
             cur = conn.cursor()
-            query = "SELECT * FROM invoices WHERE 1=1"
+            query = """
+            SELECT invoices.*, batches.batch_no, batches.bird_type 
+            FROM invoices 
+            LEFT JOIN batches ON invoices.batch_id = batches.id 
+            WHERE 1=1
+            """
             params = []
             if farmer_id:
-                query += " AND farmer_id = ?"
+                query += " AND invoices.farmer_id = ?"
                 params.append(farmer_id)
-            query += " ORDER BY invoice_date DESC, created_at DESC LIMIT ?"
+            query += " ORDER BY invoices.invoice_date DESC, invoices.created_at DESC LIMIT ?"
             params.append(limit)
             cur.execute(query, params)
             invoices = []
@@ -880,7 +885,12 @@ class DatabaseManager:
     def get_invoice_by_id(self, invoice_id: str) -> Optional[Dict[str, Any]]:
         with self._get_connection() as conn:
             cur = conn.cursor()
-            cur.execute("SELECT * FROM invoices WHERE id = ? OR invoice_no = ?", (invoice_id, invoice_id))
+            cur.execute("""
+            SELECT invoices.*, batches.batch_no, batches.bird_type 
+            FROM invoices 
+            LEFT JOIN batches ON invoices.batch_id = batches.id 
+            WHERE invoices.id = ? OR invoices.invoice_no = ?
+            """, (invoice_id, invoice_id))
             row = cur.fetchone()
             if not row:
                 return None
@@ -935,7 +945,20 @@ class DatabaseManager:
                                 (qty, now_str, prod_id, prod_id))
 
                 if batch_id:
-                    log_type = "feed" if "খাদ্য" in category or "Feed" in category else "medicine"
+                    cat_lower = (category or "").lower()
+                    if any(w in cat_lower for w in ["খাদ্য", "feed", "ফিড"]):
+                        log_type = "feed"
+                        cur.execute("UPDATE batches SET total_feed_bags = total_feed_bags + ?, total_feed_cost = total_feed_cost + ?, total_investment = total_investment + ? WHERE id = ?",
+                                    (qty, total_line, total_line, batch_id))
+                    elif any(w in cat_lower for w in ["ঔষধ", "ভ্যাকসিন", "medicine", "med", "টনিক", "স্যালাইন"]):
+                        log_type = "medicine"
+                        cur.execute("UPDATE batches SET total_med_cost = total_med_cost + ?, total_investment = total_investment + ? WHERE id = ?",
+                                    (total_line, total_line, batch_id))
+                    else:
+                        log_type = "other"
+                        cur.execute("UPDATE batches SET total_other_cost = total_other_cost + ?, total_investment = total_investment + ? WHERE id = ?",
+                                    (total_line, total_line, batch_id))
+
                     cur.execute("""
                     INSERT INTO batch_logs (id, batch_id, farmer_id, log_type, log_date, item_id, item_name, qty, unit, unit_price, total_amount, note, created_at)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -945,12 +968,6 @@ class DatabaseManager:
                         prod_id, name, qty, it.get("unit", "বস্তা"), unit_price, total_line,
                         f"চালান #{invoice_no}", now_str
                     ))
-                    if log_type == "feed":
-                        cur.execute("UPDATE batches SET total_feed_bags = total_feed_bags + ?, total_feed_cost = total_feed_cost + ?, total_investment = total_investment + ? WHERE id = ?",
-                                    (qty, total_line, total_line, batch_id))
-                    else:
-                        cur.execute("UPDATE batches SET total_med_cost = total_med_cost + ?, total_investment = total_investment + ? WHERE id = ?",
-                                    (total_line, total_line, batch_id))
 
             # Update farmer balance by due amount
             if due_amount > 0 and farmer_id:
@@ -1176,8 +1193,11 @@ class DatabaseManager:
                     if ltype == "feed":
                         cur.execute("UPDATE batches SET total_feed_bags = total_feed_bags - ?, total_feed_cost = total_feed_cost - ?, total_investment = total_investment - ? WHERE id = ?",
                                     (lqty, lamount, lamount, batch_id))
-                    else:
+                    elif ltype == "medicine":
                         cur.execute("UPDATE batches SET total_med_cost = total_med_cost - ?, total_investment = total_investment - ? WHERE id = ?",
+                                    (lamount, lamount, batch_id))
+                    else:
+                        cur.execute("UPDATE batches SET total_other_cost = total_other_cost - ?, total_investment = total_investment - ? WHERE id = ?",
                                     (lamount, lamount, batch_id))
                 cur.execute("DELETE FROM batch_logs WHERE batch_id = ? AND note LIKE ?", (batch_id, f"%{invoice_no}%"))
 

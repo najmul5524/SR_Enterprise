@@ -337,6 +337,101 @@ async def run_tests():
         assert db.get_batch_by_id(test_batch_id) is None
         print(f"Batch {test_batch_id} successfully deleted from database!")
 
+        # --- 14. Testing Multiple Sheds per Farmer & Automatic Cost Attribution in Dispatch ---
+        print("\n--- 14. Testing Multiple Sheds per Farmer & Automatic Cost Attribution ---")
+        # Create farmer with 2 active sheds
+        f_multi_id = db.save_farmer({
+            "name": "মাল্টি-শেড খামারি",
+            "phone": "01799887766",
+            "address": "গাজীপুর সদর",
+            "shed_capacity": 4000
+        })
+
+        batch_1_id = db.save_batch({
+            "batch_no": "শেড-১ (ব্রয়লার)",
+            "farmer_id": f_multi_id,
+            "farmer_name": "মাল্টি-শেড খামারি",
+            "bird_type": "ব্রয়লার",
+            "chick_qty": 2000,
+            "chick_unit_cost": 50.0,
+            "start_date": "2026-10-26"
+        })
+
+        batch_2_id = db.save_batch({
+            "batch_no": "শেড-২ (সোনালী)",
+            "farmer_id": f_multi_id,
+            "farmer_name": "মাল্টি-শেড খামারি",
+            "bird_type": "সোনালী",
+            "chick_qty": 1500,
+            "chick_unit_cost": 40.0,
+            "start_date": "2026-10-26"
+        })
+
+        # Test API returns both sheds
+        res = await client.get(f"/api/farmer/{f_multi_id}/batches")
+        assert res.status_code == 200
+        data = res.json()
+        assert data["count"] == 2
+        batch_ids = [b["id"] for b in data["all_batches"]]
+        assert batch_1_id in batch_ids and batch_2_id in batch_ids
+        print(f"GET /api/farmer/{f_multi_id}/batches -> Status 200, Found {data['count']} sheds for farmer")
+
+        # Initial investments
+        b1_init = db.get_batch_by_id(batch_1_id)["total_investment"]
+        b2_init = db.get_batch_by_id(batch_2_id)["total_investment"]
+
+        # Create dispatch specifically for Shed-2
+        feed_items = [{
+            "id": "P001",
+            "sku": "SRE-FD-01",
+            "name_bn": "নুরিশ ব্রয়লার স্টার্টার",
+            "category": "পৌল্ট্রি খাদ্য",
+            "unit": "বস্তা (৫০ কেজি)",
+            "qty": 2,
+            "price": 3550,
+            "total": 7100
+        }]
+
+        inv_res = await client.post("/admin/dispatch/create", data={
+            "farmer_id": f_multi_id,
+            "batch_id": batch_2_id,
+            "invoice_date": "2026-10-26",
+            "items_json": json.dumps(feed_items),
+            "subtotal": 7100,
+            "discount": 0,
+            "paid_amount": 0,
+            "payment_type": "credit",
+            "note": "শেড-২ এর খাদ্য চালান"
+        }, follow_redirects=False)
+        assert inv_res.status_code == 303
+        inv_id = inv_res.headers["location"].split("/admin/invoice/")[1].split("/print")[0]
+        print(f"Created dispatch {inv_id} tied to Shed-2 (batch_2_id)")
+
+        # Verify Shed-2 cost increased automatically by 7,100
+        b2_updated = db.get_batch_by_id(batch_2_id)
+        assert b2_updated["total_feed_cost"] == 7100
+        assert b2_updated["total_feed_bags"] == 2
+        assert b2_updated["total_investment"] == b2_init + 7100
+        print(f"Shed-2 Feed Cost: ৳{b2_updated['total_feed_cost']}, Total Investment: ৳{b2_updated['total_investment']} (Successfully updated)")
+
+        # Verify Shed-1 was NOT affected
+        b1_updated = db.get_batch_by_id(batch_1_id)
+        assert b1_updated["total_feed_cost"] == 0
+        assert b1_updated["total_investment"] == b1_init
+        print("Shed-1 investment remained untouched (Accurate attribution verified)")
+
+        # Verify print memo endpoint contains batch
+        memo_res = await client.get(f"/admin/invoice/{inv_id}/print")
+        assert memo_res.status_code == 200
+        assert "শেড-২ (সোনালী)" in memo_res.text
+        print("Print memo successfully shows the selected shed/batch name!")
+
+        # Clean up test data
+        db.delete_invoice(inv_id)
+        db.delete_batch(batch_1_id)
+        db.delete_batch(batch_2_id)
+        db.delete_farmer(f_multi_id)
+
         print("\n=======================================================")
         print("ALL TESTS PASSED SUCCESSFULLY! 100% VERIFIED!")
         print("=======================================================\n")

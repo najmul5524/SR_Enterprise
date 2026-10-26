@@ -133,10 +133,18 @@ async def global_search(q: str = Query("")):
         }
     })
 
+@router.get("/farmer/{farmer_id}/batches")
 @router.get("/farmer/{farmer_id}/active-batch")
-async def get_farmer_active_batch(farmer_id: str):
-    batches = db.get_batches(status="active", farmer_id=farmer_id)
-    return JSONResponse({"status": "success", "batch": batches[0] if batches else None})
+async def get_farmer_batches(farmer_id: str):
+    all_batches = db.get_batches(farmer_id=farmer_id)
+    active_batches = [b for b in all_batches if b.get("status") == "active"]
+    return JSONResponse({
+        "status": "success",
+        "batch": active_batches[0] if active_batches else (all_batches[0] if all_batches else None),
+        "batches": active_batches,
+        "all_batches": all_batches,
+        "count": len(all_batches)
+    })
 
 @router.post("/upload")
 async def upload_image(file: UploadFile = File(...), folder: str = "general"):

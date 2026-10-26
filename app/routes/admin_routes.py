@@ -441,10 +441,13 @@ async def dispatch_page(request: Request, farmer_id: Optional[str] = None, add_i
     farmers = db.get_farmers()
     products = db.get_products()
     selected_farmer = db.get_farmer_by_id(farmer_id) if farmer_id else None
+    farmer_batches = []
     active_batch = None
     if selected_farmer:
-        batches = db.get_batches(status="active", farmer_id=selected_farmer["id"])
-        active_batch = batches[0] if batches else None
+        all_batches = db.get_batches(farmer_id=selected_farmer["id"])
+        farmer_batches = all_batches
+        active_batches = [b for b in all_batches if b.get("status") == "active"]
+        active_batch = active_batches[0] if active_batches else (all_batches[0] if all_batches else None)
 
     initial_product = db.get_product_by_id(add_item) if add_item else None
 
@@ -452,6 +455,7 @@ async def dispatch_page(request: Request, farmer_id: Optional[str] = None, add_i
         "farmers": farmers,
         "products": products,
         "selected_farmer": selected_farmer,
+        "farmer_batches": farmer_batches,
         "active_batch": active_batch,
         "initial_product": initial_product,
     })
@@ -511,11 +515,13 @@ async def print_invoice(request: Request, invoice_id: str):
         raise HTTPException(status_code=404, detail="চালান খুঁজে পাওয়া যায়নি")
 
     farmer = db.get_farmer_by_id(invoice["farmer_id"])
+    batch = db.get_batch_by_id(invoice["batch_id"]) if invoice.get("batch_id") else None
     qr_url = generate_qr_data_url(f"SRE:INV:{invoice['invoice_no']}")
 
     return render_template(request, "admin/print_memo.html", {
         "invoice": invoice,
         "farmer": farmer,
+        "batch": batch,
         "qr_url": qr_url,
     })
 

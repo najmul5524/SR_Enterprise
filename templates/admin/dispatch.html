@@ -52,10 +52,33 @@
           </div>
 
           <div>
-            <label class="block text-xs font-black text-slate-700 mb-1">শেড / ব্যাচে যুক্ত হবে (Optional)</label>
-            <input type="text" id="batchDisplay" placeholder="রানিং ব্যাচে খরচ যোগ হবে" readonly
-              class="w-full px-3.5 py-2.5 bg-stone-50 border rounded-2xl text-sm font-bold text-slate-700">
-            <input type="hidden" id="batchIdInput" name="batch_id" value="{{ active_batch.id if active_batch else '' }}">
+            <div class="flex items-center justify-between mb-1">
+              <label class="block text-xs font-black text-slate-700">
+                শেড / ব্যাচে যুক্ত হবে (খরচ যোগ হবে)
+              </label>
+              <span id="batchCountBadge" class="{{ '' if farmer_batches and farmer_batches|length > 1 else 'hidden' }} text-[10px] font-black px-2 py-0.5 rounded-full bg-orangeBrand-100 text-orangeBrand-800 border border-orangeBrand-200">
+                {{ farmer_batches|length }}টি শেড রয়েছে
+              </span>
+            </div>
+            <select id="batchSelect" name="batch_id" onchange="onBatchSelectChange()"
+              class="w-full px-3.5 py-2.5 bg-white border border-orangeBrand-200 rounded-2xl text-sm font-bold text-slate-800 focus:ring-2 focus:ring-crimson-500 focus:outline-none transition">
+              <option value="">-- কোনো নির্দিষ্ট শেড নেই (সাধারণ চালান) --</option>
+              {% for b in farmer_batches %}
+                <option value="{{ b.id }}" data-status="{{ b.status }}" data-no="{{ b.batch_no }}" data-bird="{{ b.bird_type }}" {{ 'selected' if active_batch and active_batch.id == b.id else '' }}>
+                  {{ b.batch_no }} • {{ b.bird_type }} ({{ '🟢 সক্রিয়' if b.status == 'active' else '⚪ সম্পন্ন' }}, {{ b.chick_qty }}টি বাচ্চা, শুরু: {{ b.start_date }})
+                </option>
+              {% endfor %}
+            </select>
+            <div class="mt-1 flex items-start gap-1 text-[11px] text-slate-600 font-medium">
+              <span class="text-orangeBrand-600 text-xs mt-0.5">💡</span>
+              <span id="batchNoticeText">
+                {% if active_batch %}
+                  চালানের খাদ্য/ঔষধ খরচ স্বয়ংক্রিয়ভাবে <strong>{{ active_batch.batch_no }} ({{ active_batch.bird_type }})</strong> শেডের মোট খরচে যোগ হবে।
+                {% else %}
+                  খামারি নির্বাচন করলে তার রানিং শেড/ব্যাচসমূহ এই ড্রপডাউনে প্রদর্শিত হবে।
+                {% endif %}
+              </span>
+            </div>
           </div>
         </div>
 
@@ -519,19 +542,102 @@
   async function onFarmerSelectChange() {
     const sel = document.getElementById('farmerSelect');
     const farmerId = sel.value;
-    if (!farmerId) return;
+    const batchSelect = document.getElementById('batchSelect');
+    const badge = document.getElementById('batchCountBadge');
+    const noticeText = document.getElementById('batchNoticeText');
+    const dueDisplay = document.getElementById('farmerDueDisplay');
+
+    // Update due balance display if data attribute is present
+    const selectedOpt = sel.options[sel.selectedIndex];
+    if (selectedOpt && selectedOpt.getAttribute('data-due')) {
+      const due = parseFloat(selectedOpt.getAttribute('data-due')) || 0;
+      if (dueDisplay) dueDisplay.innerText = '৳ ' + Math.round(due).toLocaleString();
+    }
+
+    if (!farmerId) {
+      if (batchSelect) batchSelect.innerHTML = '<option value="">-- প্রথমে খামারি নির্বাচন করুন --</option>';
+      if (badge) badge.classList.add('hidden');
+      if (noticeText) noticeText.innerHTML = 'খামারি নির্বাচন করলে তার রানিং শেড/ব্যাচসমূহ এই ড্রপডাউনে প্রদর্শিত হবে।';
+      return;
+    }
+
+    if (batchSelect) batchSelect.innerHTML = '<option value="">⌛ শেডসমূহ লোড হচ্ছে...</option>';
 
     try {
-      const res = await fetch(`/api/farmer/${farmerId}/active-batch`);
+      const res = await fetch(`/api/farmer/${farmerId}/batches`);
       const data = await res.json();
-      if (data.batch) {
-        document.getElementById('batchDisplay').value = data.batch.batch_no + " (" + data.batch.bird_type + ")";
-        document.getElementById('batchIdInput').value = data.batch.id;
+      
+      const allBatches = data.all_batches || [];
+      if (!batchSelect) return;
+      batchSelect.innerHTML = '';
+
+      if (allBatches.length === 0) {
+        batchSelect.innerHTML = '<option value="">-- কোনো শেড নেই (সাধারণ চালান) --</option>';
+        if (badge) badge.classList.add('hidden');
+        if (noticeText) noticeText.innerHTML = 'এই খামারির নামে কোনো শেড নিবন্ধিত নেই। চালানটি সাধারণ হিসাবে যুক্ত হবে।';
       } else {
-        document.getElementById('batchDisplay').value = "কোন রানিং শেড নেই";
-        document.getElementById('batchIdInput').value = "";
+        // First option: general / non-shed invoice
+        const defaultOpt = document.createElement('option');
+        defaultOpt.value = '';
+        defaultOpt.textContent = '-- কোনো নির্দিষ্ট শেড নেই (সাধারণ চালান) --';
+        batchSelect.appendChild(defaultOpt);
+
+        let activeCount = 0;
+        let firstActiveId = null;
+
+        allBatches.forEach(b => {
+          const opt = document.createElement('option');
+          opt.value = b.id;
+          const isActive = (b.status === 'active');
+          if (isActive) {
+            activeCount++;
+            if (!firstActiveId) firstActiveId = b.id;
+          }
+          const statusTag = isActive ? '🟢 সক্রিয়' : '⚪ সম্পন্ন';
+          opt.textContent = `${b.batch_no} • ${b.bird_type} (${statusTag}, ${b.chick_qty || 0}টি বাচ্চা, শুরু: ${b.start_date})`;
+          opt.setAttribute('data-status', b.status);
+          opt.setAttribute('data-no', b.batch_no);
+          opt.setAttribute('data-bird', b.bird_type);
+          batchSelect.appendChild(opt);
+        });
+
+        // Auto-select active batch if available
+        if (firstActiveId) {
+          batchSelect.value = firstActiveId;
+        } else if (allBatches.length === 1) {
+          batchSelect.value = allBatches[0].id;
+        }
+
+        // Show badge if multiple sheds
+        if (allBatches.length > 1) {
+          if (badge) {
+            badge.innerText = `${allBatches.length}টি শেড রয়েছে`;
+            badge.classList.remove('hidden');
+          }
+        } else {
+          if (badge) badge.classList.add('hidden');
+        }
+
+        onBatchSelectChange();
       }
-    } catch(e) {}
+    } catch(e) {
+      console.error('Error fetching farmer batches:', e);
+      if (batchSelect) batchSelect.innerHTML = '<option value="">-- কোনো নির্দিষ্ট শেড নেই (সাধারণ চালান) --</option>';
+    }
+  }
+
+  function onBatchSelectChange() {
+    const batchSelect = document.getElementById('batchSelect');
+    const noticeText = document.getElementById('batchNoticeText');
+    if (!batchSelect || !noticeText) return;
+
+    if (!batchSelect.value) {
+      noticeText.innerHTML = 'কোনো নির্দিষ্ট শেড নির্বাচন করা হয়নি (সাধারণ খামারি চালান)।';
+    } else {
+      const selectedOpt = batchSelect.options[batchSelect.selectedIndex];
+      const text = selectedOpt ? selectedOpt.textContent : '';
+      noticeText.innerHTML = `চালানের মালামাল ও মোট খরচ স্বয়ংক্রিয়ভাবে <strong>${text}</strong>-এর খরচে যুক্ত হবে।`;
+    }
   }
 
   function validateBeforeSubmit() {
@@ -548,9 +654,10 @@
     return true;
   }
 
-  {% if active_batch %}
-    document.getElementById('batchDisplay').value = "{{ active_batch.batch_no }} ({{ active_batch.bird_type }})";
-  {% endif %}
+  // Trigger initial onBatchSelectChange if batchSelect exists
+  if (document.getElementById('batchSelect')) {
+    onBatchSelectChange();
+  }
 
   {% if initial_product %}
     // Auto-add product from query param if supplied
