@@ -299,6 +299,7 @@ public class MainActivity extends Activity implements View.OnClickListener {
     }
 
     private void setupWebView() {
+        mWebView.setLayerType(View.LAYER_TYPE_HARDWARE, null);
         WebSettings settings = mWebView.getSettings();
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);

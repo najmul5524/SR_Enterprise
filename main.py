@@ -26,6 +26,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Aggressive Caching Middleware for Static Assets (Images, Icons, CSS, JS) to Speed Up Tab Transitions
+@app.middleware("http")
+async def add_cache_headers(request: Request, call_next):
+    response = await call_next(request)
+    if request.url.path.startswith("/static/"):
+        response.headers["Cache-Control"] = "public, max-age=86400, stale-while-revalidate=604800"
+    return response
+
 # Mount Static directory
 app.mount("/static", StaticFiles(directory=str(settings.BASE_DIR / "static")), name="static")
 

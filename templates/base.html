@@ -60,8 +60,8 @@
     }
   </script>
 
-  <!-- HTML5 QR Code Library for Camera Scanning -->
-  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+  <!-- HTML5 QR Code Library for Camera Scanning (Deferred to avoid blocking page paint) -->
+  <script src="https://unpkg.com/html5-qrcode" type="text/javascript" defer></script>
 
   <!-- Custom CSS & Utilities -->
   <link rel="stylesheet" href="/static/css/custom.css">
@@ -318,6 +318,47 @@
         }
       });
     });
+
+    // Instant Pre-fetch for Ultra-fast Tab Navigation (<20ms transition)
+    (function() {
+      const prefetchedUrls = new Set();
+      function prefetch(url) {
+        if (!url || prefetchedUrls.has(url)) return;
+        try {
+          const u = new URL(url, window.location.origin);
+          if (u.origin !== window.location.origin) return;
+          if (u.pathname === window.location.pathname) return;
+          if (u.pathname.includes('/logout') || u.pathname.includes('/download') || u.pathname.includes('/delete')) return;
+          prefetchedUrls.add(u.href);
+          const link = document.createElement('link');
+          link.rel = 'prefetch';
+          link.as = 'document';
+          link.href = u.href;
+          document.head.appendChild(link);
+        } catch(e) {}
+      }
+
+      // 1. Prefetch on touchstart (mobile touch) or mouseover (desktop hover)
+      document.addEventListener('touchstart', function(e) {
+        const link = e.target.closest('a');
+        if (link && link.href) prefetch(link.href);
+      }, { passive: true });
+
+      document.addEventListener('mouseover', function(e) {
+        const link = e.target.closest('a');
+        if (link && link.href) prefetch(link.href);
+      }, { passive: true });
+
+      // 2. Idle auto-prefetch for primary tabs after initial page load
+      window.addEventListener('load', function() {
+        setTimeout(function() {
+          const navLinks = document.querySelectorAll('nav a, header a');
+          navLinks.forEach(function(a) {
+            if (a.href) prefetch(a.href);
+          });
+        }, 500);
+      });
+    })();
   </script>
 </body>
 </html>
