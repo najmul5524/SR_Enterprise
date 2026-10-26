@@ -133,6 +133,7 @@
               <th class="p-3 text-right">নগদ প্রদান</th>
               <th class="p-3 text-right">বাকি (পাওনা)</th>
               <th class="p-3 text-center no-print">মেমো</th>
+              <th class="p-3 text-center no-print">বাতিল</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-slate-100">
@@ -151,6 +152,11 @@
               <td class="p-3 text-center no-print">
                 <a href="/admin/invoice/{{ inv.id }}/print" class="px-2.5 py-1 bg-stone-100 hover:bg-stone-200 rounded-lg font-black text-[10px] text-slate-800 touch-press">
                   মেমো ➔
+                </a>
+              </td>
+              <td class="p-3 text-center no-print">
+                <a href="/admin/invoice/delete/{{ inv.id }}?redirect_to=/admin/farmer/{{ farmer.id }}" onclick="return confirm('সতর্কতা: চালানটি মুছে ফেললে পণ্যের স্টক ইনভেন্টরিতে ফেরত যাবে এবং বাকি পাওনা কমে যাবে। নিশ্চিত?')" class="p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg font-black text-[11px] transition" title="চালান মুছুন">
+                  🗑️
                 </a>
               </td>
             </tr>
@@ -177,6 +183,7 @@
               <th class="p-3">ট্রানজেকশন আইডি / নোট</th>
               <th class="p-3 text-right">আদায়কৃত টাকা</th>
               <th class="p-3 text-center">ভাউচার স্লিপ</th>
+              <th class="p-3 text-center no-print">বাতিল</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-slate-100">
@@ -197,6 +204,11 @@
                 {% else %}
                   <span class="text-slate-400 text-[10px]">—</span>
                 {% endif %}
+              </td>
+              <td class="p-3 text-center no-print">
+                <a href="/admin/payments/delete/{{ p.id }}?redirect_to=/admin/farmer/{{ farmer.id }}" onclick="return confirm('পেমেন্টটি মুছে ফেললে খামারির বাকি পাওনা পূর্বের অবস্থায় (৳{{ p.amount }} বেড়ে) ফিরে যাবে। নিশ্চিত?')" class="p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg font-black text-[11px] transition" title="পেমেন্ট মুছুন">
+                  🗑️
+                </a>
               </td>
             </tr>
             {% endfor %}

@@ -438,6 +438,74 @@ async def print_invoice(request: Request, invoice_id: str):
         "qr_url": qr_url,
     })
 
+@router.get("/invoices", response_class=HTMLResponse)
+async def invoices_list_page(request: Request, q: Optional[str] = None):
+    invoices = db.get_invoices(limit=100)
+    if q:
+        q_clean = q.strip().lower()
+        invoices = [inv for inv in invoices if q_clean in inv.get("invoice_no", "").lower() or q_clean in inv.get("farmer_name", "").lower()]
+    return render_template(request, "admin/invoices.html", {
+        "invoices": invoices,
+        "search_query": q or ""
+    })
+
+@router.post("/invoice/update")
+async def update_invoice_route(
+    invoice_id: str = Form(...),
+    invoice_date: str = Form(...),
+    payment_type: str = Form("credit"),
+    discount: float = Form(0),
+    paid_amount: float = Form(0),
+    note: Optional[str] = Form(""),
+    redirect_to: Optional[str] = Form(None)
+):
+    inv = db.get_invoice_by_id(invoice_id)
+    if inv:
+        subtotal = float(inv.get("subtotal", 0))
+        db.update_invoice(invoice_id, {
+            "invoice_date": invoice_date,
+            "payment_type": payment_type,
+            "subtotal": subtotal,
+            "discount": discount,
+            "net_total": subtotal - discount,
+            "paid_amount": paid_amount,
+            "note": note or ""
+        })
+    return RedirectResponse(url=redirect_to or "/admin/invoices", status_code=303)
+
+@router.get("/invoice/delete/{invoice_id}")
+async def delete_invoice_route(invoice_id: str, redirect_to: Optional[str] = None):
+    db.delete_invoice(invoice_id)
+    return RedirectResponse(url=redirect_to or "/admin/invoices", status_code=303)
+
+@router.post("/batch/log/update")
+async def update_batch_log_route(
+    log_id: str = Form(...),
+    batch_id: str = Form(...),
+    log_date: str = Form(...),
+    log_type: str = Form(...),
+    item_name: str = Form(...),
+    qty: float = Form(0),
+    unit: str = Form(""),
+    unit_price: float = Form(0),
+    note: Optional[str] = Form("")
+):
+    db.update_batch_log(log_id, {
+        "log_date": log_date,
+        "log_type": log_type,
+        "item_name": item_name,
+        "qty": qty,
+        "unit": unit,
+        "unit_price": unit_price,
+        "note": note or ""
+    })
+    return RedirectResponse(url=f"/admin/batch/{batch_id}", status_code=303)
+
+@router.get("/batch/log/delete/{log_id}")
+async def delete_batch_log_route(log_id: str, batch_id: str):
+    db.delete_batch_log(log_id)
+    return RedirectResponse(url=f"/admin/batch/{batch_id}", status_code=303)
+
 # ==================== PAYMENTS ====================
 @router.get("/payments", response_class=HTMLResponse)
 async def payments_page(request: Request, farmer_id: Optional[str] = None):
@@ -485,6 +553,30 @@ async def record_payment(
     }
     db.record_payment(payment_data)
     return RedirectResponse(url=f"/admin/farmer/{farmer['id']}", status_code=303)
+
+@router.post("/payments/update")
+async def update_payment_route(
+    payment_id: str = Form(...),
+    amount: float = Form(...),
+    payment_method: str = Form("cash"),
+    transaction_ref: Optional[str] = Form(""),
+    payment_date: str = Form(...),
+    note: Optional[str] = Form(""),
+    redirect_to: Optional[str] = Form(None)
+):
+    db.update_payment(payment_id, {
+        "amount": amount,
+        "payment_method": payment_method,
+        "transaction_ref": transaction_ref or "",
+        "payment_date": payment_date,
+        "note": note or ""
+    })
+    return RedirectResponse(url=redirect_to or "/admin/payments", status_code=303)
+
+@router.get("/payments/delete/{payment_id}")
+async def delete_payment_route(payment_id: str, redirect_to: Optional[str] = None):
+    db.delete_payment(payment_id)
+    return RedirectResponse(url=redirect_to or "/admin/payments", status_code=303)
 
 # ==================== FEED REQUESTS ====================
 @router.get("/feed-requests", response_class=HTMLResponse)

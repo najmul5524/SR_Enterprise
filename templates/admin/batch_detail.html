@@ -149,6 +149,7 @@
             <th class="p-3 text-right">দর (৳)</th>
             <th class="p-3 text-right">মোট খরচ (৳)</th>
             <th class="p-3">মন্তব্য / নোট</th>
+            <th class="p-3 text-center">অ্যাকশন</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-slate-100">
@@ -179,6 +180,16 @@
               {% endif %}
             </td>
             <td class="p-3 text-slate-500 font-medium">{{ log.note or '—' }}</td>
+            <td class="p-3 text-center whitespace-nowrap">
+              <div class="inline-flex items-center gap-1.5">
+                <button type="button" onclick='openEditLogModal({{ log | tojson | safe }})' class="p-1.5 bg-orangeBrand-50 hover:bg-orangeBrand-100 text-orangeBrand-800 rounded-lg font-black text-[11px] transition" title="সম্পাদনা">
+                  ✏️
+                </button>
+                <a href="/admin/batch/log/delete/{{ log.id }}?batch_id={{ batch.id }}" onclick="return confirm('এই খরচ এন্ট্রিটি মুছে ফেলতে চান? শেডের মোট বিনিয়োগ সমন্বয় হবে।')" class="p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg font-black text-[11px] transition" title="মুছে ফেলুন">
+                  🗑️
+                </a>
+              </div>
+            </td>
           </tr>
           {% endfor %}
         </tbody>
@@ -337,6 +348,71 @@
   </div>
 </div>
 
+<!-- EDIT EXPENSE / LOG MODAL -->
+<div id="editLogModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+  <div class="bg-white w-full max-w-md rounded-3xl shadow-2xl border border-orange-100 overflow-hidden max-h-[90vh] flex flex-col">
+    <div class="p-5 bg-gradient-to-r from-maroon-900 via-crimson-700 to-orangeBrand-600 text-white flex items-center justify-between">
+      <h3 class="font-black text-base">খরচ এন্ট্রি সম্পাদনা (Edit Expense)</h3>
+      <button onclick="closeEditLogModal()" class="text-white/80 hover:text-white text-xl">✕</button>
+    </div>
+
+    <form action="/admin/batch/log/update" method="POST" class="p-5 space-y-4 overflow-y-auto">
+      <input type="hidden" id="editLogId" name="log_id">
+      <input type="hidden" name="batch_id" value="{{ batch.id }}">
+
+      <div>
+        <label class="block text-xs font-black text-slate-700 mb-1">তারিখ *</label>
+        <input type="date" id="editLogDate" name="log_date" required class="w-full px-3.5 py-2.5 border rounded-2xl text-xs font-medium">
+      </div>
+
+      <div>
+        <label class="block text-xs font-black text-slate-700 mb-1">লগ টাইপ / ধরণ *</label>
+        <select id="editLogType" name="log_type" required class="w-full px-3.5 py-2.5 border rounded-2xl text-xs font-semibold">
+          <option value="feed">🥣 খাদ্য (ফিড) সরবরাহ</option>
+          <option value="medicine">💊 ঔষধ ও ভ্যাকসিন</option>
+          <option value="mortality">💀 মুরগী মৃত্যু (মর্টালিটি)</option>
+          <option value="chick">🐣 বাচ্চা সরবরাহ</option>
+          <option value="other_expense">📦 অন্যান্য খরচ</option>
+        </select>
+      </div>
+
+      <div>
+        <label class="block text-xs font-black text-slate-700 mb-1">আইটেমের নাম *</label>
+        <input type="text" id="editItemName" name="item_name" required class="w-full px-3.5 py-2.5 border rounded-2xl text-xs font-bold">
+      </div>
+
+      <div class="grid grid-cols-3 gap-2">
+        <div>
+          <label class="block text-xs font-black text-slate-700 mb-1">পরিমাণ *</label>
+          <input type="number" step="0.5" id="editLogQty" name="qty" required class="w-full px-3 py-2 border rounded-xl text-xs font-black text-center">
+        </div>
+        <div>
+          <label class="block text-xs font-black text-slate-700 mb-1">একক *</label>
+          <input type="text" id="editLogUnit" name="unit" required class="w-full px-3 py-2 border rounded-xl text-xs text-center font-medium">
+        </div>
+        <div>
+          <label class="block text-xs font-black text-slate-700 mb-1">দর (টাকা)</label>
+          <input type="number" step="0.5" id="editLogUnitPrice" name="unit_price" class="w-full px-3 py-2 border rounded-xl text-xs font-black text-center">
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-xs font-black text-slate-700 mb-1">মন্তব্য / নোট</label>
+        <input type="text" id="editLogNote" name="note" class="w-full px-3.5 py-2.5 border rounded-2xl text-xs">
+      </div>
+
+      <div class="flex items-center justify-end gap-2 pt-3 border-t">
+        <button type="button" onclick="closeEditLogModal()" class="px-4 py-2.5 border rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50">
+          বাতিল
+        </button>
+        <button type="submit" class="px-5 py-2.5 bg-gradient-to-r from-crimson-600 to-orangeBrand-500 hover:opacity-95 text-white rounded-xl text-xs font-black shadow-md touch-press">
+          আপডেট করুন ➔
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <script>
   function openLogModal() {
     document.getElementById('logModal').classList.remove('hidden');
@@ -387,6 +463,22 @@
     document.getElementById('previewTotalSale').innerText = formatTaka(totalSale);
     document.getElementById('previewDealerRecovery').innerText = formatTaka(dealerRecovery);
     document.getElementById('previewFarmerProfit').innerText = formatTaka(farmerProfit);
+  }
+
+  function openEditLogModal(log) {
+    document.getElementById('editLogId').value = log.id;
+    document.getElementById('editLogDate').value = log.log_date;
+    document.getElementById('editLogType').value = log.log_type || 'feed';
+    document.getElementById('editItemName').value = log.item_name;
+    document.getElementById('editLogQty').value = log.qty || 1;
+    document.getElementById('editLogUnit').value = log.unit || 'বস্তা';
+    document.getElementById('editLogUnitPrice').value = log.unit_price || 0;
+    document.getElementById('editLogNote').value = log.note || '';
+    document.getElementById('editLogModal').classList.remove('hidden');
+  }
+
+  function closeEditLogModal() {
+    document.getElementById('editLogModal').classList.add('hidden');
   }
 </script>
 {% endblock %}

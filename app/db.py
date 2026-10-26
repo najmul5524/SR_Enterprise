@@ -986,6 +986,289 @@ class DatabaseManager:
 
         return payment_id
 
+    def get_payment_by_id(self, payment_id: str) -> Optional[Dict[str, Any]]:
+        with self._get_connection() as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT * FROM payments WHERE id = ? OR receipt_no = ?", (payment_id, payment_id))
+            row = cur.fetchone()
+            return dict(row) if row else None
+
+    def update_payment(self, payment_id: str, data: Dict[str, Any]) -> bool:
+        with self._get_connection() as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT * FROM payments WHERE id = ?", (payment_id,))
+            old = cur.fetchone()
+            if not old:
+                return False
+            old_payment = dict(old)
+            old_amount = float(old_payment.get("amount", 0))
+            farmer_id = old_payment.get("farmer_id")
+
+            new_amount = float(data.get("amount", old_amount))
+            delta = new_amount - old_amount
+
+            cur.execute("""
+            UPDATE payments SET
+                amount = ?,
+                payment_date = ?,
+                payment_method = ?,
+                transaction_ref = ?,
+                note = ?
+            WHERE id = ?
+            """, (
+                new_amount,
+                data.get("payment_date", old_payment.get("payment_date")),
+                data.get("payment_method", old_payment.get("payment_method")),
+                data.get("transaction_ref", old_payment.get("transaction_ref", "")),
+                data.get("note", old_payment.get("note", "")),
+                payment_id
+            ))
+
+            # Adjust farmer's due (if paid amount increases, due decreases; if paid decreases, due increases)
+            if delta != 0 and farmer_id:
+                cur.execute("UPDATE farmers SET total_due = total_due - ? WHERE id = ?", (delta, farmer_id))
+
+            conn.commit()
+
+        if self.is_firebase_active():
+            try:
+                _firestore_client.collection("payments").document(payment_id).set(data, merge=True)
+            except Exception as e:
+                print(f"[FIRESTORE PAYMENT UPDATE ERROR] {e}")
+        return True
+
+    def delete_payment(self, payment_id: str) -> bool:
+        with self._get_connection() as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT * FROM payments WHERE id = ?", (payment_id,))
+            row = cur.fetchone()
+            if not row:
+                return False
+            payment = dict(row)
+            farmer_id = payment.get("farmer_id")
+            amount = float(payment.get("amount", 0))
+
+            cur.execute("DELETE FROM payments WHERE id = ?", (payment_id,))
+
+            # Add back amount to farmer's total due
+            if farmer_id and amount > 0:
+                cur.execute("UPDATE farmers SET total_due = total_due + ? WHERE id = ?", (amount, farmer_id))
+
+            conn.commit()
+
+        if self.is_firebase_active():
+            try:
+                _firestore_client.collection("payments").document(payment_id).delete()
+            except Exception as e:
+                print(f"[FIRESTORE PAYMENT DELETE ERROR] {e}")
+        return True
+
+    def update_invoice(self, invoice_id: str, data: Dict[str, Any]) -> bool:
+        with self._get_connection() as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT * FROM invoices WHERE id = ?", (invoice_id,))
+            row = cur.fetchone()
+            if not row:
+                return False
+            old_inv = dict(row)
+            farmer_id = old_inv.get("farmer_id")
+            old_due = float(old_inv.get("due_amount", 0))
+
+            subtotal = float(data.get("subtotal", old_inv.get("subtotal", 0)))
+            discount = float(data.get("discount", old_inv.get("discount", 0)))
+            net_total = float(data.get("net_total", subtotal - discount))
+            paid_amount = float(data.get("paid_amount", old_inv.get("paid_amount", 0)))
+            new_due = max(0.0, net_total - paid_amount)
+            delta_due = new_due - old_due
+
+            cur.execute("""
+            UPDATE invoices SET
+                invoice_date = ?,
+                payment_type = ?,
+                discount = ?,
+                net_total = ?,
+                paid_amount = ?,
+                due_amount = ?,
+                note = ?
+            WHERE id = ?
+            """, (
+                data.get("invoice_date", old_inv.get("invoice_date")),
+                data.get("payment_type", old_inv.get("payment_type", "credit")),
+                discount, net_total, paid_amount, new_due,
+                data.get("note", old_inv.get("note", "")),
+                invoice_id
+            ))
+
+            if delta_due != 0 and farmer_id:
+                cur.execute("UPDATE farmers SET total_due = total_due + ? WHERE id = ?", (delta_due, farmer_id))
+
+            conn.commit()
+
+        if self.is_firebase_active():
+            try:
+                _firestore_client.collection("invoices").document(invoice_id).set(data, merge=True)
+            except Exception as e:
+                print(f"[FIRESTORE INVOICE UPDATE ERROR] {e}")
+        return True
+
+    def delete_invoice(self, invoice_id: str) -> bool:
+        with self._get_connection() as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT * FROM invoices WHERE id = ?", (invoice_id,))
+            row = cur.fetchone()
+            if not row:
+                return False
+            invoice = dict(row)
+            farmer_id = invoice.get("farmer_id")
+            due_amount = float(invoice.get("due_amount", 0))
+            batch_id = invoice.get("batch_id")
+            invoice_no = invoice.get("invoice_no")
+
+            # Restore product inventory stock
+            try:
+                items = json.loads(invoice.get("items_json", "[]"))
+                now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                for it in items:
+                    prod_id = it.get("product_id") or it.get("id")
+                    qty = float(it.get("qty", 0))
+                    if prod_id and qty > 0:
+                        cur.execute("UPDATE products SET stock = stock + ?, updated_at = ? WHERE id = ? OR sku = ?",
+                                    (qty, now_str, prod_id, prod_id))
+            except Exception as e:
+                print(f"Error restoring stock during invoice delete: {e}")
+
+            # Reconcile batch logs if invoice was tied to a batch
+            if batch_id and invoice_no:
+                cur.execute("SELECT * FROM batch_logs WHERE batch_id = ? AND note LIKE ?", (batch_id, f"%{invoice_no}%"))
+                for rlog in cur.fetchall():
+                    log_item = dict(rlog)
+                    lamount = float(log_item.get("total_amount", 0))
+                    lqty = float(log_item.get("qty", 0))
+                    ltype = log_item.get("log_type")
+                    if ltype == "feed":
+                        cur.execute("UPDATE batches SET total_feed_bags = total_feed_bags - ?, total_feed_cost = total_feed_cost - ?, total_investment = total_investment - ? WHERE id = ?",
+                                    (lqty, lamount, lamount, batch_id))
+                    else:
+                        cur.execute("UPDATE batches SET total_med_cost = total_med_cost - ?, total_investment = total_investment - ? WHERE id = ?",
+                                    (lamount, lamount, batch_id))
+                cur.execute("DELETE FROM batch_logs WHERE batch_id = ? AND note LIKE ?", (batch_id, f"%{invoice_no}%"))
+
+            # Deduct due amount from farmer balance
+            if farmer_id and due_amount > 0:
+                cur.execute("UPDATE farmers SET total_due = total_due - ? WHERE id = ?", (due_amount, farmer_id))
+
+            cur.execute("DELETE FROM invoices WHERE id = ?", (invoice_id,))
+            conn.commit()
+
+        if self.is_firebase_active():
+            try:
+                _firestore_client.collection("invoices").document(invoice_id).delete()
+            except Exception as e:
+                print(f"[FIRESTORE INVOICE DELETE ERROR] {e}")
+        return True
+
+    def get_batch_log_by_id(self, log_id: str) -> Optional[Dict[str, Any]]:
+        with self._get_connection() as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT * FROM batch_logs WHERE id = ?", (log_id,))
+            row = cur.fetchone()
+            return dict(row) if row else None
+
+    def update_batch_log(self, log_id: str, data: Dict[str, Any]) -> bool:
+        with self._get_connection() as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT * FROM batch_logs WHERE id = ?", (log_id,))
+            row = cur.fetchone()
+            if not row:
+                return False
+            old_log = dict(row)
+            batch_id = old_log["batch_id"]
+            old_type = old_log["log_type"]
+            old_qty = float(old_log.get("qty", 0))
+            old_amount = float(old_log.get("total_amount", 0))
+
+            new_qty = float(data.get("qty", old_qty))
+            new_unit_price = float(data.get("unit_price", old_log.get("unit_price", 0)))
+            new_type = data.get("log_type", old_type)
+            new_amount = 0.0 if new_type == "mortality" else (new_qty * new_unit_price)
+
+            delta_amount = new_amount - old_amount
+            delta_qty = new_qty - old_qty
+
+            cur.execute("""
+            UPDATE batch_logs SET
+                log_date = ?,
+                log_type = ?,
+                item_name = ?,
+                qty = ?,
+                unit = ?,
+                unit_price = ?,
+                total_amount = ?,
+                note = ?
+            WHERE id = ?
+            """, (
+                data.get("log_date", old_log["log_date"]),
+                new_type,
+                data.get("item_name", old_log["item_name"]),
+                new_qty,
+                data.get("unit", old_log["unit"]),
+                new_unit_price,
+                new_amount,
+                data.get("note", old_log.get("note", "")),
+                log_id
+            ))
+
+            if new_type == "feed" and old_type == "feed":
+                cur.execute("""
+                UPDATE batches SET
+                    total_feed_bags = total_feed_bags + ?,
+                    total_feed_cost = total_feed_cost + ?,
+                    total_investment = total_investment + ?
+                WHERE id = ?
+                """, (delta_qty, delta_amount, delta_amount, batch_id))
+            elif new_type == "medicine" and old_type == "medicine":
+                cur.execute("""
+                UPDATE batches SET
+                    total_med_cost = total_med_cost + ?,
+                    total_investment = total_investment + ?
+                WHERE id = ?
+                """, (delta_amount, delta_amount, batch_id))
+            elif new_type != "mortality":
+                cur.execute("UPDATE batches SET total_investment = total_investment + ? WHERE id = ?", (delta_amount, batch_id))
+
+            conn.commit()
+        return True
+
+    def delete_batch_log(self, log_id: str) -> bool:
+        with self._get_connection() as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT * FROM batch_logs WHERE id = ?", (log_id,))
+            row = cur.fetchone()
+            if not row:
+                return False
+            log_item = dict(row)
+            batch_id = log_item["batch_id"]
+            ltype = log_item["log_type"]
+            amount = float(log_item.get("total_amount", 0))
+            qty = float(log_item.get("qty", 0))
+
+            cur.execute("DELETE FROM batch_logs WHERE id = ?", (log_id,))
+
+            if ltype == "feed":
+                cur.execute("UPDATE batches SET total_feed_bags = total_feed_bags - ?, total_feed_cost = total_feed_cost - ?, total_investment = total_investment - ? WHERE id = ?",
+                            (qty, amount, amount, batch_id))
+            elif ltype == "medicine":
+                cur.execute("UPDATE batches SET total_med_cost = total_med_cost - ?, total_investment = total_investment - ? WHERE id = ?",
+                            (amount, amount, batch_id))
+            elif ltype == "chick":
+                cur.execute("UPDATE batches SET total_chick_cost = total_chick_cost - ?, total_investment = total_investment - ? WHERE id = ?",
+                            (amount, amount, batch_id))
+            elif ltype != "mortality":
+                cur.execute("UPDATE batches SET total_investment = total_investment - ? WHERE id = ?", (amount, batch_id))
+
+            conn.commit()
+        return True
+
     # ==================== FEED REQUESTS ====================
     def get_feed_requests(self, farmer_id: Optional[str] = None, status: Optional[str] = None) -> List[Dict[str, Any]]:
         with self._get_connection() as conn:

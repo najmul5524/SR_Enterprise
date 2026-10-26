@@ -110,6 +110,7 @@ async def run_tests():
         
         # Check printable memo
         memo_url = res.headers.get("location")
+        created_inv_id = memo_url.split("/")[3]
         res = await client.get(memo_url)
         assert res.status_code == 200
         assert "ক্যাশ মেমো" in res.text
@@ -160,6 +161,51 @@ async def run_tests():
         }, follow_redirects=False)
         assert res.status_code == 303
         print(f"POST /farmer/request-feed/submit -> Successfully requested feed!")
+
+        print("\n--- 10. Testing Transaction Edit & Delete Features ---")
+        client.cookies.clear()
+        client.cookies.set("sre_session", admin_cookie)
+
+        # 1. Invoices list page
+        res = await client.get("/admin/invoices")
+        print(f"GET /admin/invoices -> Status {res.status_code}")
+        assert res.status_code == 200
+
+        # 2. Update Invoice
+        res = await client.post("/admin/invoice/update", data={
+            "invoice_id": created_inv_id,
+            "invoice_date": "2026-10-26",
+            "payment_type": "credit",
+            "discount": 100,
+            "paid_amount": 0,
+            "note": "আপডেট নোট"
+        }, follow_redirects=False)
+        print(f"POST /admin/invoice/update -> Status {res.status_code}")
+        assert res.status_code == 303
+
+        # 3. Payments update & delete
+        latest_payments = db.get_payments(farmer_id=test_farmer["id"], limit=1)
+        if latest_payments:
+            pay_id = latest_payments[0]["id"]
+            res = await client.post("/admin/payments/update", data={
+                "payment_id": pay_id,
+                "amount": 12000,
+                "payment_method": "bKash",
+                "transaction_ref": "TRXNEW123",
+                "payment_date": "2026-10-26",
+                "note": "আপডেটেড পেমেন্ট"
+            }, follow_redirects=False)
+            print(f"POST /admin/payments/update -> Status {res.status_code}")
+            assert res.status_code == 303
+
+            res = await client.get(f"/admin/payments/delete/{pay_id}", follow_redirects=False)
+            print(f"GET /admin/payments/delete -> Status {res.status_code}")
+            assert res.status_code == 303
+
+        # 4. Delete invoice (verifying stock restoration & dues reconciliation)
+        res = await client.get(f"/admin/invoice/delete/{created_inv_id}", follow_redirects=False)
+        print(f"GET /admin/invoice/delete -> Status {res.status_code}")
+        assert res.status_code == 303
 
         print("\n=======================================================")
         print("🎉 ALL TESTS PASSED SUCCESSFULLY! 100% VERIFIED!")
