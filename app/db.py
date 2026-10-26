@@ -7,76 +7,18 @@ from datetime import datetime
 from typing import List, Dict, Any, Optional
 from app.config import settings
 
-_firestore_client = None
-_firebase_initialized = False
-
-def init_firebase_if_available():
-    global _firestore_client, _firebase_initialized
-    if _firebase_initialized:
-        return _firestore_client
-
-    creds_json = settings.FIREBASE_CREDENTIALS_JSON
-    creds_path = settings.FIREBASE_SERVICE_ACCOUNT_PATH
-
-    try:
-        import firebase_admin
-        from firebase_admin import credentials, firestore
-
-        if not firebase_admin._apps:
-            if creds_json:
-                cred_dict = json.loads(creds_json)
-                cred = credentials.Certificate(cred_dict)
-                firebase_admin.initialize_app(cred)
-                _firestore_client = firestore.client()
-                _firebase_initialized = True
-                print("[FIREBASE] Initialized Firestore with credentials JSON from environment.")
-            elif creds_path and os.path.exists(creds_path):
-                cred = credentials.Certificate(creds_path)
-                firebase_admin.initialize_app(cred)
-                _firestore_client = firestore.client()
-                _firebase_initialized = True
-                print(f"[FIREBASE] Initialized Firestore with service account file: {creds_path}")
-            else:
-                # Check Render secret files, root credentials, or service account file
-                render_secret = Path("/etc/secrets/firebase_credentials.json")
-                default_file = settings.BASE_DIR / "firebase_credentials.json"
-                if render_secret.exists():
-                    default_file = render_secret
-                elif not default_file.exists():
-                    default_file = settings.BASE_DIR / "firebase_service_account.json"
-
-                if default_file.exists():
-                    cred = credentials.Certificate(str(default_file))
-                    firebase_admin.initialize_app(cred)
-                    _firestore_client = firestore.client()
-                    _firebase_initialized = True
-                    print(f"[FIREBASE] Initialized Firestore with credentials file: {default_file}")
-                else:
-                    print("[FIREBASE] No Firebase credentials detected. Using local SQLite database engine.")
-        else:
-            _firestore_client = firestore.client()
-            _firebase_initialized = True
-    except Exception as e:
-        print(f"[FIREBASE] Initialization notice: {e}. Falling back to SQLite engine.")
-        _firestore_client = None
-        _firebase_initialized = False
-
-    return _firestore_client
-
-
 class DatabaseManager:
     """
     Unified Database Manager for SR Enterprise.
-    Supports Firebase Firestore when credentials exist, with full SQLite backup engine.
+    Uses high-speed, zero-dependency SQLite database engine.
     """
     def __init__(self):
         self.sqlite_path = str(settings.SQLITE_PATH)
         self._init_sqlite_schema()
-        self.fb = init_firebase_if_available()
         self._seed_default_data_if_empty()
 
     def is_firebase_active(self) -> bool:
-        return bool(_firebase_initialized and _firestore_client is not None)
+        return False
 
     def _get_connection(self):
         conn = sqlite3.connect(self.sqlite_path, timeout=30.0)

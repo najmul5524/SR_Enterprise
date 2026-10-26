@@ -49,23 +49,20 @@
       {% endif %}
     </div>
 
-    <!-- Firebase Firestore Status Box -->
-    <div class="bg-white p-5 rounded-3xl border {{ 'border-emerald-300 bg-emerald-50/20' if is_firebase else 'border-orange-100' }} shadow-sm space-y-3">
+    <!-- SQLite Database Status Box -->
+    <div class="bg-white p-5 rounded-3xl border border-emerald-300 bg-emerald-50/20 shadow-sm space-y-3">
       <div class="flex items-center justify-between">
-        <span class="text-xs font-black uppercase tracking-wider text-slate-500">ডাটাবেস ক্লাউড সিঙ্ক</span>
-        <span class="px-2.5 py-1 rounded-full text-xs font-black {{ 'bg-emerald-100 text-emerald-800' if is_firebase else 'bg-amberBrand-100 text-amberBrand-800' }}">
-          {{ 'Firebase Firestore সক্রিয়' if is_firebase else 'SQLite সুরক্ষিত মোড' }}
+        <span class="text-xs font-black uppercase tracking-wider text-slate-500">ডেটাবেজ ইঞ্জিন</span>
+        <span class="px-2.5 py-1 rounded-full text-xs font-black bg-emerald-100 text-emerald-800">
+          ⚡ SQLite3 ইঞ্জিন সক্রিয়
         </span>
       </div>
       <p class="text-xs text-slate-600 font-medium">
-        Firebase Console এর মাধ্যমে রিয়েলটাইম ব্যাকআপ ও সিঙ্ক হয়। credentials না থাকলে স্বয়ংক্রিয়ভাবে SQLite ইঞ্জিন কাজ করে।
+        হাই-পারফরম্যান্স স্বয়ংক্রিয় রিলেশনাল ডেটাবেজ। বাহ্যিক কোনো কনসোল ছাড়াই ১০০% স্বাধীন ও নিরাপদে ক্যাশ মেমো, স্টক ও খতিয়ান সংরক্ষণ করে।
       </p>
-      {% if not is_firebase %}
       <div class="p-3 bg-stone-50 rounded-2xl text-[11px] text-slate-600 font-mono">
-        Firebase সক্রিয় করতে:<br>
-        • FIREBASE_CREDENTIALS_JSON (সার্ভিস অ্যাকাউন্ট JSON স্ট্রিং)
+        ফাইল লোকেশন: data/sr_enterprise.sqlite3
       </div>
-      {% endif %}
     </div>
 
   </div>

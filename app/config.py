@@ -37,11 +37,7 @@ class Settings:
             except Exception as e:
                 print(f"[CONFIG] Failed to parse CLOUDINARY_URL: {e}")
     
-    # Firebase Firestore Config
-    FIREBASE_CREDENTIALS_JSON: str = os.getenv("FIREBASE_CREDENTIALS_JSON", "").strip()
-    FIREBASE_SERVICE_ACCOUNT_PATH: str = os.getenv("FIREBASE_SERVICE_ACCOUNT_PATH", "").strip()
-    
-    # Local Storage fallback
+    # Local Database & Storage
     DATA_DIR: Path = BASE_DIR / "data"
     SQLITE_PATH: Path = DATA_DIR / "sr_enterprise.sqlite3"
     UPLOADS_DIR: Path = BASE_DIR / "static" / "uploads"

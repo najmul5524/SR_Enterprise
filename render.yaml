@@ -16,7 +16,5 @@ services:
         sync: false
       - key: CLOUDINARY_API_SECRET
         sync: false
-      - key: FIREBASE_CREDENTIALS_JSON
-        sync: false
       - key: SESSION_SECRET_KEY
         generateValue: true
