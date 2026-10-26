@@ -135,7 +135,7 @@
 
         <div class="flex items-center gap-1">
           <!-- QR Code Preview & Label Print -->
-          <button onclick="showProductQR('{{ p.name_bn }}', '{{ p.sku }}', '{{ p.sell_price }}', '{{ p.qr_data_url }}', '{{ p.id }}')"
+          <button onclick="showProductQR('{{ p.name_bn }}', '{{ p.sku }}', '{{ p.sell_price }}', '{{ p.id }}')"
             class="p-2 text-slate-700 hover:text-crimson-700 hover:bg-crimson-50 rounded-xl transition touch-press" title="কিউআর কোড ও স্টিকার প্রিন্ট">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"></path></svg>
           </button>
@@ -329,11 +329,11 @@
     document.getElementById('productModal').classList.add('hidden');
   }
 
-  function showProductQR(name, sku, price, qrUrl, prodId) {
+  function showProductQR(name, sku, price, prodId) {
     document.getElementById('qrModalName').innerText = name;
     document.getElementById('qrModalSku').innerText = "SKU: " + sku;
     document.getElementById('qrModalPrice').innerText = "বিক্রয় মূল্য: " + formatTaka(price);
-    document.getElementById('qrModalImg').src = qrUrl;
+    document.getElementById('qrModalImg').src = "/admin/inventory/qr-image/" + prodId;
     document.getElementById('qrLabelPrintBtn').href = "/admin/inventory/qr-label/" + prodId;
     document.getElementById('qrModal').classList.remove('hidden');
   }

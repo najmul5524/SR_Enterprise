@@ -12,8 +12,8 @@
         ⚙️
       </div>
       <div>
-        <h1 class="text-xl font-black text-slate-900">ডিলারশিপ সেটিংস ও ক্লাউড কনফিগারেশন</h1>
-        <p class="text-xs text-slate-500 font-medium">দোকানের তথ্য, Firebase ও Cloudinary ইন্টিগ্রেশন স্ট্যাটাস</p>
+        <h1 class="text-xl font-black text-slate-900">ডিলারশিপ ও মেমো সেটিংস</h1>
+        <p class="text-xs text-slate-500 font-medium">প্রতিষ্ঠানের নাম, ঠিকানা, যোগাযোগ নাম্বার ও ক্যাশ মেমোর তথ্য</p>
       </div>
     </div>
   </div>
@@ -24,48 +24,6 @@
     <span>{{ msg }}</span>
   </div>
   {% endif %}
-
-  <!-- Cloud Services Integration Status Badges -->
-  <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-    
-    <!-- Cloudinary Status Box -->
-    <div class="bg-white p-5 rounded-3xl border {{ 'border-emerald-300 bg-emerald-50/20' if is_cloudinary else 'border-orange-100' }} shadow-sm space-y-3">
-      <div class="flex items-center justify-between">
-        <span class="text-xs font-black uppercase tracking-wider text-slate-500">ইমেজ স্টোরেজ (ব্যান্ডউইথ সেভার)</span>
-        <span class="px-2.5 py-1 rounded-full text-xs font-black {{ 'bg-emerald-100 text-emerald-800' if is_cloudinary else 'bg-orangeBrand-100 text-orangeBrand-800' }}">
-          {{ 'সক্রিয় (Cloudinary Active)' if is_cloudinary else 'লোকাল মোড (Local Fallback)' }}
-        </span>
-      </div>
-      <p class="text-xs text-slate-600 font-medium">
-        Cloudinary তে পণ্য, খামারির প্রোফাইল ও ভাউচার স্লিপ স্টোর হয় যাতে Render এর মাসিক ফ্রি ৫জিবি ব্যান্ডউইথ শেষ না হয়ে যায়।
-      </p>
-      {% if not is_cloudinary %}
-      <div class="p-3 bg-stone-50 rounded-2xl text-[11px] text-slate-600 font-mono">
-        রেন্ডারে এনভায়রনমেন্ট ভেরিয়েবল যোগ করুন:<br>
-        • CLOUDINARY_CLOUD_NAME<br>
-        • CLOUDINARY_API_KEY<br>
-        • CLOUDINARY_API_SECRET
-      </div>
-      {% endif %}
-    </div>
-
-    <!-- SQLite Database Status Box -->
-    <div class="bg-white p-5 rounded-3xl border border-emerald-300 bg-emerald-50/20 shadow-sm space-y-3">
-      <div class="flex items-center justify-between">
-        <span class="text-xs font-black uppercase tracking-wider text-slate-500">ডেটাবেজ ইঞ্জিন</span>
-        <span class="px-2.5 py-1 rounded-full text-xs font-black bg-emerald-100 text-emerald-800">
-          ⚡ SQLite3 ইঞ্জিন সক্রিয়
-        </span>
-      </div>
-      <p class="text-xs text-slate-600 font-medium">
-        হাই-পারফরম্যান্স স্বয়ংক্রিয় রিলেশনাল ডেটাবেজ। বাহ্যিক কোনো কনসোল ছাড়াই ১০০% স্বাধীন ও নিরাপদে ক্যাশ মেমো, স্টক ও খতিয়ান সংরক্ষণ করে।
-      </p>
-      <div class="p-3 bg-stone-50 rounded-2xl text-[11px] text-slate-600 font-mono">
-        ফাইল লোকেশন: data/sr_enterprise.sqlite3
-      </div>
-    </div>
-
-  </div>
 
   <!-- Shop Logo Preview Card -->
   <div class="bg-white p-5 rounded-3xl border border-orange-100 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">

@@ -24,6 +24,23 @@ def generate_qr_data_url(data: str, box_size: int = 10, border: int = 2) -> str:
     b64_str = base64.b64encode(buffer.getvalue()).decode("utf-8")
     return f"data:image/png;base64,{b64_str}"
 
+def generate_qr_image_bytes(data: str, box_size: int = 8, border: int = 2) -> bytes:
+    """
+    Generates PNG bytes for a given QR code payload (used for fast on-demand image delivery).
+    """
+    qr = qrcode.QRCode(
+        version=1,
+        error_correction=qrcode.constants.ERROR_CORRECT_M,
+        box_size=box_size,
+        border=border,
+    )
+    qr.add_data(data)
+    qr.make(fit=True)
+    img = qr.make_image(fill_color="#0f172a", back_color="#ffffff")
+    buffer = io.BytesIO()
+    img.save(buffer, format="PNG")
+    return buffer.getvalue()
+
 def generate_product_label_image(product_name: str, sku: str, price: float, qr_data: str) -> bytes:
     """
     Generates a printable sticker label containing the QR code, product name, price, and shop branding.

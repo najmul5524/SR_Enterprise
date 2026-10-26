@@ -101,7 +101,7 @@ def write_app_files():
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#4c0519">
+    android:background="#fafaf9">
 
     <WebView
         android:id="@+id/webview"
@@ -259,6 +259,7 @@ public class MainActivity extends Activity implements View.OnClickListener {
         }
 
         mWebView = (WebView) findViewById(R.id.webview);
+        mWebView.setBackgroundColor(0xFFFAFAF9);
         mProgressBar = (ProgressBar) findViewById(R.id.progress_bar);
         mErrorLayout = (LinearLayout) findViewById(R.id.error_layout);
         mBtnRetry = (Button) findViewById(R.id.btn_retry);

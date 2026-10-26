@@ -9,7 +9,7 @@ from app.config import settings
 from app.db import db
 from app.auth import require_admin, get_current_user, is_mobile_app_client
 from app.storage import upload_image_file, is_cloudinary_active
-from app.qr_service import generate_qr_data_url, generate_product_label_image
+from app.qr_service import generate_qr_data_url, generate_product_label_image, generate_qr_image_bytes
 
 router = APIRouter(prefix="/admin", dependencies=[Depends(require_admin)])
 templates = Jinja2Templates(directory=str(settings.BASE_DIR / "templates"))
@@ -66,11 +66,6 @@ async def admin_dashboard(request: Request):
 @router.get("/inventory", response_class=HTMLResponse)
 async def inventory_page(request: Request, category: str = None, low_stock: bool = False):
     products = db.get_products(category=category, low_stock_only=low_stock)
-    
-    # Pre-generate QR data URLs for products (Encoded directly with SKU number)
-    for p in products:
-        p["qr_data_url"] = generate_qr_data_url(p.get("sku") or p.get("qr_code") or p["id"])
-
     return render_template(request, "admin/inventory.html", {
         "products": products,
         "selected_category": category or "",
@@ -130,6 +125,15 @@ async def stock_adjust(product_id: str = Form(...), delta_qty: float = Form(...)
 async def delete_product(product_id: str):
     db.delete_product(product_id)
     return RedirectResponse(url="/admin/inventory", status_code=303)
+
+@router.get("/inventory/qr-image/{product_id}")
+async def product_qr_image(product_id: str):
+    product = db.get_product_by_id(product_id)
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+    qr_data = product.get("sku") or product.get("qr_code") or product["id"]
+    img_bytes = generate_qr_image_bytes(qr_data)
+    return Response(content=img_bytes, media_type="image/png")
 
 @router.get("/inventory/qr-label/{product_id}")
 async def product_qr_label(product_id: str):
