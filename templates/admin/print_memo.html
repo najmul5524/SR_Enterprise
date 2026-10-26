@@ -25,19 +25,22 @@
 
     @page {
       size: A4 portrait;
-      margin: 8mm 10mm;
+      margin: 6mm 10mm 4mm 10mm;
     }
 
     @media print {
-      .no-print {
+      .no-print, #photoModal {
         display: none !important;
       }
       html, body {
+        height: auto !important;
+        min-height: 0 !important;
+        max-height: 100% !important;
         width: 100% !important;
-        max-width: 100% !important;
-        background: #ffffff !important;
         margin: 0 !important;
         padding: 0 !important;
+        background: #ffffff !important;
+        overflow: hidden !important;
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
       }
@@ -47,10 +50,14 @@
         margin: 0 auto !important;
         width: 100% !important;
         max-width: 100% !important;
-        padding: 16px 20px !important;
-        border-radius: 12px !important;
+        padding: 12px 18px !important;
+        border-radius: 8px !important;
         page-break-inside: avoid !important;
         break-inside: avoid !important;
+        page-break-after: avoid !important;
+        break-after: avoid !important;
+        page-break-before: avoid !important;
+        break-before: avoid !important;
       }
       table {
         border-collapse: collapse !important;
@@ -115,7 +122,7 @@
   {% endif %}
 
   <!-- Cash Memo Paper Card (Formatted strictly for A4) -->
-  <div id="printableMemo" class="memo-card max-w-2xl w-full bg-white rounded-3xl shadow-xl border-2 border-stone-200 p-8 space-y-5">
+  <div id="printableMemo" class="memo-card max-w-2xl w-full bg-white rounded-3xl shadow-xl border-2 border-stone-200 p-6 sm:p-8 space-y-4">
     
     <!-- Memo Header (Maroon / Crimson & Orange) -->
     <div class="text-center border-b-2 border-rose-800 pb-4 relative">
@@ -230,7 +237,7 @@
     </div>
 
     <!-- Signatures -->
-    <div class="pt-10 grid grid-cols-2 gap-8 text-center text-xs">
+    <div class="pt-5 grid grid-cols-2 gap-8 text-center text-xs">
       <div>
         <div class="border-t border-slate-400 pt-1 font-bold text-slate-700">গ্রহীতা / খামারির স্বাক্ষর</div>
       </div>
@@ -242,7 +249,7 @@
   </div>
 
   <!-- Photo Lightbox Modal -->
-  <div id="photoModal" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-4" onclick="closePhotoModal()">
+  <div id="photoModal" class="no-print fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-4" onclick="closePhotoModal()">
     <div class="relative max-w-2xl w-full bg-white rounded-3xl overflow-hidden shadow-2xl border" onclick="event.stopPropagation()">
       <div class="p-3 bg-slate-900 text-white flex items-center justify-between">
         <span class="text-xs font-black">চালান #{{ invoice.invoice_no }} এর মূল ভাউচার ছবি</span>
