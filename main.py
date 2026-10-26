@@ -1,6 +1,6 @@
 import os
 from fastapi import FastAPI, Request
-from fastapi.responses import RedirectResponse, FileResponse
+from fastapi.responses import RedirectResponse, FileResponse, PlainTextResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -28,6 +28,23 @@ app.add_middleware(
 
 # Mount Static directory
 app.mount("/static", StaticFiles(directory=str(settings.BASE_DIR / "static")), name="static")
+
+# Ultra-lightweight Ping / Health-Check Endpoints for Cron-Jobs (Prevents Render spin-down/sleep)
+@app.get("/ping", response_class=PlainTextResponse)
+@app.head("/ping")
+@app.get("/health", response_class=PlainTextResponse)
+@app.head("/health")
+async def health_ping():
+    """
+    Ultra-lightweight endpoint responding in <1ms with ~2 bytes body.
+    Zero DB queries, zero template rendering, zero bandwidth wastage.
+    Ideal for cron-job.org / UptimeRobot / BetterUptime pings.
+    """
+    return "ok"
+
+@app.get("/health/json")
+async def health_json():
+    return JSONResponse({"status": "ok", "app": settings.APP_NAME})
 
 # Include Routers
 app.include_router(auth_router)
