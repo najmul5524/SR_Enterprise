@@ -31,11 +31,19 @@ def run_cmd(cmd_list, cwd=None):
     return res.stdout
 
 def create_icons():
-    logo_path = BASE_DIR / "static" / "img" / "logo.png"
+    logo_path = BASE_DIR / "static" / "img" / "Logo_Original.png"
+    if not logo_path.exists():
+        logo_path = BASE_DIR / "static" / "img" / "logo.png"
     if not logo_path.exists():
         raise FileNotFoundError(f"Logo not found at {logo_path}")
     
     img = Image.open(logo_path).convert("RGBA")
+    # If image is a wide banner (like 1408x768), crop around central emblem so app icon is prominent and bold
+    if img.width > img.height * 1.2:
+        side = min(img.width, int(img.height * 0.96))
+        left = (img.width - side) // 2
+        top = (img.height - side) // 2
+        img = img.crop((left, top, left + side, top + side))
     
     sizes = {
         "mipmap-mdpi": 48,
