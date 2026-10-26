@@ -1,0 +1,392 @@
+{% extends "base.html" %}
+
+{% block title %}{{ batch.batch_no }} | শেড খতিয়ান | {{ shop.shop_name if shop else "SR Enterprise" }}{% endblock %}
+
+{% block content %}
+<div class="space-y-5">
+
+  <!-- Batch Header Card -->
+  <div class="bg-white p-5 sm:p-6 rounded-3xl border border-orange-100 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-6">
+    <div class="flex items-start gap-4">
+      <div class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-maroon-800 to-crimson-600 text-white flex flex-col items-center justify-center font-black flex-shrink-0 shadow-md">
+        <span class="text-xl leading-none">{{ batch.age_days }}</span>
+        <span class="text-[9px] uppercase font-bold text-orangeBrand-100 mt-0.5">দিন বয়স</span>
+      </div>
+      <div>
+        <div class="flex items-center gap-2 flex-wrap">
+          <h1 class="text-xl sm:text-2xl font-black text-slate-900">{{ batch.batch_no }}</h1>
+          <span class="px-2.5 py-0.5 rounded-full text-xs font-black {{ 'bg-orangeBrand-100 text-orangeBrand-800 border border-orangeBrand-200' if batch.status == 'active' else 'bg-slate-200 text-slate-700' }}">
+            {{ 'চলতি শেড' if batch.status == 'active' else 'শেড সমাপনী' }}
+          </span>
+          <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-100 text-slate-700">
+            {{ batch.bird_type }}
+          </span>
+        </div>
+        <p class="text-xs text-slate-600 mt-1 font-medium">
+          👨‍🌾 খামারি: <a href="/admin/farmer/{{ batch.farmer_id }}" class="font-bold text-slate-900 hover:underline">{{ batch.farmer_name }}</a>
+          • শুরুর তারিখ: <span class="font-bold text-slate-800">{{ batch.start_date }}</span>
+        </p>
+      </div>
+    </div>
+
+    <!-- Actions & Settle Button -->
+    <div class="flex flex-wrap items-center gap-2 border-t md:border-t-0 pt-3 md:pt-0 border-orange-50">
+      {% if batch.status == 'active' %}
+        <button onclick="openLogModal()" class="px-4 py-2.5 bg-maroon-950 hover:bg-black text-white text-xs font-black rounded-xl transition touch-press">
+          ➕ খরচ / ফিড / মর্টালিটি যোগ
+        </button>
+        <button onclick="openSettleModal()" class="px-4 py-2.5 bg-gradient-to-r from-crimson-600 to-orangeBrand-500 hover:opacity-95 text-white text-xs font-black rounded-xl shadow-md transition touch-press">
+          ⚖️ শেড সমাপনী ও বিক্রয় হিসাব
+        </button>
+      {% else %}
+        <div class="p-2.5 bg-orangeBrand-50 border border-orangeBrand-200 rounded-2xl text-xs text-orangeBrand-900 font-bold">
+          ✅ এই শেডের বিক্রয় হিসাব সম্পন্ন হয়েছে
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- FINANCIAL BREAKDOWN / INVESTMENT STATS -->
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+    
+    <!-- Chick cost -->
+    <div class="bg-white p-4 sm:p-5 rounded-3xl border border-orange-100 shadow-sm">
+      <span class="text-[11px] font-bold text-slate-400 uppercase block">বাচ্চা খরচ</span>
+      <div class="text-lg font-black text-slate-900 mt-1">৳ {{ "{:,.0f}".format(batch.total_chick_cost) }}</div>
+      <div class="text-[11px] text-slate-500 mt-0.5">{{ batch.chick_qty }} টি @ ৳{{ batch.chick_unit_cost }}</div>
+    </div>
+
+    <!-- Feed cost -->
+    <div class="bg-white p-4 sm:p-5 rounded-3xl border border-orange-100 shadow-sm">
+      <span class="text-[11px] font-bold text-slate-400 uppercase block">খাদ্য (ফিড) খরচ</span>
+      <div class="text-lg font-black text-orangeBrand-700 mt-1">৳ {{ "{:,.0f}".format(batch.total_feed_cost) }}</div>
+      <div class="text-[11px] text-slate-500 mt-0.5">মোট {{ batch.total_feed_bags }} বস্তা খাদ্য</div>
+    </div>
+
+    <!-- Medicine cost -->
+    <div class="bg-white p-4 sm:p-5 rounded-3xl border border-orange-100 shadow-sm">
+      <span class="text-[11px] font-bold text-slate-400 uppercase block">ঔষধ ও ভ্যাকসিন</span>
+      <div class="text-lg font-black text-crimson-700 mt-1">৳ {{ "{:,.0f}".format(batch.total_med_cost) }}</div>
+      <div class="text-[11px] text-slate-500 mt-0.5">ভ্যাকসিন ও টনিক সহ</div>
+    </div>
+
+    <!-- Total SR Enterprise Investment -->
+    <div class="bg-gradient-to-br from-maroon-900 via-crimson-700 to-orangeBrand-600 text-white p-4 sm:p-5 rounded-3xl shadow-md">
+      <span class="text-[11px] font-bold text-orangeBrand-100 uppercase block">SR Enterprise মোট বিনিয়োগ</span>
+      <div class="text-xl font-black mt-1">৳ {{ "{:,.0f}".format(batch.total_investment) }}</div>
+      <div class="text-[11px] text-orangeBrand-200 mt-0.5">মর্টালিটি: {{ batch.mortality_count }} টি</div>
+    </div>
+
+  </div>
+
+  <!-- IF SETTLED: HARVEST REVENUE & PROFIT REPORT -->
+  {% if batch.status == 'completed' %}
+  <div class="bg-white rounded-3xl border border-orange-200 p-6 shadow-sm space-y-4">
+    <div class="flex items-center gap-2 pb-3 border-b border-orange-100">
+      <span class="text-2xl">⚖️</span>
+      <div>
+        <h2 class="font-black text-base text-slate-900">শেড সমাপনী ও লাভ-ক্ষতির চূড়ান্ত হিসাব</h2>
+        <p class="text-xs text-slate-500">বিক্রয় তারিখ: {{ batch.harvest_date }}</p>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+      <div class="p-3 bg-stone-50 rounded-2xl">
+        <span class="text-[11px] text-slate-500 font-bold">বিক্রিত মুরগী</span>
+        <div class="text-base font-black text-slate-900">{{ batch.total_birds_sold }} টি</div>
+      </div>
+      <div class="p-3 bg-stone-50 rounded-2xl">
+        <span class="text-[11px] text-slate-500 font-bold">মোট ওজন (কেজি)</span>
+        <div class="text-base font-black text-slate-900">{{ batch.total_weight_kg }} কেজি</div>
+      </div>
+      <div class="p-3 bg-stone-50 rounded-2xl">
+        <span class="text-[11px] text-slate-500 font-bold">গড় বিক্রয় দর</span>
+        <div class="text-base font-black text-slate-900">৳ {{ batch.avg_rate_per_kg }} / কেজি</div>
+      </div>
+      <div class="p-3 bg-orangeBrand-50 rounded-2xl border border-orangeBrand-200">
+        <span class="text-[11px] text-orangeBrand-800 font-bold">মোট বিক্রয়লব্ধ টাকা</span>
+        <div class="text-lg font-black text-maroon-900">৳ {{ "{:,.0f}".format(batch.total_sale_amount) }}</div>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 p-4 bg-stone-50 rounded-2xl border text-center sm:text-left">
+      <div>
+        <span class="text-xs text-slate-500 font-bold">ডিলারের বিনিয়োগ সমন্বয় (শোধ)</span>
+        <div class="text-base font-black text-slate-900">৳ {{ "{:,.0f}".format(batch.dealer_recovery) }}</div>
+      </div>
+      <div>
+        <span class="text-xs text-slate-500 font-bold">খামারের নীট লাভ</span>
+        <div class="text-base font-black text-emerald-700">৳ {{ "{:,.0f}".format(batch.net_profit) }}</div>
+      </div>
+      <div>
+        <span class="text-xs text-slate-500 font-bold">খামারির চূড়ান্ত লভ্যাংশ</span>
+        <div class="text-base font-black text-emerald-700">৳ {{ "{:,.0f}".format(batch.farmer_profit) }}</div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- BATCH TIMELINE LOGS -->
+  <div class="bg-white rounded-3xl border border-orange-100 shadow-sm overflow-hidden">
+    <div class="p-5 border-b border-orange-50 flex items-center justify-between">
+      <div class="flex items-center gap-2.5">
+        <span class="text-xl">📋</span>
+        <div>
+          <h2 class="font-black text-slate-900 text-base">শেডের প্রতিদিনের খরচের লগ ও ট্র্যাকিং</h2>
+          <p class="text-xs text-slate-500">বাচ্চা, খাদ্য ডেলিভারি, ঔষধ ও ভ্যাকসিন প্রয়োগের বিস্তারিত লগ</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-xs">
+        <thead class="bg-stone-50 text-slate-500 font-bold border-b">
+          <tr>
+            <th class="p-3">তারিখ</th>
+            <th class="p-3">ধরণ</th>
+            <th class="p-3">আইটেম / বিবরণ</th>
+            <th class="p-3 text-right">পরিমাণ</th>
+            <th class="p-3 text-right">দর (৳)</th>
+            <th class="p-3 text-right">মোট খরচ (৳)</th>
+            <th class="p-3">মন্তব্য / নোট</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          {% for log in logs %}
+          <tr class="hover:bg-orangeBrand-50/20">
+            <td class="p-3 font-medium text-slate-700 whitespace-nowrap">{{ log.log_date }}</td>
+            <td class="p-3">
+              {% if log.log_type == 'chick' %}
+                <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-amberBrand-100 text-amberBrand-800">🐣 বাচ্চা</span>
+              {% elif log.log_type == 'feed' %}
+                <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-orangeBrand-100 text-orangeBrand-800">🥣 খাদ্য</span>
+              {% elif log.log_type == 'medicine' %}
+                <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-crimson-100 text-crimson-800">💊 ঔষধ</span>
+              {% elif log.log_type == 'mortality' %}
+                <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-rose-100 text-rose-800">💀 মৃত্যু</span>
+              {% else %}
+                <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-slate-100 text-slate-800">অন্যান্য</span>
+              {% endif %}
+            </td>
+            <td class="p-3 font-bold text-slate-900">{{ log.item_name }}</td>
+            <td class="p-3 text-right font-bold text-slate-800">{{ log.qty }} {{ log.unit }}</td>
+            <td class="p-3 text-right text-slate-600 font-medium">৳ {{ "{:,.0f}".format(log.unit_price) }}</td>
+            <td class="p-3 text-right font-black {{ 'text-rose-600' if log.log_type == 'mortality' else 'text-slate-900' }}">
+              {% if log.log_type == 'mortality' %}
+                —
+              {% else %}
+                ৳ {{ "{:,.0f}".format(log.total_amount) }}
+              {% endif %}
+            </td>
+            <td class="p-3 text-slate-500 font-medium">{{ log.note or '—' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<!-- ADD EXPENSE / LOG MODAL -->
+<div id="logModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+  <div class="bg-white w-full max-w-md rounded-3xl shadow-2xl border border-orange-100 overflow-hidden max-h-[90vh] flex flex-col">
+    <div class="p-5 bg-gradient-to-r from-maroon-900 via-crimson-700 to-orangeBrand-600 text-white flex items-center justify-between">
+      <h3 class="font-black text-base">শেডে মালামাল / খরচ যুক্ত করুন</h3>
+      <button onclick="closeLogModal()" class="text-white/80 hover:text-white text-xl">✕</button>
+    </div>
+
+    <form action="/admin/batch/{{ batch.id }}/add-log" method="POST" class="p-5 space-y-4 overflow-y-auto">
+      <div>
+        <label class="block text-xs font-black text-slate-700 mb-1">লগ টাইপ / ধরণ *</label>
+        <select id="logType" name="log_type" onchange="onLogTypeChange()" required class="w-full px-3.5 py-2.5 border rounded-2xl text-sm font-semibold">
+          <option value="feed">🥣 খাদ্য (ফিড) সরবরাহ</option>
+          <option value="medicine">💊 ঔষধ ও ভ্যাকসিন</option>
+          <option value="mortality">💀 মুরগী মৃত্যু (মর্টালিটি)</option>
+          <option value="other_expense">📦 অন্যান্য খরচ (তুষ, গ্যাস, পরিবহন)</option>
+        </select>
+      </div>
+
+      <!-- Select product from inventory if feed or medicine -->
+      <div id="inventorySelectDiv">
+        <label class="block text-xs font-black text-slate-700 mb-1">স্টক ইনভেন্টরি থেকে নির্বাচন</label>
+        <select id="itemSelect" onchange="onItemSelect()" class="w-full px-3.5 py-2.5 border rounded-2xl text-sm">
+          <option value="">-- ইনভেন্টরি থেকে নির্বাচন করুন --</option>
+          {% for p in products %}
+            <option value="{{ p.id }}" data-name="{{ p.name_bn }}" data-price="{{ p.sell_price }}" data-unit="{{ p.unit }}">
+              {{ p.name_bn }} (স্টক: {{ p.stock }} {{ p.unit }}) - ৳{{ p.sell_price }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div>
+        <label class="block text-xs font-black text-slate-700 mb-1">আইটেমের নাম *</label>
+        <input type="text" id="itemName" name="item_name" placeholder="যেমন: নুরিশ ব্রয়লার গ্রোয়ার" required
+          class="w-full px-3.5 py-2.5 border rounded-2xl text-sm font-medium">
+      </div>
+      <input type="hidden" id="itemId" name="item_id">
+
+      <div class="grid grid-cols-3 gap-2">
+        <div>
+          <label class="block text-xs font-black text-slate-700 mb-1">পরিমাণ *</label>
+          <input type="number" step="0.5" id="logQty" name="qty" value="1" required
+            class="w-full px-3 py-2 border rounded-xl text-sm font-black">
+        </div>
+        <div>
+          <label class="block text-xs font-black text-slate-700 mb-1">একক (Unit)</label>
+          <input type="text" id="logUnit" name="unit" value="বস্তা"
+            class="w-full px-3 py-2 border rounded-xl text-sm">
+        </div>
+        <div>
+          <label class="block text-xs font-black text-slate-700 mb-1">দর (৳) *</label>
+          <input type="number" step="0.5" id="logUnitPrice" name="unit_price" value="0" required
+            class="w-full px-3 py-2 border rounded-xl text-sm font-bold">
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-xs font-black text-slate-700 mb-1">তারিখ *</label>
+        <input type="date" name="log_date" value="{{ now_date }}" required
+          class="w-full px-3.5 py-2.5 border rounded-2xl text-sm">
+      </div>
+
+      <div>
+        <label class="block text-xs font-black text-slate-700 mb-1">নোট / মন্তব্য</label>
+        <input type="text" name="note" placeholder="যেমন: ১০ম দিনের ভ্যাকসিন কোর্স"
+          class="w-full px-3.5 py-2.5 border rounded-2xl text-sm">
+      </div>
+
+      <div class="flex items-center justify-end gap-2 pt-3 border-t">
+        <button type="button" onclick="closeLogModal()" class="px-4 py-2.5 border rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50">
+          বাতিল
+        </button>
+        <button type="submit" class="px-5 py-2.5 bg-gradient-to-r from-crimson-600 to-orangeBrand-500 hover:opacity-95 text-white rounded-xl text-xs font-black shadow-md shadow-crimson-600/20 touch-press">
+          সংরক্ষণ করুন ➔
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- SETTLE HARVEST MODAL -->
+<div id="settleModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+  <div class="bg-white w-full max-w-lg rounded-3xl shadow-2xl border border-orange-100 overflow-hidden max-h-[90vh] flex flex-col">
+    <div class="p-5 bg-gradient-to-r from-maroon-900 via-crimson-700 to-orangeBrand-600 text-white flex items-center justify-between">
+      <h3 class="font-black text-base">⚖️ শেড সমাপনী ও মুরগী বিক্রয় হিসাব</h3>
+      <button onclick="closeSettleModal()" class="text-white/80 hover:text-white text-xl">✕</button>
+    </div>
+
+    <form action="/admin/batch/{{ batch.id }}/settle" method="POST" class="p-5 space-y-4 overflow-y-auto">
+      <div class="p-3.5 bg-orangeBrand-50 rounded-2xl border border-orangeBrand-200 text-xs text-orangeBrand-950 font-medium">
+        SR Enterprise এর মোট বিনিয়োগ খরচ: <strong class="text-maroon-900">৳ {{ "{:,.0f}".format(batch.total_investment) }}</strong><br>
+        মুরগী বিক্রির টাকা থেকে এটি প্রথমে সমন্বয় হবে এবং অবশিষ্ট টাকা খামারির লাভ হিসেবে জমা হবে।
+      </div>
+
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-black text-slate-700 mb-1">বিক্রিত মুরগী সংখ্যা *</label>
+          <input type="number" step="1" name="birds_sold" value="{{ batch.chick_qty - batch.mortality_count }}" required
+            class="w-full px-3.5 py-2.5 border rounded-2xl text-sm font-black">
+        </div>
+        <div>
+          <label class="block text-xs font-black text-slate-700 mb-1">বিক্রয়ের তারিখ *</label>
+          <input type="date" name="harvest_date" value="{{ now_date }}" required
+            class="w-full px-3.5 py-2.5 border rounded-2xl text-sm">
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-black text-slate-700 mb-1">মোট ওজন (কেজি) *</label>
+          <input type="number" step="0.5" id="harvestWeight" name="total_weight_kg" placeholder="যেমন: 2150" required oninput="calcHarvest()"
+            class="w-full px-3.5 py-2.5 border rounded-2xl text-sm font-black text-slate-900">
+        </div>
+        <div>
+          <label class="block text-xs font-black text-slate-700 mb-1">গড় দর (প্রতি কেজি ৳) *</label>
+          <input type="number" step="0.5" id="harvestRate" name="rate_per_kg" placeholder="যেমন: 175" required oninput="calcHarvest()"
+            class="w-full px-3.5 py-2.5 border rounded-2xl text-sm font-black text-crimson-600">
+        </div>
+      </div>
+
+      <!-- Real-time calculation preview -->
+      <div class="p-4 bg-stone-50 rounded-2xl border space-y-2 text-xs">
+        <div class="flex justify-between">
+          <span class="text-slate-500 font-bold">মোট মুরগী বিক্রয়:</span>
+          <span id="previewTotalSale" class="font-black text-slate-900">৳ 0</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-slate-500 font-bold">ডিলারের বিনিয়োগ সমন্বয়:</span>
+          <span id="previewDealerRecovery" class="font-black text-orangeBrand-700">৳ {{ "{:,.0f}".format(batch.total_investment) }}</span>
+        </div>
+        <div class="flex justify-between pt-2 border-t font-black text-sm">
+          <span class="text-slate-700">খামারির নীট লাভ:</span>
+          <span id="previewFarmerProfit" class="text-emerald-700">৳ 0</span>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-end gap-2 pt-3 border-t">
+        <button type="button" onclick="closeSettleModal()" class="px-4 py-2.5 border rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50">
+          বাতিল
+        </button>
+        <button type="submit" class="px-5 py-2.5 bg-gradient-to-r from-crimson-600 to-orangeBrand-500 hover:opacity-95 text-white rounded-xl text-xs font-black shadow-md touch-press">
+          শেড সম্পন্ন করুন ও খাতা আপডেট করুন ➔
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  function openLogModal() {
+    document.getElementById('logModal').classList.remove('hidden');
+  }
+  function closeLogModal() {
+    document.getElementById('logModal').classList.add('hidden');
+  }
+
+  function onLogTypeChange() {
+    const val = document.getElementById('logType').value;
+    const invDiv = document.getElementById('inventorySelectDiv');
+    if (val === 'mortality') {
+      invDiv.classList.add('hidden');
+      document.getElementById('itemName').value = "মুরগী মৃত্যু (মর্টালিটি)";
+      document.getElementById('logUnitPrice').value = "0";
+      document.getElementById('logUnit').value = "টি";
+    } else {
+      invDiv.classList.remove('hidden');
+    }
+  }
+
+  function onItemSelect() {
+    const sel = document.getElementById('itemSelect');
+    const opt = sel.options[sel.selectedIndex];
+    if (opt.value) {
+      document.getElementById('itemId').value = opt.value;
+      document.getElementById('itemName').value = opt.getAttribute('data-name');
+      document.getElementById('logUnitPrice').value = opt.getAttribute('data-price');
+      document.getElementById('logUnit').value = opt.getAttribute('data-unit');
+    }
+  }
+
+  function openSettleModal() {
+    document.getElementById('settleModal').classList.remove('hidden');
+  }
+  function closeSettleModal() {
+    document.getElementById('settleModal').classList.add('hidden');
+  }
+
+  const batchInvestment = {{ batch.total_investment }};
+  function calcHarvest() {
+    const weight = parseFloat(document.getElementById('harvestWeight').value) || 0;
+    const rate = parseFloat(document.getElementById('harvestRate').value) || 0;
+    const totalSale = weight * rate;
+    const dealerRecovery = Math.min(totalSale, batchInvestment);
+    const farmerProfit = totalSale - dealerRecovery;
+
+    document.getElementById('previewTotalSale').innerText = formatTaka(totalSale);
+    document.getElementById('previewDealerRecovery').innerText = formatTaka(dealerRecovery);
+    document.getElementById('previewFarmerProfit').innerText = formatTaka(farmerProfit);
+  }
+</script>
+{% endblock %}

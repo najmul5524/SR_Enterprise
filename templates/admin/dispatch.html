@@ -1,0 +1,551 @@
+{% extends "base.html" %}
+
+{% block title %}নতুন চালান প্রদান (POS / Invoice) | {{ shop.shop_name if shop else "SR Enterprise" }}{% endblock %}
+
+{% block content %}
+<div class="space-y-5">
+
+  <!-- Header -->
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-5 rounded-3xl border border-orange-100 shadow-sm">
+    <div>
+      <div class="flex items-center gap-2.5">
+        <span class="text-2xl">📝</span>
+        <h1 class="text-xl font-black text-slate-900">মালামাল চালান প্রদান (POS)</h1>
+      </div>
+      <p class="text-xs text-slate-500 mt-1">
+        খামারিকে খাদ্য ও ঔষধ সরবরাহ, স্টক থেকে স্বয়ংক্রিয় কর্তন ও খাতার বাকি হিসাব
+      </p>
+    </div>
+  </div>
+
+  <form id="dispatchForm" action="/admin/dispatch/create" method="POST" enctype="multipart/form-data" class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+    <input type="hidden" id="itemsJsonInput" name="items_json" value="[]">
+
+    <!-- Left 2 Cols: Farmer & Items Table -->
+    <div class="lg:col-span-2 space-y-4">
+      
+      <!-- 1. Farmer Selection Card -->
+      <div class="bg-white p-5 rounded-3xl border border-orange-100 shadow-sm space-y-4">
+        <h2 class="text-xs font-black uppercase tracking-wider text-slate-400">১. খামারি ও শেড নির্বাচন</h2>
+        
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-black text-slate-700 mb-1">খামারি বাছাই করুন *</label>
+            <select id="farmerSelect" name="farmer_id" onchange="onFarmerSelectChange()" required class="w-full px-3.5 py-2.5 border rounded-2xl text-sm font-black">
+              <option value="">-- খামারি নির্বাচন করুন --</option>
+              {% for f in farmers %}
+                <option value="{{ f.id }}" data-due="{{ f.total_due }}" {{ 'selected' if selected_farmer and selected_farmer.id == f.id else '' }}>
+                  {{ f.name }} ({{ f.phone }})
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-xs font-black text-slate-700 mb-1">শেড / ব্যাচে যুক্ত হবে (Optional)</label>
+            <input type="text" id="batchDisplay" placeholder="রানিং ব্যাচে খরচ যোগ হবে" readonly
+              class="w-full px-3.5 py-2.5 bg-stone-50 border rounded-2xl text-sm font-bold text-slate-700">
+            <input type="hidden" id="batchIdInput" name="batch_id" value="{{ active_batch.id if active_batch else '' }}">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-black text-slate-700 mb-1">চালানের তারিখ *</label>
+            <input type="date" name="invoice_date" value="{{ now_date }}" required
+              class="w-full px-3.5 py-2.5 border rounded-2xl text-sm font-medium">
+          </div>
+          <div>
+            <label class="block text-xs font-black text-slate-700 mb-1">বর্তমান বকেয়া পাওনা</label>
+            <div id="farmerDueDisplay" class="px-3.5 py-2.5 bg-crimson-50 border border-crimson-200 rounded-2xl text-sm font-black text-crimson-700">
+              ৳ {{ "{:,.0f}".format(selected_farmer.total_due) if selected_farmer else 0 }}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. Product Addition Bar -->
+      <div class="bg-white p-5 rounded-3xl border border-orange-100 shadow-sm space-y-4">
+        <div class="flex items-center justify-between flex-wrap gap-2">
+          <div class="flex items-center gap-2">
+            <h2 class="text-xs font-black uppercase tracking-wider text-slate-400">২. মালামাল (খাদ্য/ঔষধ) নির্বাচন করুন</h2>
+          </div>
+          
+          <!-- Mobile Icon Camera Toggle Button -->
+          <button type="button" id="cameraToggleBtn" onclick="toggleCheckoutCamera()"
+            class="inline-flex items-center gap-1.5 px-3.5 py-2 bg-gradient-to-r from-maroon-900 via-crimson-700 to-orangeBrand-600 hover:opacity-95 text-white rounded-2xl text-xs font-black shadow-md shadow-crimson-700/20 touch-press transition active:scale-95"
+            title="মোবাইল ক্যামেরা দিয়ে কিউআর কোড স্ক্যান করে আইটেম যোগ করুন">
+            <span class="text-base leading-none">📱</span>
+            <span id="cameraBtnLabel">ক্যামেরা স্ক্যান</span>
+          </button>
+        </div>
+
+        <!-- Embedded Mobile Camera Scanner Area (Hidden by default, won't wipe items) -->
+        <div id="checkoutScannerArea" class="hidden bg-stone-950 rounded-3xl p-4 border-2 border-crimson-500/60 shadow-xl relative overflow-hidden transition-all duration-300">
+          <div class="flex items-center justify-between pb-2.5 mb-3 border-b border-stone-800 text-white text-xs">
+            <div class="flex items-center gap-2 font-bold text-amberBrand-300">
+              <span class="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping"></span>
+              <span>মোবাইল ক্যামেরা চালু আছে (SKU স্ক্যান হচ্ছে)</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <button type="button" onclick="checkoutScanner && checkoutScanner.toggleTorch()" 
+                class="p-1.5 bg-stone-800 hover:bg-stone-700 text-amberBrand-300 rounded-xl text-xs font-bold" title="টর্চ">
+                🔦
+              </button>
+              <button type="button" onclick="stopCheckoutCamera()" 
+                class="px-3 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-black transition">
+                ✕ ক্যামেরা বন্ধ
+              </button>
+            </div>
+          </div>
+
+          <!-- Camera Stream Video Area -->
+          <div class="relative w-full max-w-xs sm:max-w-sm mx-auto rounded-2xl overflow-hidden bg-black aspect-square flex items-center justify-center border border-stone-800 shadow-inner">
+            <div id="checkout-qr-reader" class="w-full h-full"></div>
+            
+            <!-- Red/Orange Aim Reticle Overlay -->
+            <div class="absolute inset-0 pointer-events-none flex items-center justify-center">
+              <div class="w-44 h-44 sm:w-52 sm:h-52 border-2 border-orangeBrand-400/90 rounded-2xl relative flex items-center justify-center shadow-[0_0_20px_rgba(249,115,22,0.3)]">
+                <div class="w-40 sm:w-48 h-0.5 bg-gradient-to-r from-transparent via-crimson-500 to-transparent shadow-lg shadow-crimson-500 animate-pulse"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Live Scan Status Text -->
+          <div id="checkoutScanMsg" class="mt-2.5 text-center text-xs text-orangeBrand-200 font-bold bg-white/5 py-1.5 px-3 rounded-xl">
+            📷 পণ্যের প্যাকেটের কিউআর কোড (SKU) ক্যামেরার সামনে ধরুন
+          </div>
+        </div>
+
+        <div class="flex flex-col sm:flex-row items-center gap-2">
+          <select id="quickProductSelect" class="flex-1 w-full px-3.5 py-2.5 border rounded-2xl text-sm font-bold">
+            <option value="">-- খাদ্য বা ঔষধ বেছে নিন --</option>
+            {% for p in products %}
+              <option value="{{ p.id }}" data-sku="{{ p.sku }}" data-name="{{ p.name_bn }}" data-price="{{ p.sell_price }}" data-unit="{{ p.unit }}" data-cat="{{ p.category }}" data-stock="{{ p.stock }}">
+                {{ p.name_bn }} (SKU: {{ p.sku }}) — ৳{{ p.sell_price }}
+              </option>
+            {% endfor %}
+          </select>
+          <input type="number" step="1" id="quickQty" value="1" min="1" placeholder="পরিমাণ"
+            class="w-24 px-3.5 py-2.5 border rounded-2xl text-sm font-black text-center">
+          <button type="button" onclick="addItemToInvoice()"
+            class="w-full sm:w-auto px-5 py-2.5 bg-gradient-to-r from-crimson-600 to-orangeBrand-500 hover:opacity-95 text-white rounded-2xl text-xs font-black shadow-md transition touch-press">
+            ➕ যুক্ত করুন
+          </button>
+        </div>
+
+        <!-- Selected Items Table -->
+        <div class="overflow-x-auto mt-4">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-stone-50 text-slate-500 font-bold border-b">
+              <tr>
+                <th class="p-3">পণ্যের নাম</th>
+                <th class="p-3 text-center">পরিমাণ</th>
+                <th class="p-3 text-right">দর (৳)</th>
+                <th class="p-3 text-right">মোট (৳)</th>
+                <th class="p-3 text-center">বাতিল</th>
+              </tr>
+            </thead>
+            <tbody id="invoiceItemsTableBody" class="divide-y divide-slate-100">
+              <tr id="emptyRow">
+                <td colspan="5" class="p-6 text-center text-slate-400 font-medium">
+                  এখনো কোন পণ্য যুক্ত করা হয়নি। উপর থেকে খাদ্য বা ঔষধ নির্বাচন করে "যুক্ত করুন" চাপুন।
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- Right Col: Financial Summary & Final Dispatch (Maroon / Crimson Card) -->
+    <div class="space-y-4">
+      <div class="bg-white p-5 rounded-3xl border border-orange-100 shadow-sm space-y-4 sticky top-20">
+        <h2 class="text-xs font-black uppercase tracking-wider text-slate-400">৩. চালান মোট ও পেমেন্ট হিসাব</h2>
+
+        <div class="space-y-2.5 text-xs">
+          <div class="flex justify-between text-slate-600 font-medium">
+            <span>উপ-মোট (Subtotal):</span>
+            <span id="subtotalText" class="font-black text-slate-800 text-sm">৳ 0</span>
+            <input type="hidden" id="subtotalInput" name="subtotal" value="0">
+          </div>
+
+          <div class="flex items-center justify-between gap-2">
+            <span class="text-slate-600 font-medium">ডিসকাউন্ট / ছাড়:</span>
+            <input type="number" step="1" id="discountInput" name="discount" value="0" oninput="recalcTotals()"
+              class="w-24 px-2.5 py-1.5 border rounded-xl text-right font-black text-xs">
+          </div>
+
+          <div class="flex justify-between text-base font-black text-slate-900 pt-2 border-t">
+            <span>সর্বমোট বিল:</span>
+            <span id="netTotalText" class="text-crimson-600 text-lg">৳ 0</span>
+          </div>
+        </div>
+
+        <div class="pt-3 border-t space-y-3">
+          <div>
+            <label class="block text-xs font-black text-slate-700 mb-1">পেমেন্ট টাইপ</label>
+            <select name="payment_type" id="paymentType" onchange="onPaymentTypeChange()" class="w-full px-3.5 py-2.5 border rounded-2xl text-sm font-semibold">
+              <option value="credit">বাকি (শেডের খতিয়ানে যোগ হবে)</option>
+              <option value="cash">নগদ পরিশোধ</option>
+              <option value="partial">আংশিক নগদ + বাকি</option>
+            </select>
+          </div>
+
+          <div id="paidAmountDiv" class="hidden">
+            <label class="block text-xs font-black text-slate-700 mb-1">নগদ প্রদান (টাকা)</label>
+            <input type="number" step="1" id="paidAmountInput" name="paid_amount" value="0" oninput="recalcTotals()"
+              class="w-full px-3.5 py-2.5 border rounded-2xl text-sm font-black text-emerald-700">
+          </div>
+
+          <div class="p-3.5 bg-crimson-50 rounded-2xl border border-crimson-200 flex justify-between items-center text-xs">
+            <span class="font-black text-crimson-800">চালানের বাকি পাওনা:</span>
+            <span id="dueAmountText" class="text-base font-black text-crimson-700">৳ 0</span>
+          </div>
+
+          <div>
+            <label class="block text-xs font-black text-slate-700 mb-1">চালান মেমোর ছবি / ভাউচার (Cloudinary)</label>
+            <input type="file" name="receipt_file" accept="image/*"
+              class="w-full text-xs text-slate-500 file:mr-2 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-orangeBrand-50 file:text-orangeBrand-700">
+          </div>
+
+          <div>
+            <label class="block text-xs font-black text-slate-700 mb-1">মন্তব্য / চালানের নোট</label>
+            <input type="text" name="note" placeholder="যেমন: শেড নং ১ এ ডেলিভারি"
+              class="w-full px-3.5 py-2.5 border rounded-2xl text-xs">
+          </div>
+
+          <button type="submit" onclick="return validateBeforeSubmit()"
+            class="w-full py-3.5 bg-gradient-to-r from-maroon-900 via-crimson-700 to-orangeBrand-600 hover:opacity-95 text-white font-black rounded-2xl shadow-lg shadow-crimson-600/30 touch-press transition">
+            চালান কনফার্ম ও মেমো প্রিন্ট ➔
+          </button>
+        </div>
+
+      </div>
+    </div>
+
+  </form>
+
+</div>
+
+<script>
+  // Pre-loaded products catalog for instant zero-latency QR/SKU scanning
+  const productsCatalog = [
+    {% for p in products %}
+      {
+        id: {{ p.id | tojson }},
+        sku: {{ p.sku | tojson }},
+        name_bn: {{ p.name_bn | tojson }},
+        category: {{ p.category | tojson }},
+        unit: {{ p.unit | tojson }},
+        sell_price: {{ p.sell_price }},
+        stock: {{ p.stock }}
+      },
+    {% endfor %}
+  ];
+
+  let invoiceItems = [];
+  let checkoutScanner = null;
+  let lastScannedCode = '';
+  let lastScannedTime = 0;
+
+  function findProductByCode(code) {
+    if (!code) return null;
+    const clean = code.trim().toLowerCase();
+    
+    // Direct match by SKU or ID
+    let found = productsCatalog.find(p => (p.sku && p.sku.toLowerCase() === clean) || (p.id && p.id.toLowerCase() === clean));
+    if (found) return found;
+
+    // Check prefix format SRE:PRD:<id>:<sku>
+    if (clean.startsWith('sre:prd:')) {
+      const parts = clean.split(':');
+      for (let i = 2; i < parts.length; i++) {
+        const part = parts[i];
+        found = productsCatalog.find(p => (p.id && p.id.toLowerCase() === part) || (p.sku && p.sku.toLowerCase() === part));
+        if (found) return found;
+      }
+    }
+
+    return null;
+  }
+
+  function addProductToCart(prod, qty = 1) {
+    if (!prod) return;
+    const prodId = prod.id;
+    const prodSku = prod.sku || '';
+
+    // Check if already in cart - if yes, just increase quantity
+    const existing = invoiceItems.find(it => it.product_id === prodId || (prodSku && it.sku === prodSku));
+    if (existing) {
+      existing.qty += qty;
+      existing.total = existing.qty * existing.price;
+      showToast(`"${prod.name_bn}" এর পরিমাণ বাড়ানো হয়েছে (${existing.qty} ${prod.unit})`, 'success');
+    } else {
+      invoiceItems.push({
+        product_id: prodId,
+        sku: prodSku,
+        name_bn: prod.name_bn,
+        qty: qty,
+        unit: prod.unit || 'বস্তা',
+        price: parseFloat(prod.sell_price) || 0,
+        category: prod.category || '',
+        total: (parseFloat(prod.sell_price) || 0) * qty
+      });
+      showToast(`"${prod.name_bn}" সফলভাবে যুক্ত হয়েছে!`, 'success');
+    }
+
+    renderItemsTable();
+  }
+
+  async function onCheckoutQRScanned(decodedText) {
+    const now = Date.now();
+    const cleanCode = (decodedText || '').trim();
+    if (!cleanCode) return;
+
+    // Cooldown check (prevent multiple burst scans within 1.8 seconds)
+    if (cleanCode === lastScannedCode && (now - lastScannedTime) < 1800) {
+      return;
+    }
+    lastScannedCode = cleanCode;
+    lastScannedTime = now;
+
+    const statusEl = document.getElementById('checkoutScanMsg');
+    statusEl.innerText = `স্ক্যান হচ্ছে: ${cleanCode}`;
+
+    // 1. Check local catalog first (instant zero-latency response)
+    const localProd = findProductByCode(cleanCode);
+    if (localProd) {
+      playBeepSound('success');
+      addProductToCart(localProd, 1);
+      statusEl.innerHTML = `✅ <strong class="text-white">${localProd.name_bn}</strong> চালানে যোগ হয়েছে!`;
+      return;
+    }
+
+    // 2. Fallback to API lookup
+    try {
+      const res = await fetch(`/api/qr/lookup?code=${encodeURIComponent(cleanCode)}`);
+      const data = await res.json();
+      if (data.status === 'success' && data.type === 'product') {
+        playBeepSound('success');
+        addProductToCart(data.data, 1);
+        statusEl.innerHTML = `✅ <strong class="text-white">${data.data.name_bn}</strong> চালানে যোগ হয়েছে!`;
+      } else if (data.status === 'success' && data.type === 'farmer') {
+        playBeepSound('success');
+        document.getElementById('farmerSelect').value = data.data.id;
+        onFarmerSelectChange();
+        statusEl.innerHTML = `👨‍🌾 খামারি বাছাই: <strong class="text-white">${data.data.name}</strong>`;
+        showToast(`খামারি নির্বাচিত: ${data.data.name}`, 'info');
+      } else {
+        playBeepSound('error');
+        statusEl.innerText = `❌ "${cleanCode}" পণ্য পাওয়া যায়নি`;
+        showToast(`"${cleanCode}" কোডের কোন পণ্য মেলেনি!`, 'error');
+      }
+    } catch (e) {
+      console.error("Scan lookup error:", e);
+    }
+  }
+
+  async function toggleCheckoutCamera() {
+    const area = document.getElementById('checkoutScannerArea');
+    const btnLabel = document.getElementById('cameraBtnLabel');
+
+    if (area.classList.contains('hidden')) {
+      area.classList.remove('hidden');
+      btnLabel.innerText = "ক্যামেরা অফ";
+      if (!checkoutScanner) {
+        checkoutScanner = new QRScannerEngine("checkout-qr-reader", onCheckoutQRScanned);
+      }
+      await checkoutScanner.start();
+    } else {
+      stopCheckoutCamera();
+    }
+  }
+
+  async function stopCheckoutCamera() {
+    const area = document.getElementById('checkoutScannerArea');
+    const btnLabel = document.getElementById('cameraBtnLabel');
+    if (checkoutScanner) {
+      await checkoutScanner.stop();
+    }
+    area.classList.add('hidden');
+    btnLabel.innerText = "ক্যামেরা স্ক্যান";
+  }
+
+  function addItemToInvoice() {
+    const sel = document.getElementById('quickProductSelect');
+    const opt = sel.options[sel.selectedIndex];
+    if (!opt || !opt.value) {
+      showToast("দয়া করে পণ্য নির্বাচন করুন!", "warning");
+      return;
+    }
+
+    const qty = parseFloat(document.getElementById('quickQty').value) || 1;
+    const price = parseFloat(opt.getAttribute('data-price')) || 0;
+    const name = opt.getAttribute('data-name');
+    const sku = opt.getAttribute('data-sku') || '';
+    const unit = opt.getAttribute('data-unit');
+    const category = opt.getAttribute('data-cat');
+    const prodId = opt.value;
+
+    addProductToCart({
+      id: prodId,
+      sku: sku,
+      name_bn: name,
+      category: category,
+      unit: unit,
+      sell_price: price,
+      stock: 0
+    }, qty);
+
+    sel.selectedIndex = 0;
+    document.getElementById('quickQty').value = 1;
+    playBeepSound('success');
+  }
+
+  function adjustItemQty(index, delta) {
+    if (invoiceItems[index]) {
+      invoiceItems[index].qty += delta;
+      if (invoiceItems[index].qty <= 0) {
+        invoiceItems.splice(index, 1);
+      } else {
+        invoiceItems[index].total = invoiceItems[index].qty * invoiceItems[index].price;
+      }
+      renderItemsTable();
+    }
+  }
+
+  function removeItem(index) {
+    invoiceItems.splice(index, 1);
+    renderItemsTable();
+  }
+
+  function renderItemsTable() {
+    const tbody = document.getElementById('invoiceItemsTableBody');
+    if (invoiceItems.length === 0) {
+      tbody.innerHTML = `
+        <tr id="emptyRow">
+          <td colspan="5" class="p-6 text-center text-slate-400 font-medium">
+            এখনো কোন পণ্য যুক্ত করা হয়নি। ক্যামেরা দিয়ে কিউআর স্ক্যান করুন অথবা উপর থেকে নির্বাচন করুন।
+          </td>
+        </tr>
+      `;
+    } else {
+      let html = '';
+      invoiceItems.forEach((item, idx) => {
+        html += `
+          <tr class="hover:bg-orangeBrand-50/20">
+            <td class="p-3">
+              <div class="font-bold text-slate-900">${item.name_bn}</div>
+              ${item.sku ? `<div class="text-[10px] text-slate-400 font-mono">SKU: ${item.sku}</div>` : ''}
+            </td>
+            <td class="p-3 text-center">
+              <div class="inline-flex items-center gap-1.5 bg-stone-100 rounded-xl px-2 py-1">
+                <button type="button" onclick="adjustItemQty(${idx}, -1)" class="w-5 h-5 flex items-center justify-center rounded-lg bg-white text-slate-700 hover:bg-slate-200 font-black text-xs shadow-xs touch-press">-</button>
+                <span class="min-w-[20px] text-center font-black text-slate-900">${item.qty}</span>
+                <button type="button" onclick="adjustItemQty(${idx}, 1)" class="w-5 h-5 flex items-center justify-center rounded-lg bg-white text-slate-700 hover:bg-slate-200 font-black text-xs shadow-xs touch-press">+</button>
+                <span class="text-[10px] text-slate-500 font-normal ml-0.5">${item.unit}</span>
+              </div>
+            </td>
+            <td class="p-3 text-right font-medium">৳${item.price}</td>
+            <td class="p-3 text-right font-black text-crimson-700">৳${item.total.toLocaleString()}</td>
+            <td class="p-3 text-center">
+              <button type="button" onclick="removeItem(${idx})" class="w-7 h-7 inline-flex items-center justify-center text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-xl font-black text-sm transition touch-press">✕</button>
+            </td>
+          </tr>
+        `;
+      });
+      tbody.innerHTML = html;
+    }
+    recalcTotals();
+  }
+
+  function recalcTotals() {
+    let subtotal = 0;
+    invoiceItems.forEach(it => subtotal += it.total);
+    const discount = parseFloat(document.getElementById('discountInput').value) || 0;
+    const net = Math.max(0, subtotal - discount);
+    
+    document.getElementById('subtotalText').innerText = formatTaka(subtotal);
+    document.getElementById('subtotalInput').value = subtotal;
+    document.getElementById('netTotalText').innerText = formatTaka(net);
+
+    const paymentType = document.getElementById('paymentType').value;
+    let paid = 0;
+    if (paymentType === 'cash') {
+      paid = net;
+      document.getElementById('paidAmountInput').value = net;
+    } else if (paymentType === 'partial') {
+      paid = parseFloat(document.getElementById('paidAmountInput').value) || 0;
+    } else {
+      paid = 0;
+      document.getElementById('paidAmountInput').value = 0;
+    }
+
+    const due = Math.max(0, net - paid);
+    document.getElementById('dueAmountText').innerText = formatTaka(due);
+  }
+
+  function onPaymentTypeChange() {
+    const type = document.getElementById('paymentType').value;
+    const paidDiv = document.getElementById('paidAmountDiv');
+    if (type === 'partial') {
+      paidDiv.classList.remove('hidden');
+    } else {
+      paidDiv.classList.add('hidden');
+    }
+    recalcTotals();
+  }
+
+  async function onFarmerSelectChange() {
+    const sel = document.getElementById('farmerSelect');
+    const farmerId = sel.value;
+    if (!farmerId) return;
+
+    try {
+      const res = await fetch(`/api/farmer/${farmerId}/active-batch`);
+      const data = await res.json();
+      if (data.batch) {
+        document.getElementById('batchDisplay').value = data.batch.batch_no + " (" + data.batch.bird_type + ")";
+        document.getElementById('batchIdInput').value = data.batch.id;
+      } else {
+        document.getElementById('batchDisplay').value = "কোন রানিং শেড নেই";
+        document.getElementById('batchIdInput').value = "";
+      }
+    } catch(e) {}
+  }
+
+  function validateBeforeSubmit() {
+    const farmer = document.getElementById('farmerSelect').value;
+    if (!farmer) {
+      alert("দয়া করে খামারি নির্বাচন করুন!");
+      return false;
+    }
+    if (invoiceItems.length === 0) {
+      alert("চালানে কমপক্ষে একটি পণ্য যোগ করুন!");
+      return false;
+    }
+    document.getElementById('itemsJsonInput').value = JSON.stringify(invoiceItems);
+    return true;
+  }
+
+  {% if active_batch %}
+    document.getElementById('batchDisplay').value = "{{ active_batch.batch_no }} ({{ active_batch.bird_type }})";
+  {% endif %}
+
+  {% if initial_product %}
+    // Auto-add product from query param if supplied
+    addProductToCart({
+      id: {{ initial_product.id | tojson }},
+      sku: {{ initial_product.sku | tojson }},
+      name_bn: {{ initial_product.name_bn | tojson }},
+      category: {{ initial_product.category | tojson }},
+      unit: {{ initial_product.unit | tojson }},
+      sell_price: {{ initial_product.sell_price }},
+      stock: {{ initial_product.stock }}
+    }, 1);
+  {% endif %}
+</script>
+{% endblock %}

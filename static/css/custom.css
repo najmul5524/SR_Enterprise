@@ -1,0 +1,102 @@
+/* SR Enterprise - Mobile App & Vibrant Color Styles */
+@import url('https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700;800&display=swap');
+
+:root {
+  --color-maroon: #881337;
+  --color-crimson: #e11d48;
+  --color-orange: #ea580c;
+  --color-amber: #f59e0b;
+}
+
+body {
+  font-family: 'Hind Siliguri', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: contain;
+  touch-action: manipulation;
+  background-color: #fafaf9;
+}
+
+/* Background gradient matching qr-printing.onrender.com */
+.hero-gradient {
+  background: radial-gradient(circle at 50% 0%, #fff7ed 0%, #fff1f2 45%, #fafafa 100%);
+  background-attachment: fixed;
+}
+
+/* Mobile Safe-Area padding for APKs / WebViews */
+.safe-bottom {
+  padding-bottom: max(1.25rem, env(safe-area-inset-bottom));
+}
+.safe-top {
+  padding-top: max(0.5rem, env(safe-area-inset-top));
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: #fdf2f8;
+}
+::-webkit-scrollbar-thumb {
+  background: #fca5a5;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #f87171;
+}
+
+/* Mobile Touch Tap effect for cards & buttons */
+.touch-press {
+  transition: transform 0.12s ease, opacity 0.12s ease;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.touch-press:active {
+  transform: scale(0.96);
+  opacity: 0.92;
+}
+
+/* Vibrant App Gradients */
+.gradient-warm {
+  background: linear-gradient(135deg, #881337 0%, #e11d48 50%, #ea580c 100%);
+}
+.gradient-orange-red {
+  background: linear-gradient(135deg, #e11d48 0%, #ea580c 100%);
+}
+.gradient-amber-orange {
+  background: linear-gradient(135deg, #ea580c 0%, #f59e0b 100%);
+}
+.gradient-maroon-dark {
+  background: linear-gradient(135deg, #4c0519 0%, #881337 60%, #9f1239 100%);
+}
+
+/* Glassmorphism Panels */
+.glass-card {
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* Floating Elevated Scan Button Glow */
+.scan-glow {
+  box-shadow: 0 8px 24px -2px rgba(225, 29, 72, 0.45), 0 4px 12px -2px rgba(234, 88, 12, 0.35);
+}
+
+/* Print Rules */
+@media print {
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+  .no-print, header, footer, nav, .bottom-nav, button:not(.print-include) {
+    display: none !important;
+  }
+  .print-area {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+}

@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+
+{% block title %}আমার খামার ড্যাশবোর্ড | {{ shop.shop_name if shop else "SR Enterprise" }}{% endblock %}
+
+{% block content %}
+<div class="space-y-4 max-w-2xl mx-auto">
+
+  <!-- Farmer Welcome Header Card (Maroon-Crimson-Orange App Card) -->
+  <div class="bg-gradient-to-br from-maroon-950 via-maroon-800 to-orangeBrand-600 text-white p-6 rounded-3xl shadow-xl shadow-crimson-900/15 relative overflow-hidden">
+    <div class="relative z-10">
+      <div class="flex items-center gap-3.5">
+        <div class="w-14 h-14 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center p-1.5 shadow-inner flex-shrink-0">
+          <img src="/static/img/logo.png" alt="SR Enterprise Logo" class="w-full h-full object-contain drop-shadow-md">
+        </div>
+        <div>
+          <span class="text-[11px] font-bold uppercase tracking-wider text-orangeBrand-200">খামারি লাইভ পোর্টাল (APK)</span>
+          <h1 class="text-xl sm:text-2xl font-black mt-0.5">{{ farmer.name }}</h1>
+          <p class="text-xs text-orangeBrand-100 mt-0.5 font-medium">
+            🏠 {{ farmer.shed_name or "খামার শেড" }} • 📱 {{ farmer.phone }}
+          </p>
+        </div>
+      </div>
+
+      <!-- Outstanding Due Notice Card -->
+      <div class="mt-5 p-4 bg-white/10 backdrop-blur-md rounded-2xl border border-white/15 flex items-center justify-between">
+        <div>
+          <div class="text-[11px] text-orangeBrand-200 font-bold uppercase tracking-wider">আমার বর্তমান বকেয়া (দেনা)</div>
+          <div class="text-2xl sm:text-3xl font-black text-amberBrand-300 mt-0.5">
+            ৳ {{ "{:,.0f}".format(farmer.total_due) }}
+          </div>
+        </div>
+        <a href="/farmer/ledger" class="px-4 py-2 bg-white text-maroon-950 rounded-xl text-xs font-black hover:bg-orangeBrand-50 transition shadow-sm touch-press">
+          খতিয়ান দেখুন ➔
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick Shortcut Action Grid for Mobile -->
+  <div class="grid grid-cols-2 gap-3">
+    <a href="/farmer/request-feed" class="p-4 bg-white rounded-3xl border border-orange-100 shadow-sm hover:border-orangeBrand-300 transition flex items-center gap-3 touch-press">
+      <div class="w-11 h-11 rounded-2xl bg-gradient-to-tr from-crimson-600 to-orangeBrand-500 text-white flex items-center justify-center text-xl shadow-sm flex-shrink-0">
+        ➕
+      </div>
+      <div>
+        <div class="text-xs font-black text-slate-900">ফিড / ঔষধ চাই</div>
+        <div class="text-[10px] text-slate-500 font-medium">দোকানে রিকুয়েস্ট পাঠান</div>
+      </div>
+    </a>
+
+    <a href="/farmer/ledger" class="p-4 bg-white rounded-3xl border border-orange-100 shadow-sm hover:border-orangeBrand-300 transition flex items-center gap-3 touch-press">
+      <div class="w-11 h-11 rounded-2xl bg-gradient-to-tr from-maroon-900 to-crimson-700 text-white flex items-center justify-center text-xl shadow-sm flex-shrink-0">
+        📒
+      </div>
+      <div>
+        <div class="text-xs font-black text-slate-900">হিসাবের খতিয়ান</div>
+        <div class="text-[10px] text-slate-500 font-medium">সকল চালান ও জমা</div>
+      </div>
+    </a>
+  </div>
+
+  <!-- ACTIVE SHED STATUS -->
+  {% if active_batch %}
+  <div class="bg-white rounded-3xl border border-orangeBrand-200 shadow-sm p-5 space-y-4">
+    <div class="flex items-center justify-between pb-3 border-b border-orange-50">
+      <div class="flex items-center gap-2.5">
+        <span class="text-2xl">🐣</span>
+        <div>
+          <h2 class="font-black text-slate-900 text-base">{{ active_batch.batch_no }}</h2>
+          <span class="text-xs text-slate-500 font-medium">{{ active_batch.bird_type }} • শুরুর তারিখ: {{ active_batch.start_date }}</span>
+        </div>
+      </div>
+      <div class="text-center px-3.5 py-1.5 bg-gradient-to-br from-orangeBrand-500 to-crimson-600 text-white rounded-2xl shadow-sm">
+        <span class="text-base font-black leading-none block">{{ active_batch.age_days }}</span>
+        <span class="text-[9px] font-bold text-orangeBrand-100 uppercase">দিন বয়স</span>
+      </div>
+    </div>
+
+    <!-- Shed Metrics Grid (Warm Tinted Boxes) -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs">
+      <div class="p-3 bg-stone-50 rounded-2xl border border-slate-100">
+        <span class="text-[10px] text-slate-400 font-bold uppercase">বাচ্চা সংখ্যা</span>
+        <div class="text-sm font-black text-slate-900 mt-0.5">{{ active_batch.chick_qty }} টি</div>
+      </div>
+      <div class="p-3 bg-stone-50 rounded-2xl border border-slate-100">
+        <span class="text-[10px] text-slate-400 font-bold uppercase">খাদ্য খাওয়া</span>
+        <div class="text-sm font-black text-orangeBrand-700 mt-0.5">{{ active_batch.total_feed_bags }} বস্তা</div>
+      </div>
+      <div class="p-3 bg-stone-50 rounded-2xl border border-slate-100">
+        <span class="text-[10px] text-slate-400 font-bold uppercase">মর্টালিটি</span>
+        <div class="text-sm font-black text-rose-600 mt-0.5">{{ active_batch.mortality_count }} টি</div>
+      </div>
+      <div class="p-3 bg-orangeBrand-50 rounded-2xl border border-orangeBrand-200">
+        <span class="text-[10px] text-orangeBrand-900 font-bold uppercase">SR মোট খরচ</span>
+        <div class="text-sm font-black text-maroon-900 mt-0.5">৳ {{ "{:,.0f}".format(active_batch.total_investment) }}</div>
+      </div>
+    </div>
+
+    <!-- Recent logs in active shed -->
+    {% if recent_logs %}
+    <div class="pt-2">
+      <h3 class="text-xs font-black text-slate-700 mb-2">শেডে সর্বশেষ মালামাল ডেলিভারি ও কার্যক্রম:</h3>
+      <div class="space-y-1.5 text-xs">
+        {% for log in recent_logs %}
+        <div class="flex items-center justify-between p-2.5 rounded-2xl bg-stone-50 border border-slate-100">
+          <div>
+            <div class="font-bold text-slate-800">{{ log.item_name }}</div>
+            <div class="text-[10px] text-slate-400 font-medium">{{ log.log_date }} • {{ log.qty }} {{ log.unit }}</div>
+          </div>
+          <div class="text-right font-black text-slate-900">
+            {% if log.log_type == 'mortality' %}
+              <span class="text-rose-600">মৃত্যু</span>
+            {% else %}
+              ৳ {{ "{:,.0f}".format(log.total_amount) }}
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+  </div>
+  {% else %}
+  <div class="p-6 bg-white rounded-3xl border border-orange-100 text-center text-slate-500 space-y-2">
+    <p class="text-3xl">🐣</p>
+    <p class="text-sm font-bold text-slate-800">বর্তমানে আপনার কোন সক্রিয় শেড চলমান নেই</p>
+    <p class="text-xs text-slate-400">নতুন শেডে বাচ্চা ও খাদ্য নেওয়ার জন্য SR Enterprise এর সাথে যোগাযোগ করুন।</p>
+  </div>
+  {% endif %}
+
+  <!-- Farmer QR Card for In-Store Scanning -->
+  <div class="bg-white p-5 rounded-3xl border border-orange-100 shadow-sm flex items-center justify-between gap-4">
+    <div>
+      <h3 class="font-black text-slate-900 text-sm">আমার খামারি ডিজিটাল আইডি কার্ড</h3>
+      <p class="text-xs text-slate-500 mt-0.5 font-medium">দোকানে মালামাল নেওয়ার সময় এই কিউআর স্ক্যান করান</p>
+      <span class="inline-block mt-2 font-mono text-[11px] bg-orangeBrand-50 border border-orangeBrand-200 px-2 py-0.5 rounded-lg text-orangeBrand-800 font-bold">{{ farmer.id }}</span>
+    </div>
+    <div class="p-2 bg-stone-50 rounded-2xl border border-slate-200 flex-shrink-0">
+      <img src="{{ farmer_qr }}" alt="My QR" class="w-20 h-20">
+    </div>
+  </div>
+
+  <!-- Dealer Contact Info -->
+  <div class="bg-stone-50 p-4 rounded-3xl border border-slate-200 text-center text-xs text-slate-600">
+    <p class="font-black text-slate-900">{{ shop.shop_name or "SR Enterprise" }}</p>
+    <p class="mt-0.5 font-medium">প্রয়োজনে যোগাযোগ: <strong class="text-crimson-700">{{ shop.phone or "01700-000000" }}</strong></p>
+  </div>
+
+</div>
+{% endblock %}

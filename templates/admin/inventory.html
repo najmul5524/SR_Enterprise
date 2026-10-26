@@ -1,0 +1,337 @@
+{% extends "base.html" %}
+
+{% block title %}খাদ্য ও ঔষধের স্টক ইনভেন্টরি | {{ shop.shop_name if shop else "SR Enterprise" }}{% endblock %}
+
+{% block content %}
+<div class="space-y-5">
+
+  <!-- Top Action Header -->
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-5 rounded-3xl border border-orange-100 shadow-sm">
+    <div>
+      <div class="flex items-center gap-2.5">
+        <span class="text-2xl">📦</span>
+        <h1 class="text-xl font-black text-slate-900">খাদ্য ও ঔষধের স্টক ইনভেন্টরি</h1>
+      </div>
+      <p class="text-xs text-slate-500 mt-1">
+        পৌল্ট্রি খাদ্য, গরুর খাদ্য, ভেটেরিনারি ঔষধ ও বাচ্চার বর্তমান স্টক, রেট এবং কিউআর কোড
+      </p>
+    </div>
+
+    <div class="flex flex-wrap items-center gap-2">
+      <a href="/admin/scanner" class="inline-flex items-center gap-1.5 px-4 py-2.5 bg-orangeBrand-50 text-orangeBrand-800 border border-orangeBrand-200 hover:bg-orangeBrand-100 rounded-2xl text-xs font-black transition touch-press">
+        <span>📷</span> কিউআর স্ক্যান করে খুঁজুন
+      </a>
+      <button onclick="openAddProductModal()" class="inline-flex items-center gap-1.5 px-4 py-2.5 bg-gradient-to-r from-crimson-600 to-orangeBrand-500 hover:opacity-95 text-white rounded-2xl text-xs font-black shadow-md shadow-crimson-500/20 transition touch-press">
+        <span>➕</span> নতুন পণ্য যোগ করুন
+      </button>
+    </div>
+  </div>
+
+  <!-- Filter Pills (Vibrant Colors) -->
+  <div class="flex flex-wrap items-center gap-2 text-xs font-black">
+    <a href="/admin/inventory" 
+      class="px-3.5 py-2 rounded-2xl border transition touch-press {{ 'bg-gradient-to-r from-maroon-900 to-crimson-700 text-white border-crimson-700 shadow-sm' if not selected_category and not low_stock_filter else 'bg-white text-slate-700 border-slate-200 hover:bg-orangeBrand-50' }}">
+      সকল পণ্য ({{ total_items }})
+    </a>
+    <a href="/admin/inventory?category=পৌল্ট্রি খাদ্য" 
+      class="px-3.5 py-2 rounded-2xl border transition touch-press {{ 'bg-gradient-to-r from-orangeBrand-600 to-amberBrand-500 text-white border-orangeBrand-600 shadow-sm' if selected_category == 'পৌল্ট্রি খাদ্য' else 'bg-white text-slate-700 border-slate-200 hover:bg-orangeBrand-50' }}">
+      🥣 পৌল্ট্রি খাদ্য
+    </a>
+    <a href="/admin/inventory?category=গরুর খাদ্য" 
+      class="px-3.5 py-2 rounded-2xl border transition touch-press {{ 'bg-gradient-to-r from-orangeBrand-600 to-amberBrand-500 text-white border-orangeBrand-600 shadow-sm' if selected_category == 'গরুর খাদ্য' else 'bg-white text-slate-700 border-slate-200 hover:bg-orangeBrand-50' }}">
+      🐄 গরুর খাদ্য
+    </a>
+    <a href="/admin/inventory?category=ভেটেরিনারি ঔষধ" 
+      class="px-3.5 py-2 rounded-2xl border transition touch-press {{ 'bg-gradient-to-r from-crimson-700 to-rose-500 text-white border-crimson-700 shadow-sm' if selected_category == 'ভেটেরিনারি ঔষধ' else 'bg-white text-slate-700 border-slate-200 hover:bg-orangeBrand-50' }}">
+      💊 ভেটেরিনারি ঔষধ
+    </a>
+    <a href="/admin/inventory?category=বাচ্চা (DOC)" 
+      class="px-3.5 py-2 rounded-2xl border transition touch-press {{ 'bg-gradient-to-r from-amberBrand-500 to-yellow-500 text-maroon-950 border-amberBrand-500 shadow-sm' if selected_category == 'বাচ্চা (DOC)' else 'bg-white text-slate-700 border-slate-200 hover:bg-orangeBrand-50' }}">
+      🐣 বাচ্চা (DOC)
+    </a>
+    <a href="/admin/inventory?low_stock=true" 
+      class="px-3.5 py-2 rounded-2xl border transition touch-press {{ 'bg-rose-600 text-white border-rose-600 shadow-sm animate-pulse' if low_stock_filter else 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100' }}">
+      ⚠️ স্টক কম (অ্যালার্ট)
+    </a>
+  </div>
+
+  <!-- PRODUCTS GRID -->
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    {% for p in products %}
+    <div class="bg-white rounded-3xl border border-orange-100/90 shadow-sm overflow-hidden flex flex-col justify-between hover:border-orangeBrand-300 transition-all">
+      
+      <!-- Card Header & Image -->
+      <div class="p-5">
+        <div class="flex items-start gap-3.5">
+          <!-- Product image / Cloudinary thumbnail -->
+          <div class="w-16 h-16 rounded-2xl bg-orangeBrand-50 border border-orangeBrand-100 overflow-hidden flex-shrink-0 flex items-center justify-center">
+            {% if p.image_url %}
+              <img src="{{ p.image_url }}" alt="{{ p.name_bn }}" class="w-full h-full object-cover">
+            {% else %}
+              <span class="text-2xl">📦</span>
+            {% endif %}
+          </div>
+
+          <!-- Product Details -->
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-1.5 flex-wrap">
+              <span class="px-2 py-0.5 rounded-md text-[10px] font-black bg-orangeBrand-100 text-orangeBrand-800">
+                {{ p.category }}
+              </span>
+              <span class="text-[10px] text-slate-400 font-mono">{{ p.sku }}</span>
+            </div>
+            <h3 class="font-black text-slate-900 text-base mt-1 truncate" title="{{ p.name_bn }}">
+              {{ p.name_bn }}
+            </h3>
+            <div class="text-xs text-slate-500 truncate font-medium">{{ p.name }}</div>
+          </div>
+        </div>
+
+        <!-- Prices & Current Stock Status -->
+        <div class="mt-4 grid grid-cols-3 gap-2 bg-stone-50 p-3 rounded-2xl text-center border border-slate-100">
+          <div>
+            <div class="text-[10px] text-slate-400 font-bold uppercase">কেনা দর</div>
+            <div class="text-xs font-bold text-slate-700">৳{{ "{:,.0f}".format(p.buy_price) }}</div>
+          </div>
+          <div>
+            <div class="text-[10px] text-crimson-600 font-bold uppercase">বিক্রয় দর</div>
+            <div class="text-xs font-black text-crimson-700">৳{{ "{:,.0f}".format(p.sell_price) }}</div>
+          </div>
+          <div>
+            <div class="text-[10px] text-slate-400 font-bold uppercase">বর্তমান স্টক</div>
+            <div class="text-xs font-black {{ 'text-rose-600' if p.stock <= p.alert_qty else 'text-slate-900' }}">
+              {{ p.stock }} <span class="text-[9px] font-normal text-slate-500">{{ p.unit }}</span>
+            </div>
+          </div>
+        </div>
+
+        {% if p.stock <= p.alert_qty %}
+        <div class="mt-2.5 flex items-center gap-1 px-2.5 py-1 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-[11px] font-black">
+          <span>⚠️</span> স্টক শেষ হতে চলেছে! (অ্যালার্ট: {{ p.alert_qty }} {{ p.unit }})
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- Card Footer Actions & QR Button -->
+      <div class="px-4 py-3 bg-orangeBrand-50/30 border-t border-orange-50 flex items-center justify-between gap-2">
+        
+        <!-- Stock Quick Adjust Form -->
+        <form action="/admin/inventory/stock-adjust" method="POST" class="flex items-center gap-1 text-xs">
+          <input type="hidden" name="product_id" value="{{ p.id }}">
+          <input type="number" step="1" name="delta_qty" placeholder="±স্টক" required
+            class="w-16 px-2 py-1.5 rounded-xl border border-slate-200 text-center text-xs font-black focus:ring-1 focus:ring-crimson-500">
+          <button type="submit" class="px-2.5 py-1.5 bg-gradient-to-r from-maroon-900 to-crimson-700 text-white rounded-xl hover:opacity-95 font-black text-[11px] touch-press">
+            আপডেট
+          </button>
+        </form>
+
+        <div class="flex items-center gap-1">
+          <!-- QR Code Preview & Label Print -->
+          <button onclick="showProductQR('{{ p.name_bn }}', '{{ p.sku }}', '{{ p.sell_price }}', '{{ p.qr_data_url }}', '{{ p.id }}')"
+            class="p-2 text-slate-700 hover:text-crimson-700 hover:bg-crimson-50 rounded-xl transition touch-press" title="কিউআর কোড ও স্টিকার প্রিন্ট">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"></path></svg>
+          </button>
+
+          <!-- Edit Modal Trigger -->
+          <button onclick='editProduct({{ p | tojson | safe }})'
+            class="p-2 text-slate-700 hover:text-orangeBrand-700 hover:bg-orangeBrand-50 rounded-xl transition touch-press" title="সম্পাদনা">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+          </button>
+
+          <!-- Delete -->
+          <a href="/admin/inventory/delete/{{ p.id }}" onclick="return confirm('পণ্যটি মুছে ফেলতে নিশ্চিত?')"
+            class="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition touch-press" title="মুছে ফেলুন">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+          </a>
+        </div>
+
+      </div>
+
+    </div>
+    {% endfor %}
+  </div>
+
+</div>
+
+<!-- ADD / EDIT PRODUCT MODAL -->
+<div id="productModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+  <div class="bg-white w-full max-w-lg rounded-3xl shadow-2xl border border-orange-100 overflow-hidden max-h-[90vh] flex flex-col">
+    
+    <div class="p-5 bg-gradient-to-r from-maroon-900 via-crimson-700 to-orangeBrand-600 text-white flex items-center justify-between">
+      <h3 id="modalTitle" class="font-black text-base">নতুন পণ্য যুক্ত করুন</h3>
+      <button onclick="closeProductModal()" class="text-white/80 hover:text-white text-xl">✕</button>
+    </div>
+
+    <form action="/admin/inventory/save" method="POST" enctype="multipart/form-data" class="p-5 space-y-4 overflow-y-auto">
+      <input type="hidden" id="prodId" name="id">
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-black text-slate-700 mb-1">
+            পণ্য কোড / SKU নম্বর
+          </label>
+          <input type="text" id="prodSku" name="sku" placeholder="যেমন: SRE-FD-10 বা BARCODE"
+            class="w-full px-3.5 py-2.5 border rounded-2xl text-sm font-mono font-bold focus:ring-2 focus:ring-crimson-500 focus:outline-none">
+          <span class="text-[10px] text-slate-400 mt-0.5 block">খালি রাখলে অটো SKU তৈরি হবে। এই SKU দিয়েই কিউআর কোড স্ক্যান হবে।</span>
+        </div>
+        <div>
+          <label class="block text-xs font-black text-slate-700 mb-1">ক্যাটাগরি *</label>
+          <select id="prodCategory" name="category" required class="w-full px-3 py-2.5 border rounded-2xl text-sm font-semibold">
+            <option value="পৌল্ট্রি খাদ্য">পৌল্ট্রি খাদ্য</option>
+            <option value="গরুর খাদ্য">গরুর খাদ্য</option>
+            <option value="ভেটেরিনারি ঔষধ">ভেটেরিনারি ঔষধ</option>
+            <option value="বাচ্চা (DOC)">বাচ্চা (DOC)</option>
+            <option value="অন্যান্য সরঞ্জাম">অন্যান্য সরঞ্জাম</option>
+          </select>
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-xs font-black text-slate-700 mb-1">পণ্যের বাংলা নাম *</label>
+        <input type="text" id="prodNameBn" name="name_bn" placeholder="যেমন: নুরিশ ব্রয়লার স্টার্টার (৫০ কেজি)" required
+          class="w-full px-3.5 py-2.5 border rounded-2xl text-sm focus:ring-2 focus:ring-crimson-500 focus:outline-none font-medium">
+      </div>
+
+      <div>
+        <label class="block text-xs font-black text-slate-700 mb-1">ইংরেজি নাম (Optional)</label>
+        <input type="text" id="prodName" name="name" placeholder="Nourish Broiler Starter"
+          class="w-full px-3.5 py-2.5 border rounded-2xl text-sm focus:ring-2 focus:ring-crimson-500 focus:outline-none">
+      </div>
+
+      <div>
+        <label class="block text-xs font-black text-slate-700 mb-1">পরিমাপের একক (Unit) *</label>
+        <input type="text" id="prodUnit" name="unit" placeholder="বস্তা (৫০ কেজি) / লিটার / পিস" value="বস্তা" required
+          class="w-full px-3 py-2.5 border rounded-2xl text-sm">
+      </div>
+
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-black text-slate-700 mb-1">কেনা দর (টাকা) *</label>
+          <input type="number" step="0.5" id="prodBuyPrice" name="buy_price" value="0" required
+            class="w-full px-3 py-2.5 border rounded-2xl text-sm font-bold">
+        </div>
+        <div>
+          <label class="block text-xs font-black text-slate-700 mb-1">বিক্রয় দর (টাকা) *</label>
+          <input type="number" step="0.5" id="prodSellPrice" name="sell_price" value="0" required
+            class="w-full px-3 py-2.5 border rounded-2xl text-sm font-black text-crimson-700">
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-black text-slate-700 mb-1">প্রাথমিক স্টক পরিমাণ *</label>
+          <input type="number" step="1" id="prodStock" name="stock" value="0" required
+            class="w-full px-3 py-2.5 border rounded-2xl text-sm font-black">
+        </div>
+        <div>
+          <label class="block text-xs font-black text-slate-700 mb-1">মিনিমাম স্টক অ্যালার্ট *</label>
+          <input type="number" step="1" id="prodAlertQty" name="alert_qty" value="10" required
+            class="w-full px-3 py-2.5 border rounded-2xl text-sm font-bold">
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-xs font-black text-slate-700 mb-1">পণ্যের ছবি (Cloudinary তে আপলোড হবে)</label>
+        <input type="file" name="image_file" accept="image/*"
+          class="w-full text-xs text-slate-500 file:mr-2 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-orangeBrand-50 file:text-orangeBrand-700 hover:file:bg-orangeBrand-100">
+        <span class="text-[10px] text-slate-400 mt-0.5 block">Cloudinary ইন্টিগ্রেশনের কারণে রেন্ডারের ৫জিবি ব্যান্ডউইথ খরচ হবে না।</span>
+      </div>
+
+      <div>
+        <label class="block text-xs font-black text-slate-700 mb-1">বিবরণ / নোট</label>
+        <textarea id="prodDesc" name="description" rows="2" placeholder="পণ্য বা ঔষুধের ব্যবহার বিধি..."
+          class="w-full px-3 py-2 border rounded-2xl text-sm"></textarea>
+      </div>
+
+      <div class="flex items-center justify-end gap-2 pt-3 border-t">
+        <button type="button" onclick="closeProductModal()" class="px-4 py-2.5 border rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50">
+          বাতিল
+        </button>
+        <button type="submit" class="px-5 py-2.5 bg-gradient-to-r from-crimson-600 to-orangeBrand-500 hover:opacity-95 text-white rounded-xl text-xs font-black shadow-md shadow-crimson-600/20 touch-press">
+          সংরক্ষণ করুন ➔
+        </button>
+      </div>
+    </form>
+
+  </div>
+</div>
+
+<!-- QR PREVIEW & PRINT LABEL MODAL -->
+<div id="qrModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+  <div class="bg-white w-full max-w-sm rounded-3xl shadow-2xl border border-orange-100 overflow-hidden text-center p-6">
+    <div class="w-14 h-14 rounded-2xl bg-orangeBrand-50 text-orangeBrand-600 flex items-center justify-center text-2xl mx-auto mb-2 border border-orangeBrand-100">
+      📷
+    </div>
+    <h3 id="qrModalName" class="font-black text-slate-900 text-base">পণ্যের নাম</h3>
+    <p id="qrModalSku" class="text-xs text-slate-500 font-mono mb-4">SKU</p>
+
+    <!-- QR Code Image -->
+    <div class="p-4 bg-orangeBrand-50/50 rounded-3xl border border-orange-100 inline-block mx-auto mb-4">
+      <img id="qrModalImg" src="" alt="QR Code" class="w-48 h-48 mx-auto">
+    </div>
+    
+    <div class="text-sm font-black text-crimson-700 mb-4" id="qrModalPrice">
+      মূল্য: ৳ 0
+    </div>
+
+    <div class="flex flex-col gap-2">
+      <a id="qrLabelPrintBtn" href="#" target="_blank"
+        class="w-full py-3 bg-gradient-to-r from-crimson-600 to-orangeBrand-500 hover:opacity-95 text-white text-xs font-black rounded-2xl shadow-md transition flex items-center justify-center gap-1.5 touch-press">
+        <span>🖨️</span> স্টিকার লেবেল প্রিন্ট করুন (A4 / রোল)
+      </a>
+      <button onclick="closeQRModal()" class="w-full py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-2xl transition">
+        বন্ধ করুন
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+  function openAddProductModal() {
+    document.getElementById('modalTitle').innerText = "নতুন পণ্য যুক্ত করুন";
+    document.getElementById('prodId').value = "";
+    document.getElementById('prodSku').value = "";
+    document.getElementById('prodNameBn').value = "";
+    document.getElementById('prodName').value = "";
+    document.getElementById('prodBuyPrice').value = "0";
+    document.getElementById('prodSellPrice').value = "0";
+    document.getElementById('prodStock').value = "0";
+    document.getElementById('prodAlertQty').value = "10";
+    document.getElementById('prodDesc').value = "";
+    document.getElementById('productModal').classList.remove('hidden');
+  }
+
+  function editProduct(p) {
+    document.getElementById('modalTitle').innerText = "পণ্য তথ্য সম্পাদনা";
+    document.getElementById('prodId').value = p.id;
+    document.getElementById('prodSku').value = p.sku || "";
+    document.getElementById('prodNameBn').value = p.name_bn || "";
+    document.getElementById('prodName').value = p.name || "";
+    document.getElementById('prodCategory').value = p.category || "পৌল্ট্রি খাদ্য";
+    document.getElementById('prodUnit').value = p.unit || "বস্তা";
+    document.getElementById('prodBuyPrice').value = p.buy_price || 0;
+    document.getElementById('prodSellPrice').value = p.sell_price || 0;
+    document.getElementById('prodStock').value = p.stock || 0;
+    document.getElementById('prodAlertQty').value = p.alert_qty || 10;
+    document.getElementById('prodDesc').value = p.description || "";
+    document.getElementById('productModal').classList.remove('hidden');
+  }
+
+  function closeProductModal() {
+    document.getElementById('productModal').classList.add('hidden');
+  }
+
+  function showProductQR(name, sku, price, qrUrl, prodId) {
+    document.getElementById('qrModalName').innerText = name;
+    document.getElementById('qrModalSku').innerText = "SKU: " + sku;
+    document.getElementById('qrModalPrice').innerText = "বিক্রয় মূল্য: " + formatTaka(price);
+    document.getElementById('qrModalImg').src = qrUrl;
+    document.getElementById('qrLabelPrintBtn').href = "/admin/inventory/qr-label/" + prodId;
+    document.getElementById('qrModal').classList.remove('hidden');
+  }
+
+  function closeQRModal() {
+    document.getElementById('qrModal').classList.add('hidden');
+  }
+</script>
+{% endblock %}

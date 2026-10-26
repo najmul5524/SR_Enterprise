@@ -1,0 +1,249 @@
+{% extends "base.html" %}
+
+{% block title %}ডিলার ড্যাশবোর্ড | {{ shop.shop_name if shop else "SR Enterprise" }}{% endblock %}
+
+{% block content %}
+<div class="space-y-5">
+
+  <!-- Welcome Banner Card (Vibrant Maroon-to-Orange App Banner) -->
+  <div class="bg-gradient-to-r from-maroon-900 via-crimson-800 to-orangeBrand-600 p-5 sm:p-6 rounded-3xl text-white shadow-lg shadow-crimson-900/15 relative overflow-hidden flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <!-- Background subtle circles -->
+    <div class="absolute -top-10 -right-10 w-40 h-40 bg-orangeBrand-400/20 rounded-full blur-2xl pointer-events-none"></div>
+
+    <div class="flex items-center gap-3.5 relative z-10">
+      <div class="w-14 h-14 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center p-1.5 shadow-inner flex-shrink-0">
+        <img src="/static/img/logo.png" alt="SR Enterprise Logo" class="w-full h-full object-contain drop-shadow-md">
+      </div>
+      <div>
+        <div class="flex items-center gap-2">
+          <h1 class="text-xl sm:text-2xl font-black leading-tight">ডিলার কন্ট্রোল সেন্টার</h1>
+          <span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-amberBrand-400 text-maroon-950">
+            PRO
+          </span>
+        </div>
+        <p class="text-xs text-orangeBrand-100 mt-1 font-medium">
+          স্বাগতম, <strong class="text-white">{{ shop.owner_name or "সারোয়ার হোসেন" }}</strong> • আজ: {{ now_date }}
+        </p>
+      </div>
+    </div>
+
+    <!-- Quick Action Shortcut Buttons for Mobile & Desktop -->
+    <div class="flex flex-wrap items-center gap-2 relative z-10">
+      <a href="/admin/scanner" class="inline-flex items-center gap-1.5 px-4 py-2.5 bg-white text-crimson-700 hover:bg-orangeBrand-50 rounded-2xl text-xs font-black shadow-md touch-press transition">
+        <span>📷</span> কিউআর স্ক্যান
+      </a>
+      <a href="/admin/dispatch" class="inline-flex items-center gap-1.5 px-4 py-2.5 bg-maroon-950/80 hover:bg-black text-white rounded-2xl text-xs font-bold border border-white/20 touch-press transition">
+        <span>📝</span> নতুন চালান
+      </a>
+      <a href="/admin/batches" class="inline-flex items-center gap-1.5 px-4 py-2.5 bg-orangeBrand-500 hover:bg-orangeBrand-600 text-white rounded-2xl text-xs font-black shadow-md touch-press transition">
+        <span>🐣</span> নতুন শেড
+      </a>
+      <a href="/admin/payments" class="inline-flex items-center gap-1.5 px-4 py-2.5 bg-amberBrand-500 hover:bg-amberBrand-600 text-maroon-950 rounded-2xl text-xs font-black shadow-md touch-press transition">
+        <span>💰</span> টাকা আদায়
+      </a>
+    </div>
+  </div>
+
+  <!-- 4 PRIMARY KPI METRICS (Maroon, Orange, Red, Amber combination) -->
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+    
+    <!-- 1. Total Outstanding Farmer Dues (Maroon & Crimson) -->
+    <div class="bg-white p-4 sm:p-5 rounded-3xl border border-crimson-200 shadow-sm shadow-crimson-500/5 relative overflow-hidden">
+      <div class="flex items-center justify-between text-crimson-600 mb-2">
+        <span class="text-xs font-black uppercase tracking-wider">মোট খামারি বকেয়া</span>
+        <div class="w-8 h-8 rounded-xl bg-crimson-100 text-crimson-700 flex items-center justify-center text-sm font-bold">
+          🔴
+        </div>
+      </div>
+      <div class="text-xl sm:text-2xl font-black text-maroon-900">
+        ৳ {{ "{:,.0f}".format(stats.total_farmer_dues) }}
+      </div>
+      <p class="text-[11px] text-slate-500 mt-1 font-medium">
+        মোট <span class="font-black text-crimson-700">{{ stats.active_farmers }}</span> জন সক্রিয় খামারির কাছে পাওনা
+      </p>
+    </div>
+
+    <!-- 2. Live Shed Investment (Orange & Amber) -->
+    <div class="bg-white p-4 sm:p-5 rounded-3xl border border-orangeBrand-200 shadow-sm shadow-orangeBrand-500/5 relative overflow-hidden">
+      <div class="flex items-center justify-between text-orangeBrand-600 mb-2">
+        <span class="text-xs font-black uppercase tracking-wider">চলতি শেডে বিনিয়োগ</span>
+        <div class="w-8 h-8 rounded-xl bg-orangeBrand-100 text-orangeBrand-700 flex items-center justify-center text-sm">
+          🐣
+        </div>
+      </div>
+      <div class="text-xl sm:text-2xl font-black text-orangeBrand-700">
+        ৳ {{ "{:,.0f}".format(stats.live_shed_investment) }}
+      </div>
+      <p class="text-[11px] text-slate-500 mt-1 font-medium">
+        <span class="font-black text-orangeBrand-700">{{ stats.active_sheds }}</span> টি শেডে খাদ্য ও ঔষধ সরবরাহ
+      </p>
+    </div>
+
+    <!-- 3. Today's Delivery / Sales (Amber & Coral) -->
+    <div class="bg-white p-4 sm:p-5 rounded-3xl border border-amberBrand-200 shadow-sm shadow-amberBrand-500/5 relative overflow-hidden">
+      <div class="flex items-center justify-between text-amberBrand-600 mb-2">
+        <span class="text-xs font-black uppercase tracking-wider">আজকের চালান ডেলিভারি</span>
+        <div class="w-8 h-8 rounded-xl bg-amberBrand-100 text-amberBrand-700 flex items-center justify-center text-sm">
+          📦
+        </div>
+      </div>
+      <div class="text-xl sm:text-2xl font-black text-slate-900">
+        ৳ {{ "{:,.0f}".format(stats.today_dispatch) }}
+      </div>
+      <p class="text-[11px] text-slate-500 mt-1 font-medium">
+        আজকের আদায়: <span class="font-black text-emerald-600">৳ {{ "{:,.0f}".format(stats.today_received) }}</span>
+      </p>
+    </div>
+
+    <!-- 4. Low Stock Alert (Crimson Alert) -->
+    <div class="bg-white p-4 sm:p-5 rounded-3xl border border-rose-200 shadow-sm relative overflow-hidden">
+      <div class="flex items-center justify-between text-rose-600 mb-2">
+        <span class="text-xs font-black uppercase tracking-wider">কম স্টক অ্যালার্ট</span>
+        <div class="w-8 h-8 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center text-sm">
+          ⚠️
+        </div>
+      </div>
+      <div class="text-xl sm:text-2xl font-black text-rose-600">
+        {{ stats.low_stock_count }} <span class="text-sm font-bold text-slate-500">আইটেম কম</span>
+      </div>
+      <p class="text-[11px] text-slate-500 mt-1 font-medium">
+        মোট পণ্য: <span class="font-bold text-slate-800">{{ stats.total_products }}</span> টি • <a href="/admin/inventory?low_stock=true" class="text-rose-600 underline font-black">অ্যালার্ট দেখুন</a>
+      </p>
+    </div>
+
+  </div>
+
+  <!-- ACTIVE SHEDS / BATCHES SECTION -->
+  <div class="bg-white rounded-3xl border border-orange-100 shadow-sm overflow-hidden">
+    <div class="p-5 border-b border-orange-50 flex items-center justify-between bg-gradient-to-r from-orangeBrand-50/60 to-white">
+      <div class="flex items-center gap-2.5">
+        <span class="text-2xl">🐣</span>
+        <div>
+          <h2 class="font-black text-slate-900 text-base">চলতি শেড ও খামার ব্যবস্থাপনা</h2>
+          <p class="text-xs text-slate-500">বাচ্চা উঠানো থেকে মুরগী বিক্রি পর্যন্ত SR Enterprise এর মোট বিনিয়োগ</p>
+        </div>
+      </div>
+      <a href="/admin/batches" class="text-xs font-black text-crimson-600 hover:text-crimson-700 flex items-center gap-1">
+        সকল শেড ➔
+      </a>
+    </div>
+
+    {% if active_batches %}
+    <div class="divide-y divide-orange-50">
+      {% for b in active_batches %}
+      <div class="p-4 sm:p-5 hover:bg-orangeBrand-50/30 transition flex flex-col md:flex-row md:items-center justify-between gap-4">
+        
+        <div class="flex items-start gap-3.5">
+          <!-- Visual Age Badge (Orange & Maroon) -->
+          <div class="w-13 h-13 rounded-2xl bg-gradient-to-br from-orangeBrand-500 to-crimson-600 text-white flex flex-col items-center justify-center font-black flex-shrink-0 shadow-md shadow-orangeBrand-500/20">
+            <span class="text-base leading-none">{{ b.age_days }}</span>
+            <span class="text-[9px] uppercase font-bold text-orangeBrand-100 mt-0.5">দিন</span>
+          </div>
+          <div>
+            <div class="flex items-center gap-2 flex-wrap">
+              <span class="font-black text-slate-900 text-base">{{ b.batch_no }}</span>
+              <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-orangeBrand-100 text-orangeBrand-800 border border-orangeBrand-200">
+                {{ b.bird_type }}
+              </span>
+            </div>
+            <div class="text-xs text-slate-600 mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 font-medium">
+              <span>👨‍🌾 <a href="/admin/farmer/{{ b.farmer_id }}" class="hover:underline font-bold text-slate-900">{{ b.farmer_name }}</a></span>
+              <span>🐣 বাচ্চা: <strong class="text-slate-800">{{ b.chick_qty }}</strong> টি</span>
+              <span>💀 মৃত্যু: <strong class="text-crimson-600">{{ b.mortality_count }}</strong> টি</span>
+              <span>🥣 খাদ্য: <strong class="text-slate-800">{{ b.total_feed_bags }}</strong> বস্তা</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between md:justify-end gap-4 border-t md:border-t-0 pt-3 md:pt-0 border-orange-50">
+          <div class="text-left md:text-right">
+            <div class="text-[11px] text-slate-500 font-bold uppercase tracking-wide">SR এর মোট খরচ</div>
+            <div class="text-lg font-black text-maroon-900">৳ {{ "{:,.0f}".format(b.total_investment) }}</div>
+          </div>
+          <a href="/admin/batch/{{ b.id }}" class="px-4 py-2 bg-gradient-to-r from-maroon-900 to-crimson-700 hover:opacity-95 text-white text-xs font-black rounded-xl shadow-md transition touch-press">
+            শেডের খতিয়ান ➔
+          </a>
+        </div>
+
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="p-8 text-center text-slate-500">
+      <p class="text-3xl mb-1">🐣</p>
+      <p class="text-sm font-bold">বর্তমানে কোন সক্রিয় শেড নেই।</p>
+      <p class="text-xs text-slate-400 mt-1">খামারিকে নতুন বাচ্চা দিয়ে শেড চালু করতে পারেন।</p>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- TWO COLUMN: LOW STOCK ALERT & RECENT INVOICES -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+
+    <!-- Low Stock Alert -->
+    <div class="bg-white rounded-3xl border border-rose-200 shadow-sm p-5">
+      <div class="flex items-center justify-between pb-3 border-b border-rose-100 mb-3">
+        <div class="flex items-center gap-2">
+          <span class="text-lg">⚠️</span>
+          <h3 class="font-black text-slate-900 text-sm">কম স্টক অ্যালার্ট (Low Stock)</h3>
+        </div>
+        <a href="/admin/inventory?low_stock=true" class="text-xs font-black text-crimson-600 hover:underline">সকল স্টক</a>
+      </div>
+
+      {% if low_stock_products %}
+      <div class="space-y-2">
+        {% for p in low_stock_products[:5] %}
+        <div class="flex items-center justify-between p-3 rounded-2xl bg-rose-50/60 border border-rose-200/60 text-xs">
+          <div>
+            <div class="font-bold text-slate-900">{{ p.name_bn }}</div>
+            <div class="text-[11px] text-slate-500">{{ p.category }} • দর: ৳{{ p.sell_price }}</div>
+          </div>
+          <div class="text-right">
+            <div class="font-black text-rose-600 text-sm">{{ p.stock }} {{ p.unit }}</div>
+            <span class="text-[10px] text-rose-800 font-bold">সীমা: {{ p.alert_qty }}</span>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="text-xs text-slate-500 py-6 text-center font-medium">সকল খাদ্য ও ঔষধের পর্যাপ্ত স্টক রয়েছে। ✅</p>
+      {% endif %}
+    </div>
+
+    <!-- Recent Delivery Invoices -->
+    <div class="bg-white rounded-3xl border border-orange-100 shadow-sm p-5">
+      <div class="flex items-center justify-between pb-3 border-b border-orange-100 mb-3">
+        <div class="flex items-center gap-2">
+          <span class="text-lg">📝</span>
+          <h3 class="font-black text-slate-900 text-sm">সাম্প্রতিক চালান (Recent Invoices)</h3>
+        </div>
+        <a href="/admin/dispatch" class="text-xs font-black text-orangeBrand-600 hover:underline">+ নতুন চালান</a>
+      </div>
+
+      {% if recent_invoices %}
+      <div class="space-y-2">
+        {% for inv in recent_invoices[:5] %}
+        <div class="flex items-center justify-between p-3 rounded-2xl hover:bg-orangeBrand-50/40 border border-slate-100 text-xs transition">
+          <div>
+            <div class="font-bold text-slate-900 flex items-center gap-1.5">
+              <span>{{ inv.invoice_no }}</span>
+              <span class="text-[10px] px-1.5 py-0.2 rounded bg-orangeBrand-50 text-orangeBrand-700 font-semibold">{{ inv.invoice_date }}</span>
+            </div>
+            <div class="text-[11px] text-slate-500 mt-0.5">{{ inv.farmer_name }} • বাকি: ৳{{ "{:,.0f}".format(inv.due_amount) }}</div>
+          </div>
+          <div class="text-right">
+            <div class="font-black text-slate-900 text-sm">৳ {{ "{:,.0f}".format(inv.net_total) }}</div>
+            <a href="/admin/invoice/{{ inv.id }}/print" class="text-[11px] font-black text-crimson-600 hover:underline">মেমো প্রিন্ট ➔</a>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="text-xs text-slate-500 py-6 text-center">এখনো কোন চালান তৈরি করা হয়নি।</p>
+      {% endif %}
+    </div>
+
+  </div>
+
+</div>
+{% endblock %}

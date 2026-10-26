@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="bn" class="h-full bg-stone-50">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>{% block title %}{{ shop.shop_name if shop else "SR Enterprise" }}{% endblock %} | পৌল্ট্রি ও ক্যাটল ফিড ডিলারশিপ</title>
+  
+  <!-- Mobile App (APK / PWA) Meta Tags -->
+  <link rel="manifest" href="/static/manifest.json">
+  <meta name="theme-color" content="#e11d48">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="apple-touch-icon" href="/static/img/logo.png">
+  <link rel="icon" type="image/png" href="/static/img/logo.png">
+
+  <!-- Google Font: Hind Siliguri (Bengali) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            maroon: {
+              700: '#9f1239',
+              800: '#881337',
+              900: '#701a35',
+              950: '#4c0519',
+            },
+            crimson: {
+              50: '#fff1f2',
+              100: '#ffe4e6',
+              500: '#f43f5e',
+              600: '#e11d48',
+              700: '#be123c',
+              800: '#9f1239',
+            },
+            orangeBrand: {
+              50: '#fff7ed',
+              100: '#ffedd5',
+              500: '#f97316',
+              600: '#ea580c',
+              700: '#c2410c',
+            },
+            amberBrand: {
+              50: '#fffbeb',
+              500: '#f59e0b',
+              600: '#d97706',
+            }
+          },
+          fontFamily: {
+            sans: ['"Hind Siliguri"', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- HTML5 QR Code Library for Camera Scanning -->
+  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+
+  <!-- Custom CSS & Utilities -->
+  <link rel="stylesheet" href="/static/css/custom.css">
+  <script src="/static/js/app.js"></script>
+  <script src="/static/js/scanner.js"></script>
+  {% block extra_head %}{% endblock %}
+</head>
+<body class="h-full flex flex-col font-sans text-slate-800 antialiased selection:bg-rose-500 selection:text-white hero-gradient">
+
+  <!-- TOP APP HEADER -->
+  <header class="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-orange-100 shadow-sm no-print">
+    <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16">
+        
+        <!-- App Logo & Title -->
+        <div class="flex items-center gap-2.5">
+          {% if user and user.role == 'admin' %}
+            <a href="/admin" class="flex items-center gap-2.5 group">
+          {% elif user and user.role == 'farmer' %}
+            <a href="/farmer" class="flex items-center gap-2.5 group">
+          {% else %}
+            <a href="/" class="flex items-center gap-2.5 group">
+          {% endif %}
+            <img src="/static/img/logo.png" alt="SR Enterprise Logo" class="w-11 h-11 object-contain drop-shadow-sm group-active:scale-95 transition-transform flex-shrink-0">
+            <div>
+              <div class="font-extrabold text-lg leading-tight bg-gradient-to-r from-maroon-900 via-crimson-700 to-orangeBrand-600 bg-clip-text text-transparent">
+                {{ shop.shop_name if shop else "SR Enterprise" }}
+              </div>
+              <div class="text-[10px] font-bold text-orangeBrand-600 tracking-wide flex items-center gap-1">
+                <span>🐓</span> পৌল্ট্রি ও ক্যাটল ফিড ডিলার
+              </div>
+            </div>
+          </a>
+        </div>
+
+        <!-- Desktop Navigation for Admin with Active Section Shading -->
+        {% if user and user.role == 'admin' %}
+        <nav class="hidden md:flex items-center gap-1.5 font-bold text-xs" id="desktopNavAdmin">
+          <a href="/admin" class="nav-item px-3.5 py-1.5 rounded-2xl transition {{ 'bg-gradient-to-r from-maroon-900 to-crimson-700 text-white font-black shadow-md shadow-crimson-900/20 border border-crimson-600/40 active-nav' if current_path in ['/admin', '/admin/'] else 'text-slate-600 hover:text-crimson-700 hover:bg-orangeBrand-50' }}">
+            ড্যাশবোর্ড
+          </a>
+          <a href="/admin/inventory" class="nav-item px-3.5 py-1.5 rounded-2xl transition {{ 'bg-gradient-to-r from-maroon-900 to-crimson-700 text-white font-black shadow-md shadow-crimson-900/20 border border-crimson-600/40 active-nav' if current_path and current_path.startswith('/admin/inventory') else 'text-slate-600 hover:text-crimson-700 hover:bg-orangeBrand-50' }}">
+            স্টক ইনভেন্টরি
+          </a>
+          <a href="/admin/scanner" class="nav-item px-3.5 py-1.5 rounded-2xl transition flex items-center gap-1.5 {{ 'bg-gradient-to-r from-crimson-600 to-orangeBrand-500 text-white ring-2 ring-orangeBrand-400 font-black shadow-md shadow-crimson-500/25 active-nav' if current_path and current_path.startswith('/admin/scanner') else 'bg-orangeBrand-50 text-orangeBrand-800 border border-orangeBrand-200 hover:bg-orangeBrand-100 font-bold' }}">
+            <span>📷</span> কিউআর স্ক্যান
+          </a>
+          <a href="/admin/farmers" class="nav-item px-3.5 py-1.5 rounded-2xl transition {{ 'bg-gradient-to-r from-maroon-900 to-crimson-700 text-white font-black shadow-md shadow-crimson-900/20 border border-crimson-600/40 active-nav' if current_path and current_path.startswith('/admin/farmer') else 'text-slate-600 hover:text-crimson-700 hover:bg-orangeBrand-50' }}">
+            খামারিদের খাতা
+          </a>
+          <a href="/admin/batches" class="nav-item px-3.5 py-1.5 rounded-2xl transition {{ 'bg-gradient-to-r from-maroon-900 to-crimson-700 text-white font-black shadow-md shadow-crimson-900/20 border border-crimson-600/40 active-nav' if current_path and current_path.startswith('/admin/batch') else 'text-slate-600 hover:text-crimson-700 hover:bg-orangeBrand-50' }}">
+            শেড / ব্যাচ
+          </a>
+          <a href="/admin/dispatch" class="nav-item px-3.5 py-1.5 rounded-2xl transition {{ 'bg-gradient-to-r from-maroon-900 to-crimson-700 text-white font-black shadow-md shadow-crimson-900/20 border border-crimson-600/40 active-nav' if current_path and (current_path.startswith('/admin/dispatch') or current_path.startswith('/admin/invoice')) else 'text-slate-600 hover:text-crimson-700 hover:bg-orangeBrand-50' }}">
+            চালান (POS)
+          </a>
+          <a href="/admin/payments" class="nav-item px-3.5 py-1.5 rounded-2xl transition {{ 'bg-gradient-to-r from-maroon-900 to-crimson-700 text-white font-black shadow-md shadow-crimson-900/20 border border-crimson-600/40 active-nav' if current_path and current_path.startswith('/admin/payment') else 'text-slate-600 hover:text-crimson-700 hover:bg-orangeBrand-50' }}">
+            টাকা আদায়
+          </a>
+          <a href="/admin/settings" class="nav-item px-3.5 py-1.5 rounded-2xl transition {{ 'bg-gradient-to-r from-maroon-900 to-crimson-700 text-white font-black shadow-md shadow-crimson-900/20 border border-crimson-600/40 active-nav' if current_path and current_path.startswith('/admin/setting') else 'text-slate-600 hover:text-crimson-700 hover:bg-orangeBrand-50' }}">
+            সেটিংস
+          </a>
+        </nav>
+        {% elif user and user.role == 'farmer' %}
+        <nav class="hidden md:flex items-center gap-2 font-bold text-xs" id="desktopNavFarmer">
+          <a href="/farmer" class="nav-item px-3.5 py-1.5 rounded-2xl transition {{ 'bg-gradient-to-r from-maroon-900 to-crimson-700 text-white font-black shadow-md shadow-crimson-900/20 border border-crimson-600/40 active-nav' if current_path in ['/farmer', '/farmer/'] else 'text-slate-600 hover:text-crimson-700 hover:bg-orangeBrand-50' }}">
+            আমার শেড
+          </a>
+          <a href="/farmer/ledger" class="nav-item px-3.5 py-1.5 rounded-2xl transition {{ 'bg-gradient-to-r from-maroon-900 to-crimson-700 text-white font-black shadow-md shadow-crimson-900/20 border border-crimson-600/40 active-nav' if current_path and current_path.startswith('/farmer/ledger') else 'text-slate-600 hover:text-crimson-700 hover:bg-orangeBrand-50' }}">
+            হিসাবের খতিয়ান
+          </a>
+          <a href="/farmer/request-feed" class="nav-item px-3.5 py-1.5 rounded-2xl transition flex items-center gap-1 {{ 'bg-gradient-to-r from-crimson-600 to-orangeBrand-500 text-white ring-2 ring-orangeBrand-400 font-black shadow-md shadow-crimson-500/25 active-nav' if current_path and current_path.startswith('/farmer/request-feed') else 'bg-orangeBrand-50 text-orangeBrand-800 border border-orangeBrand-200 hover:bg-orangeBrand-100 font-bold' }}">
+            <span>➕</span> ফিড রিকুয়েস্ট
+          </a>
+        </nav>
+        {% endif %}
+
+        <!-- Right Side User & Badges -->
+        <div class="flex items-center gap-2">
+          <!-- Mobile Quick Scan Shortcut on header -->
+          {% if user and user.role == 'admin' %}
+            <a href="/admin/scanner" class="md:hidden p-2 text-crimson-600 hover:bg-crimson-50 rounded-xl transition" title="কিউআর স্ক্যানার">
+              <span class="text-xl">📷</span>
+            </a>
+          {% endif %}
+
+          {% if is_cloudinary %}
+            <span class="hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-sky-50 text-sky-700 border border-sky-200" title="Cloudinary ব্যান্ডউইথ ফ্রি">
+              ☁️ Cloudinary
+            </span>
+          {% endif %}
+          
+          {% if is_firebase %}
+            <span class="hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amberBrand-50 text-amberBrand-600 border border-amberBrand-500/30" title="Firebase Firestore সিঙ্ক">
+              🔥 Firebase
+            </span>
+          {% endif %}
+
+          {% if user %}
+            <div class="flex items-center gap-2 pl-2 border-l border-slate-200">
+              <div class="text-right hidden sm:block">
+                <div class="text-xs font-black text-slate-900 leading-tight">{{ user.name }}</div>
+                <div class="text-[10px] text-crimson-700 font-bold">
+                  {{ 'ডিলার অ্যাডমিন' if user.role == 'admin' else 'খামারি' }}
+                </div>
+              </div>
+              <a href="/logout" class="p-2 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition" title="লগআউট">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+              </a>
+            </div>
+          {% else %}
+            <a href="/login" class="px-4 py-2 bg-gradient-to-r from-crimson-600 to-orangeBrand-500 text-white font-bold text-xs rounded-xl shadow-md shadow-crimson-500/25 transition">
+              লগইন
+            </a>
+          {% endif %}
+
+        </div>
+
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN BODY CONTENT -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 pb-28 md:pb-8">
+    {% block content %}{% endblock %}
+  </main>
+
+  <!-- MOBILE NATIVE-LIKE BOTTOM NAVIGATION BAR (APK Shell Style) with Active Shading -->
+  {% if user and user.role == 'admin' %}
+  <nav class="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-xl border-t border-orange-100/80 shadow-[0_-8px_20px_rgba(225,29,72,0.08)] no-print safe-bottom" id="mobileNavAdmin">
+    <div class="grid grid-cols-5 h-16 items-center px-1.5 gap-1">
+      
+      <!-- Home -->
+      <a href="/admin" class="flex flex-col items-center justify-center text-xs touch-press py-1.5 rounded-2xl transition {{ 'bg-gradient-to-b from-orangeBrand-100 to-crimson-50/80 text-crimson-700 font-black shadow-xs border border-crimson-200/70' if current_path in ['/admin', '/admin/'] else 'text-slate-600 hover:text-crimson-600 font-bold' }}">
+        <span class="text-xl leading-none">🏠</span>
+        <span class="text-[10px] mt-0.5">হোম</span>
+      </a>
+
+      <!-- Stock / Inventory -->
+      <a href="/admin/inventory" class="flex flex-col items-center justify-center text-xs touch-press py-1.5 rounded-2xl transition {{ 'bg-gradient-to-b from-orangeBrand-100 to-crimson-50/80 text-crimson-700 font-black shadow-xs border border-crimson-200/70' if current_path and current_path.startswith('/admin/inventory') else 'text-slate-600 hover:text-crimson-600 font-bold' }}">
+        <span class="text-xl leading-none">📦</span>
+        <span class="text-[10px] mt-0.5">স্টক</span>
+      </a>
+
+      <!-- Center Prominent Scan Button with Glowing Ring -->
+      <a href="/admin/scanner" class="flex flex-col items-center justify-center -mt-6 group touch-press">
+        <div class="w-14 h-14 rounded-full bg-gradient-to-tr from-maroon-800 via-crimson-600 to-orangeBrand-500 text-white scan-glow flex items-center justify-center border-4 border-white transition-transform {{ 'ring-4 ring-orangeBrand-400 scale-105' if current_path and current_path.startswith('/admin/scanner') else 'group-active:scale-95' }}">
+          <span class="text-2xl animate-pulse">📷</span>
+        </div>
+        <span class="text-[10px] font-black {{ 'text-crimson-700 font-black' if current_path and current_path.startswith('/admin/scanner') else 'bg-gradient-to-r from-crimson-700 to-orangeBrand-600 bg-clip-text text-transparent' }} mt-1">স্ক্যানার</span>
+      </a>
+
+      <!-- Farmers -->
+      <a href="/admin/farmers" class="flex flex-col items-center justify-center text-xs touch-press py-1.5 rounded-2xl transition {{ 'bg-gradient-to-b from-orangeBrand-100 to-crimson-50/80 text-crimson-700 font-black shadow-xs border border-crimson-200/70' if current_path and (current_path.startswith('/admin/farmer') or current_path.startswith('/admin/batch')) else 'text-slate-600 hover:text-crimson-600 font-bold' }}">
+        <span class="text-xl leading-none">👨‍🌾</span>
+        <span class="text-[10px] mt-0.5">খামারি</span>
+      </a>
+
+      <!-- Dispatch POS -->
+      <a href="/admin/dispatch" class="flex flex-col items-center justify-center text-xs touch-press py-1.5 rounded-2xl transition {{ 'bg-gradient-to-b from-orangeBrand-100 to-crimson-50/80 text-crimson-700 font-black shadow-xs border border-crimson-200/70' if current_path and (current_path.startswith('/admin/dispatch') or current_path.startswith('/admin/invoice')) else 'text-slate-600 hover:text-crimson-600 font-bold' }}">
+        <span class="text-xl leading-none">📝</span>
+        <span class="text-[10px] mt-0.5">চালান</span>
+      </a>
+
+    </div>
+  </nav>
+  {% elif user and user.role == 'farmer' %}
+  <nav class="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-xl border-t border-orange-100/80 shadow-[0_-8px_20px_rgba(225,29,72,0.08)] no-print safe-bottom" id="mobileNavFarmer">
+    <div class="grid grid-cols-3 h-16 items-center px-4 gap-2">
+      <a href="/farmer" class="flex flex-col items-center justify-center text-xs touch-press py-1.5 rounded-2xl transition {{ 'bg-gradient-to-b from-orangeBrand-100 to-crimson-50/80 text-crimson-700 font-black shadow-xs border border-crimson-200/70' if current_path in ['/farmer', '/farmer/'] else 'text-slate-700 hover:text-crimson-600 font-bold' }}">
+        <span class="text-2xl leading-none">🐣</span>
+        <span class="text-[11px] mt-0.5 font-bold">আমার শেড</span>
+      </a>
+      <a href="/farmer/ledger" class="flex flex-col items-center justify-center text-xs touch-press py-1.5 rounded-2xl transition {{ 'bg-gradient-to-b from-orangeBrand-100 to-crimson-50/80 text-crimson-700 font-black shadow-xs border border-crimson-200/70' if current_path and current_path.startswith('/farmer/ledger') else 'text-slate-700 hover:text-crimson-600 font-bold' }}">
+        <span class="text-2xl leading-none">📒</span>
+        <span class="text-[11px] mt-0.5 font-bold">খতিয়ান ও বাকি</span>
+      </a>
+      <a href="/farmer/request-feed" class="flex flex-col items-center justify-center text-xs touch-press py-1 rounded-2xl transition {{ 'bg-gradient-to-b from-orangeBrand-100 to-crimson-50/80 text-crimson-700 font-black shadow-xs border border-crimson-200/70' if current_path and current_path.startswith('/farmer/request-feed') else 'text-slate-700 hover:text-crimson-600 font-bold' }}">
+        <div class="w-10 h-10 rounded-full bg-gradient-to-r from-crimson-600 to-orangeBrand-500 text-white flex items-center justify-center text-xl shadow-md">
+          <span>➕</span>
+        </div>
+        <span class="text-[10px] mt-0.5 font-bold">ফিড রিকুয়েস্ট</span>
+      </a>
+    </div>
+  </nav>
+  {% endif %}
+
+  <!-- FOOTER -->
+  <footer class="mt-auto border-t border-orange-100 bg-white/80 py-4 text-center text-xs text-slate-500 no-print">
+    <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
+      <div>
+        © 2026 <strong>{{ shop.shop_name if shop else "SR Enterprise" }}</strong> — সকল অধিকার সংরক্ষিত।
+      </div>
+      <div class="flex items-center gap-2 text-slate-400">
+        <span class="px-2 py-0.5 rounded-full bg-orangeBrand-50 text-orangeBrand-700 font-bold border border-orangeBrand-200 text-[10px]">APK Ready</span>
+        <span>•</span>
+        <span>রেন্ডার + ফায়ারবেস + ক্লাউডিনারি</span>
+      </div>
+    </div>
+  </footer>
+
+  {% block extra_scripts %}{% endblock %}
+
+  <script>
+    // Dynamic Active Section Highlighter (ensures shading is always active on current page)
+    document.addEventListener("DOMContentLoaded", () => {
+      const path = window.location.pathname;
+      document.querySelectorAll('#desktopNavAdmin a, #desktopNavFarmer a').forEach(link => {
+        const href = link.getAttribute('href');
+        if (href && (href === path || (href !== '/admin' && href !== '/farmer' && path.startsWith(href)))) {
+          if (!link.classList.contains('active-nav')) {
+            link.classList.add('bg-gradient-to-r', 'from-maroon-900', 'to-crimson-700', 'text-white', 'font-black', 'shadow-md', 'shadow-crimson-900/20', 'border', 'border-crimson-600/40', 'active-nav');
+            link.classList.remove('text-slate-600');
+          }
+        }
+      });
+    });
+  </script>
+</body>
+</html>

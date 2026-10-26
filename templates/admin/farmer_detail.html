@@ -1,0 +1,299 @@
+{% extends "base.html" %}
+
+{% block title %}{{ farmer.name }} | খামারি খতিয়ান | {{ shop.shop_name if shop else "SR Enterprise" }}{% endblock %}
+
+{% block content %}
+<div class="space-y-5">
+
+  <!-- Farmer Overview Card -->
+  <div class="bg-white p-5 sm:p-6 rounded-3xl border border-orange-100 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-6">
+    <div class="flex items-start gap-4">
+      <div class="w-20 h-20 rounded-2xl bg-orangeBrand-50 border border-orangeBrand-200 overflow-hidden flex-shrink-0 flex items-center justify-center">
+        {% if farmer.image_url %}
+          <img src="{{ farmer.image_url }}" alt="{{ farmer.name }}" class="w-full h-full object-cover">
+        {% else %}
+          <span class="text-3xl">👨‍🌾</span>
+        {% endif %}
+      </div>
+      <div>
+        <div class="flex items-center gap-2 flex-wrap">
+          <h1 class="text-xl sm:text-2xl font-black text-slate-900">{{ farmer.name }}</h1>
+          <span class="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-orangeBrand-100 text-orangeBrand-800 border border-orangeBrand-200">
+            {{ farmer.status }}
+          </span>
+        </div>
+        <div class="text-xs text-slate-600 space-y-0.5 mt-1 font-medium">
+          <p>📱 <span class="font-bold text-slate-900">{{ farmer.phone }}</span> (লগইন পিন: <span class="font-mono bg-stone-100 px-1 py-0.2 rounded font-black text-crimson-700">{{ farmer.pin }}</span>)</p>
+          <p>🏠 {{ farmer.shed_name or "শেড" }} • {{ farmer.address or "ঠিকানা নেই" }}</p>
+          <p>🐣 ধারণক্ষমতা: <span class="font-bold text-slate-800">{{ farmer.shed_capacity }}</span> মুরগী • শেড তুলেছে: <span class="font-bold text-slate-800">{{ farmer.total_batches }}</span> বার</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Outstanding Due & Actions (Maroon & Crimson) -->
+    <div class="flex flex-col sm:flex-row items-start sm:items-center gap-4 border-t md:border-t-0 pt-4 md:pt-0 border-orange-50">
+      
+      <!-- Outstanding Due Box -->
+      <div class="p-4 bg-crimson-50/70 rounded-3xl border border-crimson-200 text-right min-w-[170px]">
+        <div class="text-[11px] font-black text-crimson-700 uppercase tracking-wider">মোট বকেয়া পাওনা</div>
+        <div class="text-2xl font-black text-maroon-900 mt-0.5">
+          ৳ {{ "{:,.0f}".format(farmer.total_due) }}
+        </div>
+        <div class="text-[10px] text-slate-500 mt-0.5">লাইভ আপডেট খাতা</div>
+      </div>
+
+      <!-- Farmer QR Card -->
+      <div class="p-2 bg-stone-50 border border-slate-200 rounded-2xl text-center flex flex-col items-center">
+        <img src="{{ farmer_qr_url }}" alt="Farmer QR" class="w-16 h-16">
+        <span class="text-[9px] font-mono text-slate-400 mt-1 font-bold">QR ID</span>
+      </div>
+
+      <!-- Quick Action Buttons -->
+      <div class="flex flex-col gap-2 w-full sm:w-auto">
+        <a href="/admin/dispatch?farmer_id={{ farmer.id }}" class="px-5 py-2.5 bg-gradient-to-r from-crimson-600 to-orangeBrand-500 hover:opacity-95 text-white rounded-2xl text-xs font-black text-center shadow-md transition touch-press">
+          📝 নতুন চালান দিন
+        </a>
+        <button onclick="openPaymentModal()" class="px-5 py-2.5 bg-maroon-950 hover:bg-black text-white rounded-2xl text-xs font-black transition touch-press">
+          💰 টাকা গ্রহণ করুন
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ACTIVE SHED STATUS (IF ANY) -->
+  {% if active_batch %}
+  <div class="bg-gradient-to-r from-maroon-950 via-maroon-800 to-orangeBrand-600 text-white p-5 sm:p-6 rounded-3xl shadow-lg relative overflow-hidden">
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10">
+      <div>
+        <div class="flex items-center gap-2">
+          <span class="text-xl">🐣</span>
+          <span class="text-xs font-bold uppercase tracking-wider text-orangeBrand-200">চলতি শেড চলমান</span>
+          <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-white/20 text-white">{{ active_batch.bird_type }}</span>
+        </div>
+        <h2 class="text-xl font-black mt-1">{{ active_batch.batch_no }}</h2>
+        <div class="text-xs text-orangeBrand-100 mt-2 flex flex-wrap gap-x-4 gap-y-1 font-medium">
+          <span>📅 শুরুর তারিখ: <strong>{{ active_batch.start_date }}</strong></span>
+          <span>⏳ শেডের বয়স: <strong class="bg-white/20 px-2 py-0.5 rounded font-black">{{ active_batch.age_days }} দিন</strong></span>
+          <span>🐣 বাচ্চা: <strong>{{ active_batch.chick_qty }} টি</strong></span>
+          <span>🥣 খাদ্য: <strong>{{ active_batch.total_feed_bags }} বস্তা</strong></span>
+          <span>💀 মর্টালিটি: <strong>{{ active_batch.mortality_count }} টি</strong></span>
+        </div>
+      </div>
+
+      <div class="text-left md:text-right flex flex-col md:items-end justify-center border-t md:border-t-0 pt-3 md:pt-0 border-white/10">
+        <div class="text-xs text-orangeBrand-200 font-bold uppercase tracking-wide">SR এর মোট বিনিয়োগ</div>
+        <div class="text-2xl font-black text-amberBrand-300">৳ {{ "{:,.0f}".format(active_batch.total_investment) }}</div>
+        <div class="mt-3 flex items-center gap-2">
+          <a href="/admin/batch/{{ active_batch.id }}" class="px-4 py-2 bg-white text-maroon-950 rounded-xl text-xs font-black hover:bg-orangeBrand-50 transition shadow-sm touch-press">
+            শেডের বিস্তারিত ও খরচ ➔
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% else %}
+  <div class="p-4 bg-orangeBrand-50/60 rounded-2xl border border-orangeBrand-200 flex items-center justify-between">
+    <div class="text-xs text-slate-700 font-medium">
+      এই খামারির বর্তমানে কোন সক্রিয় শেড চলমান নেই।
+    </div>
+    <a href="/admin/batches" class="px-3.5 py-2 bg-gradient-to-r from-crimson-600 to-orangeBrand-500 text-white rounded-xl text-xs font-black touch-press">
+      + নতুন শেড চালু করুন
+    </a>
+  </div>
+  {% endif %}
+
+  <!-- LEDGER: INVOICES & PAYMENTS STATEMENT -->
+  <div class="bg-white rounded-3xl border border-orange-100 shadow-sm overflow-hidden">
+    <div class="p-5 border-b border-orange-50 flex items-center justify-between">
+      <div class="flex items-center gap-2.5">
+        <span class="text-xl">📒</span>
+        <div>
+          <h2 class="font-black text-slate-900 text-base">হিসাবের খতিয়ান (Ledger Statement)</h2>
+          <p class="text-xs text-slate-500">মালামাল চালানের খরচ ও টাকা জমার রিয়েলটাইম ইতিহাস</p>
+        </div>
+      </div>
+      <button onclick="window.print()" class="text-xs font-black text-slate-700 hover:text-crimson-600 border border-slate-200 px-3.5 py-1.5 rounded-xl no-print touch-press">
+        🖨️ খতিয়ান প্রিন্ট
+      </button>
+    </div>
+
+    <!-- Invoices Table -->
+    <div class="p-5 border-b border-orange-50">
+      <h3 class="text-xs font-black uppercase tracking-wider text-slate-500 mb-3">সরবরাহকৃত মালামাল ও চালান (Invoices)</h3>
+      {% if invoices %}
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs">
+          <thead class="bg-stone-50 text-slate-500 font-bold border-b">
+            <tr>
+              <th class="p-3">চালান নং</th>
+              <th class="p-3">তারিখ</th>
+              <th class="p-3">পণ্যের বিবরণ</th>
+              <th class="p-3 text-right">মোট টাকা</th>
+              <th class="p-3 text-right">নগদ প্রদান</th>
+              <th class="p-3 text-right">বাকি (পাওনা)</th>
+              <th class="p-3 text-center no-print">মেমো</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100">
+            {% for inv in invoices %}
+            <tr class="hover:bg-orangeBrand-50/20">
+              <td class="p-3 font-black font-mono text-slate-900">{{ inv.invoice_no }}</td>
+              <td class="p-3 text-slate-600">{{ inv.invoice_date }}</td>
+              <td class="p-3 text-slate-700 font-medium">
+                {% for item in inv['items'] %}
+                  <div>• {{ item.name_bn or item.name }} ({{ item.qty }} {{ item.unit }}) - ৳{{ item.total }}</div>
+                {% endfor %}
+              </td>
+              <td class="p-3 text-right font-black text-slate-900">৳{{ "{:,.0f}".format(inv.net_total) }}</td>
+              <td class="p-3 text-right text-emerald-700 font-bold">৳{{ "{:,.0f}".format(inv.paid_amount) }}</td>
+              <td class="p-3 text-right font-black text-crimson-600">৳{{ "{:,.0f}".format(inv.due_amount) }}</td>
+              <td class="p-3 text-center no-print">
+                <a href="/admin/invoice/{{ inv.id }}/print" class="px-2.5 py-1 bg-stone-100 hover:bg-stone-200 rounded-lg font-black text-[10px] text-slate-800 touch-press">
+                  মেমো ➔
+                </a>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <p class="text-xs text-slate-400 py-3">এখনো কোন চালান প্রদান করা হয়নি।</p>
+      {% endif %}
+    </div>
+
+    <!-- Payments Received Table -->
+    <div class="p-5">
+      <h3 class="text-xs font-black uppercase tracking-wider text-slate-500 mb-3">টাকা জমা ও পরিশোধের হিসাব (Payments)</h3>
+      {% if payments %}
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs">
+          <thead class="bg-stone-50 text-slate-500 font-bold border-b">
+            <tr>
+              <th class="p-3">রশিদ নং</th>
+              <th class="p-3">তারিখ</th>
+              <th class="p-3">পদ্ধতি</th>
+              <th class="p-3">ট্রানজেকশন আইডি / নোট</th>
+              <th class="p-3 text-right">আদায়কৃত টাকা</th>
+              <th class="p-3 text-center">ভাউচার স্লিপ</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100">
+            {% for p in payments %}
+            <tr class="hover:bg-orangeBrand-50/20">
+              <td class="p-3 font-mono font-bold text-slate-900">{{ p.receipt_no }}</td>
+              <td class="p-3 text-slate-600">{{ p.payment_date }}</td>
+              <td class="p-3">
+                <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-orangeBrand-100 text-orangeBrand-800">
+                  {{ p.payment_method }}
+                </span>
+              </td>
+              <td class="p-3 text-slate-600 font-medium">{{ p.transaction_ref or p.note or "জমা গ্রহণ" }}</td>
+              <td class="p-3 text-right font-black text-emerald-700 text-sm">৳ {{ "{:,.0f}".format(p.amount) }}</td>
+              <td class="p-3 text-center">
+                {% if p.voucher_image_url %}
+                  <a href="{{ p.voucher_image_url }}" target="_blank" class="text-crimson-600 underline font-black text-[10px]">স্লিপ দেখুন</a>
+                {% else %}
+                  <span class="text-slate-400 text-[10px]">—</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <p class="text-xs text-slate-400 py-3">এখনো কোন টাকা জমার রেকর্ড নেই।</p>
+      {% endif %}
+    </div>
+
+  </div>
+
+</div>
+
+<!-- PAYMENT COLLECTION MODAL -->
+<div id="paymentModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+  <div class="bg-white w-full max-w-md rounded-3xl shadow-2xl border border-orange-100 overflow-hidden max-h-[90vh] flex flex-col">
+    
+    <div class="p-5 bg-gradient-to-r from-maroon-900 via-crimson-700 to-orangeBrand-600 text-white flex items-center justify-between">
+      <h3 class="font-black text-base">টাকা জমা গ্রহণ (Payment Collection)</h3>
+      <button onclick="closePaymentModal()" class="text-white/80 hover:text-white text-xl">✕</button>
+    </div>
+
+    <form action="/admin/payments/record" method="POST" enctype="multipart/form-data" class="p-5 space-y-4">
+      <input type="hidden" name="farmer_id" value="{{ farmer.id }}">
+      {% if active_batch %}
+        <input type="hidden" name="batch_id" value="{{ active_batch.id }}">
+      {% endif %}
+
+      <div>
+        <label class="block text-xs font-black text-slate-700 mb-1">খামারির নাম</label>
+        <input type="text" value="{{ farmer.name }}" readonly
+          class="w-full px-3.5 py-2.5 bg-stone-100 border rounded-2xl text-sm font-bold text-slate-800">
+      </div>
+
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-black text-slate-700 mb-1">জমার পরিমাণ (টাকা) *</label>
+          <input type="number" step="1" name="amount" placeholder="যেমন: 25000" required
+            class="w-full px-3.5 py-2.5 border rounded-2xl text-sm font-black text-crimson-700 focus:ring-2 focus:ring-crimson-500">
+        </div>
+        <div>
+          <label class="block text-xs font-black text-slate-700 mb-1">পেমেন্ট মেথড *</label>
+          <select name="payment_method" class="w-full px-3.5 py-2.5 border rounded-2xl text-sm font-semibold">
+            <option value="Cash">ক্যাশ / নগদ</option>
+            <option value="bKash">বিকাশ (bKash)</option>
+            <option value="Nagad">নগদ (Nagad)</option>
+            <option value="Bank">ব্যাংক ট্রান্সফার</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-black text-slate-700 mb-1">তারিখ *</label>
+          <input type="date" name="payment_date" value="{{ now_date }}" required
+            class="w-full px-3.5 py-2.5 border rounded-2xl text-sm font-medium">
+        </div>
+        <div>
+          <label class="block text-xs font-black text-slate-700 mb-1">ট্রানজেকশন আইডি / চেক নং</label>
+          <input type="text" name="transaction_ref" placeholder="TrxID..."
+            class="w-full px-3.5 py-2.5 border rounded-2xl text-sm font-mono">
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-xs font-black text-slate-700 mb-1">ভাউচার স্লিপের ছবি (Cloudinary)</label>
+        <input type="file" name="voucher_file" accept="image/*"
+          class="w-full text-xs text-slate-500 file:mr-2 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-orangeBrand-50 file:text-orangeBrand-700">
+      </div>
+
+      <div>
+        <label class="block text-xs font-black text-slate-700 mb-1">নোট / বিবরণ</label>
+        <input type="text" name="note" placeholder="বকেয়া বা শেড বাবদ জমা..."
+          class="w-full px-3.5 py-2.5 border rounded-2xl text-sm">
+      </div>
+
+      <div class="flex items-center justify-end gap-2 pt-3 border-t">
+        <button type="button" onclick="closePaymentModal()" class="px-4 py-2.5 border rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50">
+          বাতিল
+        </button>
+        <button type="submit" class="px-5 py-2.5 bg-gradient-to-r from-crimson-600 to-orangeBrand-500 hover:opacity-95 text-white rounded-xl text-xs font-black shadow-md shadow-crimson-600/20 touch-press">
+          টাকা জমা কনফার্ম করুন ➔
+        </button>
+      </div>
+    </form>
+
+  </div>
+</div>
+
+<script>
+  function openPaymentModal() {
+    document.getElementById('paymentModal').classList.remove('hidden');
+  }
+  function closePaymentModal() {
+    document.getElementById('paymentModal').classList.add('hidden');
+  }
+</script>
+{% endblock %}

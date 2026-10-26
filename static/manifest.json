@@ -1,0 +1,18 @@
+{
+  "name": "SR Enterprise - পৌল্ট্রি ও ক্যাটল ফিড ডিলার",
+  "short_name": "SR Enterprise",
+  "description": "পৌল্ট্রি ও গরুর খাদ্য, ঔষধ ডিলারশিপ এবং খামারি হিসাব ব্যবস্থাপনা",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#881337",
+  "theme_color": "#e11d48",
+  "icons": [
+    {
+      "src": "/static/img/logo.png",
+      "sizes": "192x192 512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

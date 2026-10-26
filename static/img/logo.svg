@@ -1,0 +1,117 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 620 120" width="100%" height="100%">
+  <defs>
+    <!-- Brand Gradients -->
+    <linearGradient id="primaryEmerald" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#10B981" />
+      <stop offset="100%" stop-color="#047857" />
+    </linearGradient>
+    <linearGradient id="harvestAmber" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F59E0B" />
+      <stop offset="100%" stop-color="#D97706" />
+    </linearGradient>
+    <linearGradient id="shieldBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0F172A" />
+      <stop offset="100%" stop-color="#1E293B" />
+    </linearGradient>
+    <filter id="softShadow" x="-10%" y="-10%" width="130%" height="130%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#047857" flood-opacity="0.18" />
+    </filter>
+  </defs>
+
+  <!-- === ICON MARK (Squircle Container) === -->
+  <g transform="translate(15, 10)">
+    <!-- Base Squircle with soft shadow -->
+    <rect x="0" y="0" width="100" height="100" rx="26" fill="url(#shieldBg)" filter="url(#softShadow)" />
+    <!-- Subtle Emerald Accent Border -->
+    <rect x="0.75" y="0.75" width="98.5" height="98.5" rx="25.25" fill="none" stroke="url(#primaryEmerald)" stroke-width="1.5" stroke-opacity="0.4" />
+
+    <!-- MONOGRAM S (Vibrant Emerald Curve) -->
+    <path d="M 40 28
+             C 28 28, 20 36, 20 46
+             C 20 56, 27 63, 40 67
+             L 48 70
+             C 58 73, 63 79, 63 87
+             C 63 97, 53 103, 39 103
+             C 26 103, 18 97, 15 89"
+          transform="translate(1, -14) scale(0.98)"
+          fill="none" 
+          stroke="url(#primaryEmerald)" 
+          stroke-width="10.5" 
+          stroke-linecap="round" 
+          stroke-linejoin="round" />
+
+    <!-- MONOGRAM R (Clean White Stem + Arch) -->
+    <!-- R Stem -->
+    <path d="M 57 28 L 57 87" 
+          transform="translate(0, -14) scale(0.98)"
+          fill="none" 
+          stroke="#FFFFFF" 
+          stroke-width="10.5" 
+          stroke-linecap="round" />
+
+    <!-- R Upper Bowl -->
+    <path d="M 57 28
+             C 74 28, 86 35, 86 49
+             C 86 63, 74 69, 57 69"
+          transform="translate(0, -14) scale(0.98)"
+          fill="none" 
+          stroke="#FFFFFF" 
+          stroke-width="10.5" 
+          stroke-linecap="round" 
+          stroke-linejoin="round" />
+
+    <!-- R Kick / Dynamic Leg (Harvest Gold Agro Sprout) -->
+    <path d="M 66 67 L 85 99" 
+          transform="translate(0, -14) scale(0.98)"
+          fill="none" 
+          stroke="url(#harvestAmber)" 
+          stroke-width="10.5" 
+          stroke-linecap="round" />
+
+    <!-- Golden Agro Sprout Leaf in R loop -->
+    <path d="M 68 47 
+             C 68 37, 78 37, 81 45 
+             C 81 53, 71 53, 68 47 Z" 
+          transform="translate(0, -14) scale(0.98)"
+          fill="url(#harvestAmber)" />
+
+    <!-- Vitality Dot -->
+    <circle cx="85" cy="27.5" r="3.5" fill="#10B981" />
+  </g>
+
+  <!-- === TYPOGRAPHY (SR ENTERPRISE) === -->
+  <g transform="translate(138, 22)">
+    <!-- Primary Brand Name -->
+    <text x="0" y="42" 
+          font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" 
+          font-size="34" 
+          font-weight="900" 
+          letter-spacing="1.5" 
+          fill="#0F172A">
+      SR <tspan fill="#047857">ENTERPRISE</tspan>
+    </text>
+
+    <!-- Professional English Subtitle -->
+    <text x="1" y="66" 
+          font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" 
+          font-size="12" 
+          font-weight="700" 
+          letter-spacing="4" 
+          fill="#64748B">
+      AGRO &amp; FEED SOLUTIONS
+    </text>
+
+    <!-- Bengali Tagline with Quality Badge -->
+    <g transform="translate(1, 86)">
+      <!-- Mini Pill Accent -->
+      <rect x="0" y="-12" width="6" height="6" rx="3" fill="#F59E0B" />
+      <text x="12" y="-7" 
+            font-family="'Hind Siliguri', 'Segoe UI', sans-serif" 
+            font-size="12.5" 
+            font-weight="600" 
+            fill="#059669">
+        পৌল্ট্রি ও গরুর খাদ্য, ঔষধ ডিলারশিপ
+      </text>
+    </g>
+  </g>
+</svg>

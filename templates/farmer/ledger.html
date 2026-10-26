@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block title %}আমার হিসাবের খতিয়ান | {{ shop.shop_name if shop else "SR Enterprise" }}{% endblock %}
+
+{% block content %}
+<div class="space-y-4 max-w-2xl mx-auto">
+
+  <!-- Header -->
+  <div class="bg-white p-5 rounded-3xl border border-orange-100 shadow-sm flex items-center justify-between">
+    <div>
+      <div class="flex items-center gap-2.5">
+        <span class="text-2xl">📒</span>
+        <h1 class="text-xl font-black text-slate-900">হিসাবের খতিয়ান (Ledger)</h1>
+      </div>
+      <p class="text-xs text-slate-500 mt-0.5 font-medium">{{ farmer.name }} — লাইভ খাতা ও স্টেটমেন্ট</p>
+    </div>
+
+    <!-- Outstanding Balance Pill (Crimson / Red) -->
+    <div class="text-right">
+      <span class="text-[10px] text-slate-400 font-bold uppercase block">মোট বাকি</span>
+      <span class="text-lg font-black text-crimson-600">৳ {{ "{:,.0f}".format(farmer.total_due) }}</span>
+    </div>
+  </div>
+
+  <!-- Unified Chronological Statement -->
+  <div class="bg-white rounded-3xl border border-orange-100 shadow-sm overflow-hidden">
+    <div class="p-4 border-b border-orange-50 flex items-center justify-between bg-orangeBrand-50/20">
+      <span class="text-xs font-black text-slate-800">সকল চালান ও জমার ইতিহাস</span>
+      <button onclick="window.print()" class="text-xs font-bold text-slate-700 hover:text-crimson-600 border border-slate-200 px-3 py-1 rounded-xl touch-press">
+        🖨️ প্রিন্ট
+      </button>
+    </div>
+
+    {% if ledger_entries %}
+    <div class="divide-y divide-orange-50">
+      {% for entry in ledger_entries %}
+      <div class="p-4 flex items-center justify-between gap-3 hover:bg-orangeBrand-50/20 transition">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-2xl flex items-center justify-center text-lg flex-shrink-0 {{ 'bg-crimson-50 text-crimson-600 border border-crimson-200' if entry.type == 'debit' else 'bg-emerald-50 text-emerald-700 border border-emerald-200' }}">
+            {{ '📦' if entry.type == 'debit' else '💰' }}
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="font-black text-slate-900 text-xs sm:text-sm">{{ entry.title }}</span>
+              <span class="text-[10px] text-slate-400 font-mono font-medium">{{ entry.date }}</span>
+            </div>
+            <div class="text-xs text-slate-500 mt-0.5 font-medium">{{ entry.details }}</div>
+          </div>
+        </div>
+
+        <div class="text-right flex-shrink-0">
+          <div class="text-sm font-black {{ 'text-crimson-600' if entry.type == 'debit' else 'text-emerald-700' }}">
+            {{ '+ ৳' if entry.type == 'debit' else '- ৳' }} {{ "{:,.0f}".format(entry.amount) }}
+          </div>
+          {% if entry.type == 'debit' %}
+            <a href="/admin/invoice/{{ entry.ref_id }}/print" target="_blank" class="text-[10px] text-orangeBrand-700 underline font-black">মেমো দেখুন</a>
+          {% elif entry.voucher %}
+            <a href="{{ entry.voucher }}" target="_blank" class="text-[10px] text-emerald-700 underline font-black">স্লিপ দেখুন</a>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="p-8 text-center text-slate-400 text-xs font-medium">
+      এখনো কোন চালান বা লেনদেনের তথ্য পাওয়া যায়নি।
+    </div>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}

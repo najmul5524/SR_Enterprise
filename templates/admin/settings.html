@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+
+{% block title %}সেটিংস ও ইন্টিগ্রেশন | {{ shop.shop_name if shop else "SR Enterprise" }}{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto space-y-5">
+
+  <!-- Header -->
+  <div class="bg-white p-5 rounded-3xl border border-orange-100 shadow-sm flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-12 h-12 rounded-2xl bg-orangeBrand-50 text-orangeBrand-600 flex items-center justify-center text-2xl border border-orangeBrand-100">
+        ⚙️
+      </div>
+      <div>
+        <h1 class="text-xl font-black text-slate-900">ডিলারশিপ সেটিংস ও ক্লাউড কনফিগারেশন</h1>
+        <p class="text-xs text-slate-500 font-medium">দোকানের তথ্য, Firebase ও Cloudinary ইন্টিগ্রেশন স্ট্যাটাস</p>
+      </div>
+    </div>
+  </div>
+
+  {% if msg %}
+  <div class="p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-2xl text-xs font-black flex items-center gap-2">
+    <span>✅</span>
+    <span>{{ msg }}</span>
+  </div>
+  {% endif %}
+
+  <!-- Cloud Services Integration Status Badges -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+    
+    <!-- Cloudinary Status Box -->
+    <div class="bg-white p-5 rounded-3xl border {{ 'border-emerald-300 bg-emerald-50/20' if is_cloudinary else 'border-orange-100' }} shadow-sm space-y-3">
+      <div class="flex items-center justify-between">
+        <span class="text-xs font-black uppercase tracking-wider text-slate-500">ইমেজ স্টোরেজ (ব্যান্ডউইথ সেভার)</span>
+        <span class="px-2.5 py-1 rounded-full text-xs font-black {{ 'bg-emerald-100 text-emerald-800' if is_cloudinary else 'bg-orangeBrand-100 text-orangeBrand-800' }}">
+          {{ 'সক্রিয় (Cloudinary Active)' if is_cloudinary else 'লোকাল মোড (Local Fallback)' }}
+        </span>
+      </div>
+      <p class="text-xs text-slate-600 font-medium">
+        Cloudinary তে পণ্য, খামারির প্রোফাইল ও ভাউচার স্লিপ স্টোর হয় যাতে Render এর মাসিক ফ্রি ৫জিবি ব্যান্ডউইথ শেষ না হয়ে যায়।
+      </p>
+      {% if not is_cloudinary %}
+      <div class="p-3 bg-stone-50 rounded-2xl text-[11px] text-slate-600 font-mono">
+        রেন্ডারে এনভায়রনমেন্ট ভেরিয়েবল যোগ করুন:<br>
+        • CLOUDINARY_CLOUD_NAME<br>
+        • CLOUDINARY_API_KEY<br>
+        • CLOUDINARY_API_SECRET
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Firebase Firestore Status Box -->
+    <div class="bg-white p-5 rounded-3xl border {{ 'border-emerald-300 bg-emerald-50/20' if is_firebase else 'border-orange-100' }} shadow-sm space-y-3">
+      <div class="flex items-center justify-between">
+        <span class="text-xs font-black uppercase tracking-wider text-slate-500">ডাটাবেস ক্লাউড সিঙ্ক</span>
+        <span class="px-2.5 py-1 rounded-full text-xs font-black {{ 'bg-emerald-100 text-emerald-800' if is_firebase else 'bg-amberBrand-100 text-amberBrand-800' }}">
+          {{ 'Firebase Firestore সক্রিয়' if is_firebase else 'SQLite সুরক্ষিত মোড' }}
+        </span>
+      </div>
+      <p class="text-xs text-slate-600 font-medium">
+        Firebase Console এর মাধ্যমে রিয়েলটাইম ব্যাকআপ ও সিঙ্ক হয়। credentials না থাকলে স্বয়ংক্রিয়ভাবে SQLite ইঞ্জিন কাজ করে।
+      </p>
+      {% if not is_firebase %}
+      <div class="p-3 bg-stone-50 rounded-2xl text-[11px] text-slate-600 font-mono">
+        Firebase সক্রিয় করতে:<br>
+        • FIREBASE_CREDENTIALS_JSON (সার্ভিস অ্যাকাউন্ট JSON স্ট্রিং)
+      </div>
+      {% endif %}
+    </div>
+
+  </div>
+
+  <!-- Shop Logo Preview Card -->
+  <div class="bg-white p-5 rounded-3xl border border-orange-100 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+    <div class="flex items-center gap-4">
+      <div class="w-16 h-16 rounded-2xl bg-orangeBrand-50 border border-orangeBrand-200 p-1.5 flex items-center justify-center flex-shrink-0 shadow-sm">
+        <img src="/static/img/logo.png" alt="SR Enterprise Logo" class="w-full h-full object-contain drop-shadow">
+      </div>
+      <div>
+        <h3 class="text-sm font-black text-slate-900">প্রতিষ্ঠানের অফিসিয়াল লোগো (Shop Logo)</h3>
+        <p class="text-xs text-slate-500 font-medium">ক্যাশ মেমো, মোবাইল অ্যাপস ও সমস্ত ড্যাশবোর্ডে স্বয়ংক্রিয়ভাবে ব্যবহৃত হচ্ছে।</p>
+        <span class="inline-block mt-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
+          ✅ ট্রান্সপারেন্ট লোগো সক্রিয় (/static/img/logo.png)
+        </span>
+      </div>
+    </div>
+    <a href="/static/img/logo.png" target="_blank" class="px-3.5 py-2 bg-stone-100 hover:bg-stone-200 text-slate-700 rounded-xl text-xs font-bold transition">
+      🔍 লোগো দেখুন
+    </a>
+  </div>
+
+  <!-- Store Information Form -->
+  <div class="bg-white p-6 rounded-3xl border border-orange-100 shadow-sm">
+    <h2 class="text-sm font-black text-slate-900 pb-3 border-b border-orange-50 mb-4">প্রতিষ্ঠানের মৌলিক তথ্য ও মেমো সেটিংস</h2>
+
+    <form action="/admin/settings/save" method="POST" class="space-y-4">
+      <div>
+        <label class="block text-xs font-black text-slate-700 mb-1">দোকান / প্রতিষ্ঠানের নাম *</label>
+        <input type="text" name="shop_name" value="{{ shop.shop_name or 'SR Enterprise' }}" required
+          class="w-full px-3.5 py-2.5 border rounded-2xl text-sm font-black focus:ring-2 focus:ring-crimson-500">
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-black text-slate-700 mb-1">মালিকের নাম *</label>
+          <input type="text" name="owner_name" value="{{ shop.owner_name or 'মোঃ সারোয়ার হোসেন' }}" required
+            class="w-full px-3.5 py-2.5 border rounded-2xl text-sm font-medium">
+        </div>
+        <div>
+          <label class="block text-xs font-black text-slate-700 mb-1">প্রধান মোবাইল নাম্বার *</label>
+          <input type="tel" name="phone" value="{{ shop.phone or '01700-000000' }}" required
+            class="w-full px-3.5 py-2.5 border rounded-2xl text-sm font-bold">
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-xs font-black text-slate-700 mb-1">বিকল্প মোবাইল নাম্বার</label>
+        <input type="tel" name="alt_phone" value="{{ shop.alt_phone or '' }}" placeholder="01800-000000"
+          class="w-full px-3.5 py-2.5 border rounded-2xl text-sm">
+      </div>
+
+      <div>
+        <label class="block text-xs font-black text-slate-700 mb-1">প্রতিষ্ঠানের ঠিকানা (ক্যাশ মেমোতে প্রদর্শিত হবে) *</label>
+        <input type="text" name="address" value="{{ shop.address or 'স্টেশন রোড, কাপাসিয়া, গাজীপুর' }}" required
+          class="w-full px-3.5 py-2.5 border rounded-2xl text-sm font-medium">
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-orange-50">
+        <div>
+          <label class="block text-xs font-black text-slate-700 mb-1">বিকাশ মার্চেন্ট / পার্সোনাল নাম্বার</label>
+          <input type="text" name="bkash_merchant" value="{{ shop.bkash_merchant or '' }}" placeholder="01700-000000"
+            class="w-full px-3.5 py-2.5 border rounded-2xl text-sm">
+        </div>
+        <div>
+          <label class="block text-xs font-black text-slate-700 mb-1">নগদ একাউন্ট নাম্বার</label>
+          <input type="text" name="nagad_personal" value="{{ shop.nagad_personal or '' }}" placeholder="01800-000000"
+            class="w-full px-3.5 py-2.5 border rounded-2xl text-sm">
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-xs font-black text-slate-700 mb-1">ব্যাংক একাউন্ট বিবরণ (যদি থাকে)</label>
+        <input type="text" name="bank_info" value="{{ shop.bank_info or '' }}" placeholder="ব্যাংক নাম, শাখা, একাউন্ট নং..."
+          class="w-full px-3.5 py-2.5 border rounded-2xl text-sm">
+      </div>
+
+      <div class="pt-3 border-t border-orange-50 flex justify-end">
+        <button type="submit" class="px-6 py-2.5 bg-gradient-to-r from-crimson-600 to-orangeBrand-500 hover:opacity-95 text-white font-black rounded-xl text-xs shadow-md transition touch-press">
+          তথ্য সংরক্ষণ করুন ➔
+        </button>
+      </div>
+    </form>
+  </div>
+
+</div>
+{% endblock %}

@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>চালান মেমো #{{ invoice.invoice_no }} | {{ shop.shop_name if shop else "SR Enterprise" }}</title>
+  <link rel="icon" type="image/png" href="/static/img/logo.png">
+  <link rel="apple-touch-icon" href="/static/img/logo.png">
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      font-family: 'Hind Siliguri', sans-serif;
+    }
+    @media print {
+      .no-print {
+        display: none !important;
+      }
+      body {
+        background: #fff;
+        padding: 0;
+      }
+      .memo-card {
+        box-shadow: none !important;
+        border: 1px solid #e2e8f0 !important;
+        margin: 0 !important;
+        width: 100% !important;
+      }
+    }
+  </style>
+</head>
+<body class="bg-stone-100 min-h-screen py-8 px-4 flex flex-col items-center">
+
+  <!-- Action Bar -->
+  <div class="max-w-2xl w-full mb-4 flex items-center justify-between no-print">
+    <a href="/admin/dispatch" class="px-4 py-2 bg-slate-800 text-white rounded-xl text-xs font-bold hover:bg-black transition">
+      ⬅️ নতুন চালান
+    </a>
+    <div class="flex items-center gap-2">
+      <button onclick="window.print()" class="px-5 py-2.5 bg-gradient-to-r from-crimson-600 to-orange-500 hover:opacity-95 text-white rounded-xl text-xs font-black shadow-md transition flex items-center gap-1.5">
+        <span>🖨️</span> প্রিন্ট করুন (Print Memo)
+      </button>
+    </div>
+  </div>
+
+  <!-- Cash Memo Paper Card -->
+  <div class="memo-card max-w-2xl w-full bg-white rounded-3xl shadow-xl border border-orange-100 p-8 space-y-6">
+    
+    <!-- Memo Header (Maroon / Crimson & Orange) -->
+    <div class="text-center border-b-2 border-crimson-600 pb-4 relative">
+      <div class="text-xs text-slate-400 font-bold uppercase tracking-widest mb-1.5">বিসমিল্লাহির রাহমানির রাহিম</div>
+      <div class="flex items-center justify-center gap-3.5 my-2">
+        <img src="/static/img/logo.png" alt="SR Enterprise Logo" class="w-16 h-16 object-contain flex-shrink-0">
+        <div class="text-left">
+          <h1 class="text-3xl font-black text-rose-900 tracking-tight leading-tight">{{ shop.shop_name or "SR Enterprise" }}</h1>
+          <p class="text-xs font-black text-orange-600 mt-0.5">পৌল্ট্রি ও গরুর সুষম খাদ্য, ভ্যাকসিন ও আধুনিক ভেটেরিনারি ঔষধের বিশ্বস্ত ডিলার</p>
+        </div>
+      </div>
+      <p class="text-xs text-slate-500 mt-1">
+        📍 {{ shop.address or "স্টেশন রোড, কাপাসিয়া, গাজীপুর" }} • 📱 {{ shop.phone or "01700-000000" }}
+      </p>
+      <div class="inline-block mt-3 px-5 py-1 bg-gradient-to-r from-rose-900 via-rose-700 to-orange-500 text-white rounded-full text-xs font-black tracking-wider shadow-sm">
+        মালামাল ডেলিভারি চালান / ক্যাশ মেমো
+      </div>
+    </div>
+
+    <!-- Farmer & Invoice Metadata Grid -->
+    <div class="grid grid-cols-2 gap-4 text-xs">
+      <div class="space-y-1">
+        <p><span class="text-slate-500 font-medium">খামারির নাম:</span> <strong class="text-slate-900 text-sm font-black">{{ farmer.name }}</strong></p>
+        <p><span class="text-slate-500 font-medium">মোবাইল:</span> <strong class="text-slate-800">{{ farmer.phone }}</strong></p>
+        <p><span class="text-slate-500 font-medium">শেডের নাম:</span> {{ farmer.shed_name or "খামার শেড" }}</p>
+        <p><span class="text-slate-500 font-medium">ঠিকানা:</span> {{ farmer.address or "—" }}</p>
+      </div>
+      <div class="text-right space-y-1">
+        <p><span class="text-slate-500 font-medium">চালান নং:</span> <strong class="font-mono text-slate-900 text-sm font-black">{{ invoice.invoice_no }}</strong></p>
+        <p><span class="text-slate-500 font-medium">তারিখ:</span> <strong>{{ invoice.invoice_date }}</strong></p>
+        <p><span class="text-slate-500 font-medium">পেমেন্ট টাইপ:</span> 
+          <span class="font-bold {{ 'text-rose-600' if invoice.due_amount > 0 else 'text-emerald-700' }}">
+            {{ 'বাকি চালান' if invoice.payment_type == 'credit' else 'নগদ/আংশিক' }}
+          </span>
+        </p>
+      </div>
+    </div>
+
+    <!-- Items Table -->
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-xs border border-slate-200">
+        <thead class="bg-stone-100 text-slate-700 font-bold border-b border-slate-200">
+          <tr>
+            <th class="p-2.5 border-r border-slate-200 text-center w-12">নং</th>
+            <th class="p-2.5 border-r border-slate-200">মালামাল / পণ্যের বিবরণ</th>
+            <th class="p-2.5 border-r border-slate-200 text-center">পরিমাণ</th>
+            <th class="p-2.5 border-r border-slate-200 text-right">দর (৳)</th>
+            <th class="p-2.5 text-right">মোট টাকা (৳)</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-200">
+          {% for item in invoice['items'] %}
+          <tr>
+            <td class="p-2.5 text-center border-r border-slate-200 font-medium">{{ loop.index }}</td>
+            <td class="p-2.5 border-r border-slate-200 font-black text-slate-900">{{ item.name_bn or item.name }}</td>
+            <td class="p-2.5 text-center border-r border-slate-200 font-bold">{{ item.qty }} {{ item.unit }}</td>
+            <td class="p-2.5 text-right border-r border-slate-200">৳ {{ item.price }}</td>
+            <td class="p-2.5 text-right font-black text-slate-900">৳ {{ "{:,.0f}".format(item.total) }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Calculation Summary & QR Code -->
+    <div class="flex items-end justify-between pt-2">
+      <!-- QR code verification -->
+      <div class="flex items-center gap-3">
+        <img src="{{ qr_url }}" alt="Invoice QR" class="w-20 h-20 border p-1 rounded-2xl">
+        <div class="text-[10px] text-slate-400 font-medium">
+          স্মার্ট কিউআর যাচাইকরণ<br>
+          ডিজিটাল চালানের কপি
+        </div>
+      </div>
+
+      <!-- Financial Totals -->
+      <div class="w-64 space-y-1 text-xs">
+        <div class="flex justify-between py-1 border-b border-slate-100">
+          <span class="text-slate-500 font-medium">মোট মালামাল মূল্য:</span>
+          <span class="font-bold text-slate-900">৳ {{ "{:,.0f}".format(invoice.subtotal) }}</span>
+        </div>
+        {% if invoice.discount > 0 %}
+        <div class="flex justify-between py-1 border-b border-slate-100 text-emerald-700">
+          <span>ছাড় (ডিসকাউন্ট):</span>
+          <span class="font-bold">- ৳ {{ "{:,.0f}".format(invoice.discount) }}</span>
+        </div>
+        {% endif %}
+        <div class="flex justify-between py-1 border-b border-slate-200 text-sm font-black text-slate-900">
+          <span>সর্বমোট বিল:</span>
+          <span>৳ {{ "{:,.0f}".format(invoice.net_total) }}</span>
+        </div>
+        <div class="flex justify-between py-1 border-b border-slate-100 text-emerald-700 font-bold">
+          <span>নগদ পরিশোধ:</span>
+          <span>৳ {{ "{:,.0f}".format(invoice.paid_amount) }}</span>
+        </div>
+        <div class="flex justify-between py-1.5 text-base font-black text-rose-700 bg-rose-50 px-2.5 rounded-xl border border-rose-200">
+          <span>বর্তমান চালানের বাকি:</span>
+          <span>৳ {{ "{:,.0f}".format(invoice.due_amount) }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Signatures -->
+    <div class="pt-12 grid grid-cols-2 gap-8 text-center text-xs">
+      <div>
+        <div class="border-t border-slate-400 pt-1 font-bold text-slate-700">গ্রহীতা / খামারির স্বাক্ষর</div>
+      </div>
+      <div>
+        <div class="border-t border-slate-400 pt-1 font-bold text-slate-700">কর্তৃপক্ষ — {{ shop.shop_name or "SR Enterprise" }}</div>
+      </div>
+    </div>
+
+  </div>
+
+</body>
+</html>

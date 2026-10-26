@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+
+{% block title %}ফিড ও ঔষধের রিকুয়েস্ট | {{ shop.shop_name if shop else "SR Enterprise" }}{% endblock %}
+
+{% block content %}
+<div class="space-y-4 max-w-2xl mx-auto">
+
+  <!-- Header -->
+  <div class="bg-white p-5 rounded-3xl border border-orange-100 shadow-sm flex items-center justify-between">
+    <div>
+      <div class="flex items-center gap-2.5">
+        <span class="text-2xl">➕</span>
+        <h1 class="text-xl font-black text-slate-900">ফিড ও ঔষধ রিকুয়েস্ট</h1>
+      </div>
+      <p class="text-xs text-slate-500 mt-0.5 font-medium">আপনার শেডের জন্য প্রয়োজনীয় মালামাল চেয়ে পাঠান</p>
+    </div>
+  </div>
+
+  {% if success %}
+  <div class="p-4 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-3xl text-xs font-black flex items-center gap-2 shadow-sm">
+    <span>✅</span>
+    <span>আপনার রিকুয়েস্ট সফলভাবে SR Enterprise এ পাঠানো হয়েছে! ডিলার চালান তৈরি করে মালামাল পাঠিয়ে দিবেন।</span>
+  </div>
+  {% endif %}
+
+  <!-- Request Form Card -->
+  <div class="bg-white p-5 sm:p-6 rounded-3xl border border-orange-100 shadow-sm space-y-4">
+    <h2 class="text-sm font-black text-slate-900">মালামালের রিকুয়েস্ট ফর্ম</h2>
+
+    <form action="/farmer/request-feed/submit" method="POST" class="space-y-4">
+      {% if active_batch %}
+        <input type="hidden" name="batch_id" value="{{ active_batch.id }}">
+        <div class="p-3.5 bg-orangeBrand-50 rounded-2xl border border-orangeBrand-200 text-xs text-orangeBrand-900 font-bold">
+          রানিং শেড: <strong class="text-maroon-900">{{ active_batch.batch_no }}</strong> ({{ active_batch.bird_type }})
+        </div>
+      {% endif %}
+
+      <div>
+        <label class="block text-xs font-black text-slate-700 mb-1">প্রয়োজনীয় মালামাল ও পরিমাণ লিখুন *</label>
+        <textarea name="items_requested" rows="3" required placeholder="যেমন: নুরিশ ব্রয়লার গ্রোয়ার - ৫ বস্তা, রেনামাইসিন - ২ প্যাকেট..."
+          class="w-full px-3.5 py-3 border rounded-2xl text-sm focus:ring-2 focus:ring-crimson-500 focus:outline-none font-medium"></textarea>
+      </div>
+
+      <div>
+        <label class="block text-xs font-black text-slate-700 mb-1">কোন জরুরি নির্দেশনা / মন্তব্য</label>
+        <input type="text" name="farmer_note" placeholder="যেমন: আজ বিকেলের মধ্যে পাঠালে ভালো হয়..."
+          class="w-full px-3.5 py-2.5 border rounded-2xl text-sm">
+      </div>
+
+      <button type="submit"
+        class="w-full py-3.5 bg-gradient-to-r from-crimson-600 to-orangeBrand-500 hover:opacity-95 text-white font-black text-sm rounded-2xl shadow-lg shadow-crimson-600/25 transition touch-press">
+        রিকুয়েস্ট পাঠিয়ে দিন ➔
+      </button>
+    </form>
+  </div>
+
+  <!-- Previous Requests -->
+  <div class="bg-white rounded-3xl border border-orange-100 shadow-sm overflow-hidden p-5 space-y-3">
+    <h3 class="text-xs font-black uppercase tracking-wider text-slate-400">আমার বিগত রিকুয়েস্টের অবস্থা</h3>
+
+    {% if my_requests %}
+    <div class="divide-y divide-orange-50 text-xs">
+      {% for req in my_requests %}
+      <div class="py-3 flex items-center justify-between">
+        <div>
+          <div class="font-bold text-slate-800">{{ req.items_requested }}</div>
+          <div class="text-[10px] text-slate-400 font-medium">{{ req.created_at }}</div>
+        </div>
+        <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black 
+          {{ 'bg-amberBrand-100 text-amberBrand-800' if req.status == 'pending' else ('bg-emerald-100 text-emerald-800' if req.status == 'approved' else 'bg-rose-100 text-rose-800') }}">
+          {{ 'অপেক্ষমান' if req.status == 'pending' else ('অনুমোদিত' if req.status == 'approved' else 'বাতিল') }}
+        </span>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="text-xs text-slate-400 py-3 font-medium text-center">এখনো কোন পূর্ববর্তী রিকুয়েস্ট নেই।</p>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}

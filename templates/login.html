@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+
+{% block title %}লগইন | {{ shop.shop_name if shop else "SR Enterprise" }}{% endblock %}
+
+{% block content %}
+<div class="min-h-[75vh] flex items-center justify-center py-6 px-2 sm:px-4">
+  <div class="w-full max-w-md bg-white rounded-3xl shadow-xl shadow-crimson-900/10 border border-orange-100 overflow-hidden">
+    
+    <!-- Vibrant App Header Banner (Maroon to Crimson to Orange) -->
+    <div class="bg-gradient-to-br from-maroon-950 via-maroon-800 to-orangeBrand-600 p-6 text-white text-center relative overflow-hidden">
+      <!-- Background subtle glowing decorative circle -->
+      <div class="absolute -top-12 -right-12 w-36 h-36 bg-orangeBrand-500/20 rounded-full blur-2xl pointer-events-none"></div>
+      <div class="absolute -bottom-10 -left-10 w-32 h-32 bg-crimson-500/30 rounded-full blur-xl pointer-events-none"></div>
+
+      <div class="w-20 h-20 bg-white/10 backdrop-blur-md rounded-2xl mx-auto flex items-center justify-center p-2 mb-3 shadow-inner border border-white/20">
+        <img src="/static/img/logo.png" alt="SR Enterprise Logo" class="w-full h-full object-contain drop-shadow-md">
+      </div>
+      <h2 class="text-2xl font-black tracking-tight">{{ shop.shop_name if shop else "SR Enterprise" }}</h2>
+      <p class="text-orangeBrand-100 text-xs mt-1 font-medium">পৌল্ট্রি ও গরুর খাদ্য, ঔষধ ডিলারশিপ এবং খামারি হিসাব</p>
+      
+      <div class="inline-flex items-center gap-1.5 px-3 py-1 bg-white/15 backdrop-blur-sm rounded-full text-[11px] font-bold text-amberBrand-200 mt-3 border border-white/10">
+        <span>📱</span> মোবাইল অ্যাপ ও ওয়েব সংস্করণ
+      </div>
+    </div>
+
+    <!-- Error Alert if any -->
+    {% if error %}
+    <div class="m-4 p-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-xs flex items-center gap-2 font-bold animate-shake">
+      <span>⚠️</span>
+      <span>{{ error }}</span>
+    </div>
+    {% endif %}
+
+    <!-- Tabs: Dealer Admin vs Farmer -->
+    <div class="p-6 pt-5">
+      <div class="flex rounded-2xl bg-orangeBrand-50/70 p-1 mb-6 text-sm font-bold border border-orangeBrand-100">
+        <button type="button" id="tabBtnDealer" onclick="switchLoginTab('dealer')" 
+          class="flex-1 py-2.5 text-center rounded-xl transition-all shadow-sm bg-gradient-to-r from-maroon-900 to-crimson-700 text-white font-black touch-press">
+          🏢 ডিলার (অ্যাডমিন)
+        </button>
+        <button type="button" id="tabBtnFarmer" onclick="switchLoginTab('farmer')" 
+          class="flex-1 py-2.5 text-center rounded-xl transition-all text-slate-600 hover:text-slate-900 touch-press">
+          👨‍🌾 খামারি লগইন
+        </button>
+      </div>
+
+      <!-- Dealer Login Form -->
+      <form id="dealerForm" action="/login/admin" method="POST" class="space-y-4">
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">ইউজারনেম / Username</label>
+          <div class="relative">
+            <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400">👤</span>
+            <input type="text" name="username" value="admin" required
+              class="w-full pl-10 pr-3 py-3 rounded-2xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-crimson-500 text-sm font-medium">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">পাসওয়ার্ড / Password</label>
+          <div class="relative">
+            <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400">🔒</span>
+            <input type="password" name="password" value="admin123" required
+              class="w-full pl-10 pr-3 py-3 rounded-2xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-crimson-500 text-sm font-medium">
+          </div>
+        </div>
+
+        <button type="submit"
+          class="w-full py-3.5 bg-gradient-to-r from-maroon-800 via-crimson-600 to-orangeBrand-500 hover:opacity-95 text-white font-black text-sm rounded-2xl shadow-lg shadow-crimson-600/30 touch-press transition">
+          ডিলার ড্যাশবোর্ডে প্রবেশ করুন ➔
+        </button>
+      </form>
+
+      <!-- Farmer Login Form -->
+      <form id="farmerForm" action="/login/farmer" method="POST" class="space-y-4 hidden">
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">খামারির মোবাইল নাম্বার</label>
+          <div class="relative">
+            <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400">📱</span>
+            <input type="tel" name="phone" placeholder="01712345678" value="01712345678" required
+              class="w-full pl-10 pr-3 py-3 rounded-2xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-orangeBrand-500 text-sm font-medium">
+          </div>
+          <span class="text-[11px] text-slate-400 mt-1 block">ডিলারের কাছে নিবন্ধিত মোবাইল নাম্বার</span>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">গোপন পিন / PIN (ডিফল্ট: 1234)</label>
+          <div class="relative">
+            <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400">🔑</span>
+            <input type="password" name="pin" placeholder="৪ ডিজিটের পিন" value="1234" required
+              class="w-full pl-10 pr-3 py-3 rounded-2xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-orangeBrand-500 text-sm font-mono tracking-widest font-black">
+          </div>
+        </div>
+
+        <button type="submit"
+          class="w-full py-3.5 bg-gradient-to-r from-orangeBrand-600 to-crimson-600 hover:opacity-95 text-white font-black text-sm rounded-2xl shadow-lg shadow-orangeBrand-600/30 touch-press transition">
+          আমার খামারে প্রবেশ করুন ➔
+        </button>
+      </form>
+
+      <!-- Quick Demo Info -->
+      <div class="mt-6 pt-4 border-t border-slate-100 text-center text-xs text-slate-500">
+        <p class="font-bold text-slate-700 mb-1">⚡ দ্রুত টেস্ট করার তথ্য:</p>
+        <p>ডিলার: <span class="font-mono bg-orangeBrand-50 border border-orangeBrand-200 text-orangeBrand-800 px-1.5 py-0.5 rounded font-bold">admin</span> / <span class="font-mono bg-orangeBrand-50 border border-orangeBrand-200 text-orangeBrand-800 px-1.5 py-0.5 rounded font-bold">admin123</span></p>
+        <p class="mt-1">খামারি: <span class="font-mono bg-crimson-50 border border-crimson-200 text-crimson-800 px-1.5 py-0.5 rounded font-bold">01712345678</span> / পিন: <span class="font-mono bg-crimson-50 border border-crimson-200 text-crimson-800 px-1.5 py-0.5 rounded font-bold">1234</span></p>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+  function switchLoginTab(tab) {
+    const dealerForm = document.getElementById('dealerForm');
+    const farmerForm = document.getElementById('farmerForm');
+    const tabBtnDealer = document.getElementById('tabBtnDealer');
+    const tabBtnFarmer = document.getElementById('tabBtnFarmer');
+
+    if (tab === 'dealer') {
+      dealerForm.classList.remove('hidden');
+      farmerForm.classList.add('hidden');
+      tabBtnDealer.className = "flex-1 py-2.5 text-center rounded-xl transition-all shadow-sm bg-gradient-to-r from-maroon-900 to-crimson-700 text-white font-black touch-press";
+      tabBtnFarmer.className = "flex-1 py-2.5 text-center rounded-xl transition-all text-slate-600 hover:text-slate-900 touch-press font-bold";
+    } else {
+      farmerForm.classList.remove('hidden');
+      dealerForm.classList.add('hidden');
+      tabBtnFarmer.className = "flex-1 py-2.5 text-center rounded-xl transition-all shadow-sm bg-gradient-to-r from-orangeBrand-600 to-crimson-600 text-white font-black touch-press";
+      tabBtnDealer.className = "flex-1 py-2.5 text-center rounded-xl transition-all text-slate-600 hover:text-slate-900 touch-press font-bold";
+    }
+  }
+
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get('tab') === 'farmer') {
+    switchLoginTab('farmer');
+  }
+</script>
+{% endblock %}

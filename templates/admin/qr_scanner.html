@@ -1,0 +1,225 @@
+{% extends "base.html" %}
+
+{% block title %}কিউআর কোড স্ক্যানার | {{ shop.shop_name if shop else "SR Enterprise" }}{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto space-y-4">
+
+  <!-- Scanner Header Card -->
+  <div class="bg-white p-4 sm:p-5 rounded-3xl border border-orange-100 shadow-sm flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-maroon-800 to-crimson-600 text-white flex items-center justify-center text-2xl shadow-md flex-shrink-0">
+        📷
+      </div>
+      <div>
+        <h1 class="text-lg font-black text-slate-900 leading-tight">কিউআর ও বারকোড স্ক্যানার</h1>
+        <p class="text-xs text-slate-500 font-medium">খাদ্যের বস্তা, ঔষধের বোতল বা খামারির কিউআর স্ক্যান করুন</p>
+      </div>
+    </div>
+    
+    <div class="flex items-center gap-2">
+      <button id="btnTorch" onclick="scannerEngine.toggleTorch()" class="p-3 text-slate-700 hover:text-amberBrand-600 bg-amberBrand-50 hover:bg-amberBrand-100 rounded-2xl transition border border-amberBrand-200 touch-press" title="টর্চ লাইট">
+        🔦
+      </button>
+    </div>
+  </div>
+
+  <!-- Camera Viewport Box with Orange/Red Laser -->
+  <div class="bg-black rounded-3xl overflow-hidden shadow-2xl border-4 border-crimson-500/40 relative min-h-[360px] flex items-center justify-center">
+    
+    <!-- Video / Scanner render target -->
+    <div id="qr-reader" class="w-full h-full"></div>
+
+    <!-- Scanner Target Overlay Graphic -->
+    <div class="absolute inset-0 pointer-events-none flex items-center justify-center">
+      <div class="w-64 h-64 border-2 border-orangeBrand-400/90 rounded-3xl relative animate-pulse flex items-center justify-center shadow-[0_0_20px_rgba(249,115,22,0.3)]">
+        <!-- Laser Scan Line -->
+        <div class="w-56 h-0.5 bg-gradient-to-r from-transparent via-crimson-500 to-transparent shadow-lg shadow-crimson-500"></div>
+      </div>
+    </div>
+
+    <!-- Status message -->
+    <div id="scannerStatus" class="absolute bottom-4 inset-x-4 bg-maroon-950/80 backdrop-blur-md text-white text-xs text-center py-2.5 px-3 rounded-2xl border border-white/10 font-bold">
+      ক্যামেরা ফ্রেমের মধ্যে কিউআর কোড বা বারকোড রাখুন
+    </div>
+
+  </div>
+
+  <!-- Manual Input Fallback -->
+  <div class="bg-white p-4 rounded-3xl border border-orange-100 shadow-sm flex items-center gap-2">
+    <input type="text" id="manualCode" placeholder="অথবা কোড/SKU লিখুন (যেমন: SRE-FD-01 বা FARMER-101)..."
+      class="flex-1 px-3.5 py-2.5 border rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-crimson-500">
+    <button onclick="lookupManualCode()" class="px-5 py-2.5 bg-gradient-to-r from-maroon-900 to-crimson-700 hover:opacity-95 text-white text-xs font-black rounded-2xl transition touch-press">
+      অনুসন্ধান
+    </button>
+  </div>
+
+  <!-- Scanned Result Modal / Card (Vibrant Colors) -->
+  <div id="scanResultCard" class="hidden bg-white rounded-3xl border-2 border-orangeBrand-400 shadow-2xl p-5 space-y-4 animate-scaleUp">
+    
+    <div class="flex items-start justify-between pb-3 border-b border-slate-100">
+      <div class="flex items-center gap-2">
+        <span id="resBadge" class="px-3 py-1 rounded-full text-xs font-black bg-crimson-100 text-crimson-800">
+          পণ্য পাওয়া গেছে
+        </span>
+      </div>
+      <button onclick="dismissResult()" class="text-slate-400 hover:text-slate-700 text-xl font-bold p-1">✕</button>
+    </div>
+
+    <div id="resBody" class="space-y-3">
+      <!-- Populated via JavaScript -->
+    </div>
+
+  </div>
+
+</div>
+
+<script>
+  let scannerEngine = null;
+
+  document.addEventListener("DOMContentLoaded", () => {
+    scannerEngine = new QRScannerEngine("qr-reader", onQRScanned);
+    scannerEngine.start();
+  });
+
+  function onQRScanned(decodedText) {
+    document.getElementById('scannerStatus').innerText = "স্ক্যান সফল! খোঁজা হচ্ছে: " + decodedText;
+    fetchLookup(decodedText);
+  }
+
+  function lookupManualCode() {
+    const code = document.getElementById('manualCode').value.trim();
+    if (code) {
+      fetchLookup(code);
+    }
+  }
+
+  async function fetchLookup(code) {
+    try {
+      const res = await fetch(`/api/qr/lookup?code=${encodeURIComponent(code)}`);
+      const data = await res.json();
+      
+      if (data.status === "success") {
+        renderResult(data);
+      } else {
+        showToast("কোন পণ্য বা খামারি পাওয়া যায়নি!", "error");
+        document.getElementById('scannerStatus').innerText = "কোন তথ্য মেলেনি। আবার স্ক্যান করুন।";
+      }
+    } catch (e) {
+      showToast("নেটওয়ার্ক সমস্যা!", "error");
+    }
+  }
+
+  function renderResult(resp) {
+    const card = document.getElementById('scanResultCard');
+    const badge = document.getElementById('resBadge');
+    const body = document.getElementById('resBody');
+
+    card.classList.remove('hidden');
+
+    if (resp.type === 'product') {
+      const p = resp.data;
+      badge.className = "px-3 py-1 rounded-full text-xs font-black bg-orangeBrand-100 text-orangeBrand-800 border border-orangeBrand-200";
+      badge.innerText = "📦 " + p.category;
+
+      body.innerHTML = `
+        <div class="flex items-center gap-3.5">
+          <div class="w-16 h-16 rounded-2xl bg-orangeBrand-50 border overflow-hidden flex items-center justify-center flex-shrink-0">
+            ${p.image_url ? `<img src="${p.image_url}" class="w-full h-full object-cover">` : `<span class="text-2xl">📦</span>`}
+          </div>
+          <div>
+            <h3 class="font-black text-slate-900 text-base">${p.name_bn}</h3>
+            <p class="text-xs text-slate-500 font-mono font-bold">SKU: ${p.sku}</p>
+            <div class="text-xs font-black text-crimson-600 mt-1">বিক্রয় দর: ${formatTaka(p.sell_price)} / ${p.unit}</div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3 bg-stone-50 p-3.5 rounded-2xl border text-center">
+          <div>
+            <div class="text-[11px] text-slate-400 font-bold uppercase">বর্তমান স্টক</div>
+            <div class="text-lg font-black ${p.stock <= p.alert_qty ? 'text-rose-600' : 'text-slate-900'}">
+              ${p.stock} <span class="text-xs font-normal">${p.unit}</span>
+            </div>
+          </div>
+          <div>
+            <div class="text-[11px] text-slate-400 font-bold uppercase">মিনিমাম অ্যালার্ট</div>
+            <div class="text-lg font-bold text-slate-700">${p.alert_qty} ${p.unit}</div>
+          </div>
+        </div>
+
+        <div class="flex flex-col sm:flex-row items-center gap-2 pt-2">
+          <a href="/admin/dispatch?add_item=${p.id}" class="w-full sm:flex-1 py-3 bg-gradient-to-r from-crimson-600 to-orangeBrand-500 hover:opacity-95 text-white font-black text-xs rounded-2xl shadow-md text-center transition touch-press">
+            📝 চালানে যুক্ত করুন
+          </a>
+          <button onclick="showQuickStockAdjust('${p.id}', '${p.name_bn}')" class="w-full sm:w-auto px-5 py-3 bg-stone-100 hover:bg-stone-200 text-slate-800 font-black text-xs rounded-2xl transition touch-press">
+            ± স্টক পরিবর্তন
+          </button>
+        </div>
+      `;
+    } else if (resp.type === 'farmer') {
+      const f = resp.data;
+      const b = resp.active_batch;
+      badge.className = "px-3 py-1 rounded-full text-xs font-black bg-maroon-100 text-maroon-900 border border-maroon-200";
+      badge.innerText = "👨‍🌾 খামারি প্রোফাইল";
+
+      body.innerHTML = `
+        <div class="flex items-center gap-3.5">
+          <div class="w-16 h-16 rounded-2xl bg-orangeBrand-50 border overflow-hidden flex items-center justify-center flex-shrink-0">
+            ${f.image_url ? `<img src="${f.image_url}" class="w-full h-full object-cover">` : `<span class="text-2xl">👨‍🌾</span>`}
+          </div>
+          <div>
+            <h3 class="font-black text-slate-900 text-base">${f.name}</h3>
+            <p class="text-xs text-slate-600 font-medium">📱 ${f.phone} • ${f.shed_name || 'শেড'}</p>
+            <div class="text-xs font-black text-crimson-700 mt-1">মোট বাকি পাওনা: ${formatTaka(f.total_due)}</div>
+          </div>
+        </div>
+
+        ${b ? `
+          <div class="p-3.5 bg-orangeBrand-50/70 rounded-2xl border border-orangeBrand-200 text-xs">
+            <div class="font-black text-orangeBrand-900 flex items-center justify-between">
+              <span>🐣 রানিং ব্যাচ: ${b.batch_no}</span>
+              <span class="px-2 py-0.5 rounded-full bg-orangeBrand-200 text-orangeBrand-900 font-bold">${b.bird_type}</span>
+            </div>
+            <div class="text-slate-600 mt-1 font-medium">বাচ্চা: <strong>${b.chick_qty}</strong> টি • SR খরচ: <strong>${formatTaka(b.total_investment)}</strong></div>
+          </div>
+        ` : `
+          <div class="p-3.5 bg-stone-50 rounded-2xl border text-xs text-slate-500 text-center font-medium">
+            বর্তমানে কোন সক্রিয় শেড চালু নেই
+          </div>
+        `}
+
+        <div class="flex items-center gap-2 pt-2">
+          <a href="/admin/dispatch?farmer_id=${f.id}" class="flex-1 py-3 bg-gradient-to-r from-crimson-600 to-orangeBrand-500 hover:opacity-95 text-white font-black text-xs rounded-2xl shadow-md text-center transition touch-press">
+            📝 মালামাল ডেলিভারি / চালান
+          </a>
+          <a href="/admin/farmer/${f.id}" class="px-5 py-3 bg-maroon-950 text-white font-black text-xs rounded-2xl text-center transition touch-press">
+            খতিয়ান ➔
+          </a>
+        </div>
+      `;
+    }
+
+    card.scrollIntoView({ behavior: 'smooth' });
+  }
+
+  function dismissResult() {
+    document.getElementById('scanResultCard').classList.add('hidden');
+    document.getElementById('scannerStatus').innerText = "আবার স্ক্যান করতে ক্যামেরা প্রস্তুত...";
+  }
+
+  function showQuickStockAdjust(prodId, name) {
+    const qty = prompt(`"${name}" এর স্টক কত যোগ/বিয়োগ করতে চান? (যেমন: 10 অথবা -5)`);
+    if (qty !== null && !isNaN(qty) && qty !== "") {
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = '/admin/inventory/stock-adjust';
+      form.innerHTML = `
+        <input type="hidden" name="product_id" value="${prodId}">
+        <input type="hidden" name="delta_qty" value="${qty}">
+      `;
+      document.body.appendChild(form);
+      form.submit();
+    }
+  }
+</script>
+{% endblock %}

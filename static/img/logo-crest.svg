@@ -1,0 +1,91 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 620 120" width="100%" height="100%">
+  <defs>
+    <linearGradient id="crestGold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F59E0B" />
+      <stop offset="100%" stop-color="#B45309" />
+    </linearGradient>
+    <linearGradient id="crestGreen" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#10B981" />
+      <stop offset="100%" stop-color="#065F46" />
+    </linearGradient>
+  </defs>
+
+  <!-- CREST HEXAGON ICON -->
+  <g transform="translate(15, 10)">
+    <!-- Hexagon Outer Shape -->
+    <polygon points="50,4 96,27 96,73 50,96 4,73 4,27" 
+             fill="url(#crestGreen)" />
+    <!-- Hexagon Inner Rim -->
+    <polygon points="50,9 91,30 91,70 50,91 9,70 9,30" 
+             fill="#0F172A" />
+
+    <!-- Central S & R Monogram inside Shield -->
+    <g transform="translate(17, 16) scale(0.66)">
+      <path d="M 38 28
+               C 26 28, 18 36, 18 46
+               C 18 56, 25 63, 38 67
+               L 46 70
+               C 56 73, 61 79, 61 87
+               C 61 97, 51 103, 37 103
+               C 24 103, 16 97, 13 89"
+            fill="none" 
+            stroke="url(#crestGold)" 
+            stroke-width="11" 
+            stroke-linecap="round" />
+
+      <path d="M 57 28 L 57 103" 
+            fill="none" 
+            stroke="#FFFFFF" 
+            stroke-width="11" 
+            stroke-linecap="round" />
+
+      <path d="M 57 28
+               C 76 28, 88 36, 88 52
+               C 88 68, 76 74, 57 74"
+            fill="none" 
+            stroke="#FFFFFF" 
+            stroke-width="11" 
+            stroke-linecap="round" />
+
+      <path d="M 68 74 L 88 103" 
+            fill="none" 
+            stroke="url(#crestGold)" 
+            stroke-width="11" 
+            stroke-linecap="round" />
+    </g>
+
+    <!-- Star of Excellence at Top -->
+    <polygon points="50,15 52,20 57,20 53,23 55,28 50,25 45,28 47,23 43,20 48,20" fill="url(#crestGold)" />
+  </g>
+
+  <!-- CREST TYPOGRAPHY -->
+  <g transform="translate(138, 22)">
+    <text x="0" y="42" 
+          font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" 
+          font-size="33" 
+          font-weight="900" 
+          letter-spacing="2" 
+          fill="#0F172A">
+      SR <tspan fill="#065F46">ENTERPRISE</tspan>
+    </text>
+
+    <text x="1" y="66" 
+          font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" 
+          font-size="11.5" 
+          font-weight="800" 
+          letter-spacing="3.5" 
+          fill="#D97706">
+      QUALITY AGRO DEALERSHIP &bull; EST. 2026
+    </text>
+
+    <g transform="translate(1, 86)">
+      <text x="0" y="-7" 
+            font-family="'Hind Siliguri', 'Segoe UI', sans-serif" 
+            font-size="12.5" 
+            font-weight="600" 
+            fill="#334155">
+        খাদ্য ও ভেটেরিনারি মেডিসিন সরবরাহকারী
+      </text>
+    </g>
+  </g>
+</svg>
