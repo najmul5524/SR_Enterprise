@@ -543,6 +543,17 @@ async def create_dispatch(
         if content:
             receipt_url = await upload_image_file(content, receipt_file.filename, subfolder="invoices")
 
+    net_total = max(0.0, subtotal - discount)
+    if payment_type == "cash":
+        paid_amount = net_total
+        due_amount = 0.0
+    elif payment_type == "credit":
+        paid_amount = 0.0
+        due_amount = net_total
+    else:
+        paid_amount = min(net_total, max(0.0, paid_amount))
+        due_amount = max(0.0, net_total - paid_amount)
+
     invoice_data = {
         "farmer_id": final_farmer_id,
         "farmer_name": final_farmer_name,
@@ -550,9 +561,9 @@ async def create_dispatch(
         "items": items,
         "subtotal": subtotal,
         "discount": discount,
-        "net_total": subtotal - discount,
+        "net_total": net_total,
         "paid_amount": paid_amount,
-        "due_amount": (subtotal - discount) - paid_amount,
+        "due_amount": due_amount,
         "payment_type": payment_type,
         "invoice_date": invoice_date,
         "note": note or "",

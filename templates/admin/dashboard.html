@@ -14,11 +14,15 @@
         <img src="/static/img/logo.png" alt="SR Enterprise Logo" class="w-full h-full object-contain drop-shadow-md">
       </div>
       <div>
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-2 flex-wrap">
           <h1 class="text-xl sm:text-2xl font-black leading-tight">ডিলার কন্ট্রোল সেন্টার</h1>
           <span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-amberBrand-400 text-maroon-950">
             PRO
           </span>
+          <!-- Settings button in the corner next to Dealer Control Center -->
+          <a href="/admin/settings" class="inline-flex items-center gap-1.5 px-3 py-1 bg-white/20 hover:bg-white/35 text-white rounded-xl text-xs font-black border border-white/30 touch-press transition backdrop-blur-sm shadow-sm ml-1" title="ডিলার সেটিংস প্যানেল">
+            <span>⚙️</span> <span>সেটিংস</span>
+          </a>
         </div>
         <p class="text-xs text-orangeBrand-100 mt-1 font-medium">
           স্বাগতম, <strong class="text-white">{{ shop.owner_name or "সারোয়ার হোসেন" }}</strong> • আজ: {{ now_date }}
@@ -26,11 +30,8 @@
       </div>
     </div>
 
-    <!-- Quick Action Shortcut Buttons -->
+    <!-- Quick Action Shortcut Buttons (No 'নতুন চালান', Settings placed next to Control Center) -->
     <div class="flex flex-wrap items-center gap-2 relative z-10">
-      <a href="/admin/dispatch" class="inline-flex items-center gap-1.5 px-3.5 py-2 sm:px-4 sm:py-2.5 bg-maroon-950/80 hover:bg-black text-white rounded-2xl text-xs font-bold border border-white/20 touch-press transition shadow-sm">
-        <span>📝</span> নতুন চালান
-      </a>
       <a href="/admin/batches" class="inline-flex items-center gap-1.5 px-3.5 py-2 sm:px-4 sm:py-2.5 bg-orangeBrand-500 hover:bg-orangeBrand-600 text-white rounded-2xl text-xs font-black shadow-md touch-press transition">
         <span>🐣</span> নতুন শেড
       </a>
@@ -39,9 +40,6 @@
       </a>
       <a href="/admin/expenses" class="inline-flex items-center gap-1.5 px-3.5 py-2 sm:px-4 sm:py-2.5 bg-white/20 hover:bg-white/30 text-white rounded-2xl text-xs font-black border border-white/30 touch-press transition backdrop-blur-sm shadow-sm" title="খরচের হিসাব">
         <span>🧾</span> খরচের হিসাব
-      </a>
-      <a href="/admin/settings" class="inline-flex items-center gap-1.5 px-3.5 py-2 sm:px-4 sm:py-2.5 bg-white/20 hover:bg-white/30 text-white rounded-2xl text-xs font-black border border-white/30 touch-press transition backdrop-blur-sm shadow-sm" title="ডিলার সেটিংস প্যানেল">
-        <span>⚙️</span> সেটিংস
       </a>
     </div>
   </div>
@@ -127,67 +125,46 @@
 
   </div>
 
-  <!-- ACTIVE SHEDS MANAGEMENT SECTION (Clear, distinct high-contrast border, Requirement 6) -->
-  <div class="bg-white rounded-3xl border-2 border-stone-200 shadow-sm overflow-hidden">
-    <div class="p-5 border-b-2 border-stone-100 flex items-center justify-between bg-stone-50/50">
-      <div class="flex items-center gap-2.5">
-        <span class="text-2xl">🐣</span>
+  <!-- ACTIVE SHEDS MANAGEMENT SECTION (Only 'সকল শেড' button, no individual shed names) -->
+  <div class="bg-white rounded-3xl border-2 border-stone-200 shadow-sm overflow-hidden p-5 sm:p-6">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div class="flex items-center gap-3.5">
+        <div class="w-12 h-12 rounded-2xl bg-orangeBrand-100 text-orangeBrand-700 flex items-center justify-center text-2xl flex-shrink-0 border border-orangeBrand-200 shadow-sm">
+          🐣
+        </div>
         <div>
-          <h2 class="font-black text-slate-900 text-base">চলতি শেড ও খামার ব্যবস্থাপনা</h2>
-          <p class="text-xs text-slate-500">বাচ্চা উঠানো থেকে মুরগী বিক্রি পর্যন্ত SR Enterprise এর মোট বিনিয়োগ</p>
+          <h2 class="font-black text-slate-900 text-base sm:text-lg">চলতি শেড ও খামার ব্যবস্থাপনা</h2>
+          <p class="text-xs text-slate-500 font-medium mt-0.5">
+            বাচ্চা উঠানো থেকে মুরগী বিক্রি পর্যন্ত SR Enterprise এর মোট বিনিয়োগ ও খামার তদারকি
+          </p>
         </div>
       </div>
-      <a href="/admin/batches" class="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-800 rounded-xl text-xs font-black border border-rose-200 transition">
-        সকল শেড ➔
+
+      <!-- Only 'সকল শেড' button to view details -->
+      <a href="/admin/batches" class="px-5 py-2.5 bg-gradient-to-r from-maroon-900 via-crimson-800 to-orangeBrand-600 hover:opacity-95 text-white rounded-2xl text-xs font-black shadow-md shadow-crimson-900/20 transition flex items-center justify-center gap-2 touch-press flex-shrink-0 border border-rose-950">
+        <span>🐣</span> <span>সকল শেড ➔</span>
       </a>
     </div>
 
-    {% if active_batches %}
-    <div class="divide-y divide-stone-100">
-      {% for b in active_batches %}
-      <div class="p-4 sm:p-5 hover:bg-orangeBrand-50/20 transition flex flex-col md:flex-row md:items-center justify-between gap-4">
-        
-        <div class="flex items-start gap-3.5">
-          <div class="w-13 h-13 rounded-2xl bg-gradient-to-br from-orangeBrand-500 to-crimson-600 text-white flex flex-col items-center justify-center font-black flex-shrink-0 shadow-md">
-            <span class="text-base leading-none">{{ b.age_days }}</span>
-            <span class="text-[9px] uppercase font-bold text-orangeBrand-100 mt-0.5">দিন</span>
-          </div>
-          <div>
-            <div class="flex items-center gap-2 flex-wrap">
-              <span class="font-black text-slate-900 text-base">{{ b.batch_no }}</span>
-              <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-orangeBrand-100 text-orangeBrand-800 border border-orangeBrand-200">
-                {{ b.bird_type }}
-              </span>
-            </div>
-            <div class="text-xs text-slate-600 mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 font-medium">
-              <span>👨‍🌾 <a href="/admin/farmer/{{ b.farmer_id }}" class="hover:underline font-bold text-slate-900">{{ b.farmer_name }}</a></span>
-              <span>🐣 বাচ্চা: <strong class="text-slate-800">{{ b.chick_qty }}</strong> টি</span>
-              <span>💀 মৃত্যু: <strong class="text-rose-600">{{ b.mortality_count }}</strong> টি</span>
-              <span>🥣 খাদ্য: <strong class="text-slate-800">{{ b.total_feed_bags }}</strong> বস্তা</span>
-            </div>
-          </div>
-        </div>
-
-        <div class="flex items-center justify-between md:justify-end gap-4 border-t md:border-t-0 pt-3 md:pt-0 border-stone-100">
-          <div class="text-left md:text-right">
-            <div class="text-[11px] text-slate-500 font-bold uppercase tracking-wide">SR এর মোট খরচ</div>
-            <div class="text-lg font-black text-rose-900">৳ {{ "{:,.0f}".format(b.total_investment) }}</div>
-          </div>
-          <a href="/admin/batch/{{ b.id }}" class="px-4 py-2 bg-gradient-to-r from-maroon-900 to-crimson-700 hover:opacity-95 text-white text-xs font-black rounded-xl shadow-md transition touch-press">
-            শেডের খতিয়ান ➔
-          </a>
-        </div>
-
+    <!-- Overview metrics without individual shed names -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-5 pt-4 border-t-2 border-stone-100">
+      <div class="p-3.5 rounded-2xl bg-stone-50 border border-stone-200 text-center">
+        <span class="text-[10px] font-bold text-slate-500 uppercase">মোট রানিং শেড</span>
+        <div class="text-base font-black text-slate-900 mt-0.5">{{ active_batches|length }} টি</div>
       </div>
-      {% endfor %}
+      <div class="p-3.5 rounded-2xl bg-stone-50 border border-stone-200 text-center">
+        <span class="text-[10px] font-bold text-slate-500 uppercase">মোট বাচ্চা পালন</span>
+        <div class="text-base font-black text-slate-900 mt-0.5">{{ active_batches | sum(attribute='chick_qty') }} টি</div>
+      </div>
+      <div class="p-3.5 rounded-2xl bg-stone-50 border border-stone-200 text-center">
+        <span class="text-[10px] font-bold text-slate-500 uppercase">সরবরাহকৃত খাদ্য</span>
+        <div class="text-base font-black text-slate-900 mt-0.5">{{ active_batches | sum(attribute='total_feed_bags') }} বস্তা</div>
+      </div>
+      <div class="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-center">
+        <span class="text-[10px] font-bold text-rose-800 uppercase">চলতি শেডে মোট বিনিয়োগ</span>
+        <div class="text-base font-black text-rose-900 mt-0.5">৳ {{ "{:,.0f}".format(stats.live_shed_investment or 0) }}</div>
+      </div>
     </div>
-    {% else %}
-    <div class="p-8 text-center text-slate-500">
-      <p class="text-3xl mb-1">🐣</p>
-      <p class="text-sm font-bold">বর্তমানে কোন সক্রিয় শেড নেই।</p>
-      <p class="text-xs text-slate-400 mt-1">খামারিকে নতুন বাচ্চা দিয়ে শেড চালু করতে পারেন।</p>
-    </div>
-    {% endif %}
   </div>
 
   <!-- TWO COLUMN: LOW STOCK ALERT & RECENT INVOICES (High-contrast distinct borders, Requirement 6) -->

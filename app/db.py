@@ -412,7 +412,12 @@ class DatabaseManager:
             today_dispatch = cur.fetchone()[0]
 
             cur.execute("SELECT COALESCE(SUM(amount), 0) FROM payments WHERE payment_date LIKE ?", (f"{today_date}%",))
-            today_received = cur.fetchone()[0]
+            today_payments = cur.fetchone()[0] or 0
+
+            cur.execute("SELECT COALESCE(SUM(paid_amount), 0) FROM invoices WHERE invoice_date LIKE ?", (f"{today_date}%",))
+            today_inv_cash = cur.fetchone()[0] or 0
+
+            today_received = today_payments + today_inv_cash
 
             return {
                 "active_farmers": active_farmers,
@@ -633,7 +638,8 @@ class DatabaseManager:
         with self._get_connection() as conn:
             cur = conn.cursor()
             query = """
-            SELECT batches.*, COALESCE(p.total_paid, 0) AS total_paid
+            SELECT batches.*, 
+                   (COALESCE(p.total_paid, 0) + COALESCE(inv_p.total_inv_paid, 0)) AS total_paid
             FROM batches
             LEFT JOIN (
                 SELECT batch_id, SUM(amount) AS total_paid
@@ -641,6 +647,12 @@ class DatabaseManager:
                 WHERE batch_id IS NOT NULL AND batch_id != ''
                 GROUP BY batch_id
             ) p ON batches.id = p.batch_id
+            LEFT JOIN (
+                SELECT batch_id, SUM(paid_amount) AS total_inv_paid
+                FROM invoices
+                WHERE batch_id IS NOT NULL AND batch_id != ''
+                GROUP BY batch_id
+            ) inv_p ON batches.id = inv_p.batch_id
             WHERE 1=1
             """
             params = []
@@ -698,6 +710,8 @@ class DatabaseManager:
             b = dict(row)
             cur.execute("SELECT COALESCE(SUM(amount), 0) FROM payments WHERE batch_id = ?", (batch_id,))
             total_paid = float(cur.fetchone()[0] or 0)
+            cur.execute("SELECT COALESCE(SUM(paid_amount), 0) FROM invoices WHERE batch_id = ?", (batch_id,))
+            total_paid += float(cur.fetchone()[0] or 0)
             b["total_paid"] = total_paid
             b["remaining_due"] = max(0.0, float(b.get("total_investment", 0)) - total_paid)
             return b
@@ -1073,6 +1087,12 @@ class DatabaseManager:
                     cur.execute("UPDATE products SET stock = MAX(0.0, stock - ?), updated_at = ? WHERE id = ? OR sku = ?",
                                 (qty, now_str, prod_id, prod_id))
 
+                if prod_id and not category:
+                    cur.execute("SELECT category FROM products WHERE id = ? OR sku = ?", (prod_id, prod_id))
+                    prow = cur.fetchone()
+                    if prow and prow[0]:
+                        category = prow[0]
+
                 if batch_id:
                     cat_lower = (category or "").lower()
                     if any(w in cat_lower for w in ["খাদ্য", "feed", "ফিড"]):
@@ -1154,9 +1174,9 @@ class DatabaseManager:
                 data.get("note", ""), now_str
             ))
 
-            # Deduct paid amount from farmer dues
+            # Deduct paid amount from farmer dues (never negative)
             if farmer_id and amount > 0:
-                cur.execute("UPDATE farmers SET total_due = total_due - ? WHERE id = ?", (amount, farmer_id))
+                cur.execute("UPDATE farmers SET total_due = MAX(0.0, total_due - ?) WHERE id = ?", (amount, farmer_id))
 
             conn.commit()
 
@@ -1349,9 +1369,9 @@ class DatabaseManager:
                                     (lamount, lamount, batch_id))
                 cur.execute("DELETE FROM batch_logs WHERE batch_id = ? AND note LIKE ?", (batch_id, f"%{invoice_no}%"))
 
-            # Deduct due amount from farmer balance
+            # Deduct due amount from farmer balance (never negative)
             if farmer_id and due_amount > 0:
-                cur.execute("UPDATE farmers SET total_due = total_due - ? WHERE id = ?", (due_amount, farmer_id))
+                cur.execute("UPDATE farmers SET total_due = MAX(0.0, total_due - ?) WHERE id = ?", (due_amount, farmer_id))
 
             cur.execute("DELETE FROM invoices WHERE id = ?", (invoice_id,))
             conn.commit()
