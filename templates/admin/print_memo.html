@@ -12,8 +12,6 @@
   <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700;800&family=Noto+Sans+Bengali:wght@400;600;700;900&display=swap" rel="stylesheet">
   
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- html2pdf for direct 1-click A4 PDF export -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   
   <style>
     body, #printableMemo, table, th, td, h1, p, span, div {
@@ -24,30 +22,46 @@
       letter-spacing: normal !important;
       word-spacing: normal !important;
     }
+
     @page {
       size: A4 portrait;
-      margin: 10mm;
+      margin: 8mm 10mm;
     }
+
     @media print {
       .no-print {
         display: none !important;
       }
       html, body {
-        width: 210mm !important;
+        width: 100% !important;
+        max-width: 100% !important;
         background: #ffffff !important;
-        margin: 0 auto !important;
+        margin: 0 !important;
         padding: 0 !important;
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
       }
       .memo-card {
         box-shadow: none !important;
-        border: 1px solid #cbd5e1 !important;
-        margin: 0 !important;
+        border: 1.5px solid #94a3b8 !important;
+        margin: 0 auto !important;
         width: 100% !important;
         max-width: 100% !important;
-        padding: 20px !important;
-        border-radius: 8px !important;
+        padding: 16px 20px !important;
+        border-radius: 12px !important;
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+      }
+      table {
+        border-collapse: collapse !important;
+        width: 100% !important;
+      }
+      th, td {
+        border: 1px solid #cbd5e1 !important;
+      }
+      tr {
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
       }
     }
   </style>
@@ -55,26 +69,28 @@
 <body class="bg-stone-100 min-h-screen py-6 px-4 flex flex-col items-center">
 
   <!-- Action Bar (High Contrast, Distinct Text & Background) -->
-  <div class="max-w-2xl w-full mb-2 flex flex-wrap items-center justify-between gap-2.5 no-print">
+  <div class="max-w-2xl w-full mb-3 flex flex-wrap items-center justify-between gap-2.5 no-print">
     <a href="/admin/dispatch" class="px-4 py-2.5 bg-slate-800 text-white rounded-xl text-xs font-black hover:bg-black transition flex items-center gap-1.5 shadow-sm">
       <span>⬅️</span> নতুন চালান
     </a>
     <div class="flex items-center gap-2">
-      <!-- Direct 1-Click A4 PDF Download Button with ForeignObject support -->
-      <button type="button" onclick="downloadPDF()" class="px-4 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-black shadow-md transition flex items-center gap-1.5 border border-emerald-900 cursor-pointer touch-press">
-        <span>📥</span> <span class="text-white font-extrabold tracking-wide">সরাসরি PDF ডাউনলোড</span>
-      </button>
-      <!-- Native / Browser Print Button (High Contrast White on Maroon-950 - 100% Vector Perfect Bangla) -->
-      <button type="button" onclick="handlePrint()" class="px-4 py-2.5 bg-rose-950 hover:bg-rose-900 text-white rounded-xl text-xs font-black shadow-md transition flex items-center gap-1.5 border border-rose-900 cursor-pointer touch-press">
-        <span>🖨️</span> <span class="text-white font-extrabold tracking-wide">প্রিন্ট / PDF সেভ (A4)</span>
+      <!-- 1-Click High-Contrast A4 PDF Save & Print Button -->
+      <button type="button" onclick="handlePrint()" class="px-5 py-2.5 bg-gradient-to-r from-rose-950 via-rose-900 to-crimson-800 hover:opacity-95 text-white rounded-xl text-xs font-black shadow-lg transition flex items-center gap-2 border border-rose-950 cursor-pointer touch-press">
+        <span class="text-base">🖨️ / 📥</span> 
+        <span class="text-white font-extrabold tracking-wide text-xs sm:text-sm">A4 PDF সেভ ও প্রিন্ট করুন</span>
       </button>
     </div>
   </div>
 
-  <!-- Helpful Print/PDF tip -->
-  <div class="max-w-2xl w-full mb-4 p-3 bg-amber-50 border border-amber-200 rounded-2xl text-[11px] text-amber-900 font-bold flex items-center gap-2 no-print shadow-sm">
-    <span class="text-base flex-shrink-0">💡</span>
-    <span>মোবাইল বা কম্পিউটারে বাংলা যুক্তবর্ণ একদম নিখুঁত ও স্পষ্ট রাখতে <strong>"প্রিন্ট / PDF সেভ"</strong> বাটনে ক্লিক করে ডেস্টিনেশন হিসেবে <strong>"Save as PDF"</strong> নির্বাচন করুন।</span>
+  <!-- Helpful PDF Save Instruction Banner -->
+  <div class="max-w-2xl w-full mb-4 p-3 bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50 border border-emerald-300 rounded-2xl text-xs text-emerald-950 font-bold flex items-center gap-3 no-print shadow-sm">
+    <span class="text-2xl flex-shrink-0">📱</span>
+    <div>
+      <span class="font-black text-emerald-900 block text-xs">A4 PDF আকারে সেভ করার নিয়ম:</span>
+      <span class="text-[11px] font-medium text-emerald-800 leading-relaxed block mt-0.5">
+        উপরের <strong>"A4 PDF সেভ ও প্রিন্ট করুন"</strong> বাটনে ক্লিক করলে মোবাইল বা কম্পিউটারের প্রিন্ট উইন্ডো আসবে। সেখানে ডেস্টিনেশন (Destination / Printer) অপশন থেকে <strong>"Save as PDF" (পিডিএফ আকারে সংরক্ষণ)</strong> নির্বাচন করুন। এতে লোগো, বাংলা যুক্তবর্ণ ও টেবিলের কলাম-রো ১০০% নিখুঁত ও স্পষ্ট থাকবে।
+      </span>
+    </div>
   </div>
 
   {% if invoice.receipt_image_url %}
@@ -99,28 +115,28 @@
   {% endif %}
 
   <!-- Cash Memo Paper Card (Formatted strictly for A4) -->
-  <div id="printableMemo" class="memo-card max-w-2xl w-full bg-white rounded-3xl shadow-xl border-2 border-stone-200 p-8 space-y-6">
+  <div id="printableMemo" class="memo-card max-w-2xl w-full bg-white rounded-3xl shadow-xl border-2 border-stone-200 p-8 space-y-5">
     
     <!-- Memo Header (Maroon / Crimson & Orange) -->
     <div class="text-center border-b-2 border-rose-800 pb-4 relative">
-      <div class="text-xs text-slate-400 font-bold uppercase tracking-widest mb-1.5">বিসমিল্লাহির রাহমানির রাহিম</div>
-      <div class="flex items-center justify-center gap-3.5 my-2">
+      <div class="text-xs text-slate-400 font-bold uppercase tracking-widest mb-1">বিসমিল্লাহির রাহমানির রাহিম</div>
+      <div class="flex items-center justify-center gap-3.5 my-1.5">
         <img src="/static/img/logo.png" alt="SR Enterprise Logo" class="w-16 h-16 object-contain flex-shrink-0">
         <div class="text-left">
-          <h1 class="text-3xl font-black text-rose-900 tracking-tight leading-tight">{{ shop.shop_name or "SR Enterprise" }}</h1>
+          <h1 class="text-2xl sm:text-3xl font-black text-rose-900 tracking-tight leading-tight">{{ shop.shop_name or "SR Enterprise" }}</h1>
           <p class="text-xs font-black text-orange-600 mt-0.5">পৌল্ট্রি ও গরুর সুষম খাদ্য, ভ্যাকসিন ও আধুনিক ভেটেরিনারি ঔষধের বিশ্বস্ত ডিলার</p>
         </div>
       </div>
       <p class="text-xs text-slate-500 mt-1">
         📍 {{ shop.address or "স্টেশন রোড, কাপাসিয়া, গাজীপুর" }} • 📱 {{ shop.phone or "01700-000000" }}
       </p>
-      <div class="inline-block mt-3 px-5 py-1 bg-gradient-to-r from-rose-900 via-rose-700 to-orange-500 text-white rounded-full text-xs font-black tracking-wider shadow-sm">
+      <div class="inline-block mt-2.5 px-5 py-1 bg-gradient-to-r from-rose-900 via-rose-700 to-orange-500 text-white rounded-full text-xs font-black tracking-wider shadow-sm">
         মালামাল ডেলিভারি চালান / ক্যাশ মেমো
       </div>
     </div>
 
     <!-- Farmer / Customer & Invoice Metadata Grid -->
-    <div class="grid grid-cols-2 gap-4 text-xs">
+    <div class="grid grid-cols-2 gap-4 text-xs py-1">
       <div class="space-y-1">
         {% if farmer %}
         <p><span class="text-slate-500 font-medium">খামারির নাম:</span> <strong class="text-slate-900 text-sm font-black">{{ farmer.name }}</strong></p>
@@ -149,26 +165,26 @@
       </div>
     </div>
 
-    <!-- Items Table -->
+    <!-- Items Table (Solid, Unbreakable Table with Explicit Borders) -->
     <div class="overflow-x-auto">
-      <table class="w-full text-left text-xs border border-slate-200">
-        <thead class="bg-stone-100 text-slate-700 font-bold border-b border-slate-200">
+      <table class="w-full text-left text-xs border border-slate-300" style="border-collapse: collapse;">
+        <thead class="bg-stone-100 text-slate-700 font-bold border-b border-slate-300">
           <tr>
-            <th class="p-2.5 border-r border-slate-200 text-center w-12">নং</th>
-            <th class="p-2.5 border-r border-slate-200">মালামাল / পণ্যের বিবরণ</th>
-            <th class="p-2.5 border-r border-slate-200 text-center">পরিমাণ</th>
-            <th class="p-2.5 border-r border-slate-200 text-right">দর (৳)</th>
-            <th class="p-2.5 text-right">মোট টাকা (৳)</th>
+            <th class="p-2.5 border border-slate-300 text-center w-12">নং</th>
+            <th class="p-2.5 border border-slate-300">মালামাল / পণ্যের বিবরণ</th>
+            <th class="p-2.5 border border-slate-300 text-center">পরিমাণ</th>
+            <th class="p-2.5 border border-slate-300 text-right">দর (৳)</th>
+            <th class="p-2.5 border border-slate-300 text-right">মোট টাকা (৳)</th>
           </tr>
         </thead>
-        <tbody class="divide-y divide-slate-200">
+        <tbody>
           {% for item in invoice['items'] %}
-          <tr>
-            <td class="p-2.5 text-center border-r border-slate-200 font-medium">{{ loop.index }}</td>
-            <td class="p-2.5 border-r border-slate-200 font-black text-slate-900">{{ item.name_bn or item.name }}</td>
-            <td class="p-2.5 text-center border-r border-slate-200 font-bold">{{ item.qty }} {{ item.unit }}</td>
-            <td class="p-2.5 text-right border-r border-slate-200">৳ {{ item.price }}</td>
-            <td class="p-2.5 text-right font-black text-slate-900">৳ {{ "{:,.0f}".format(item.total) }}</td>
+          <tr class="border-b border-slate-200">
+            <td class="p-2.5 text-center border border-slate-300 font-medium">{{ loop.index }}</td>
+            <td class="p-2.5 border border-slate-300 font-black text-slate-900">{{ item.name_bn or item.name }}</td>
+            <td class="p-2.5 text-center border border-slate-300 font-bold">{{ item.qty }} {{ item.unit }}</td>
+            <td class="p-2.5 text-right border border-slate-300">৳ {{ item.price }}</td>
+            <td class="p-2.5 text-right border border-slate-300 font-black text-slate-900">৳ {{ "{:,.0f}".format(item.total) }}</td>
           </tr>
           {% endfor %}
         </tbody>
@@ -179,7 +195,7 @@
     <div class="flex items-end justify-between pt-2">
       <!-- QR code verification -->
       <div class="flex items-center gap-3">
-        <img src="{{ qr_url }}" alt="Invoice QR" class="w-20 h-20 border p-1 rounded-2xl">
+        <img src="{{ qr_url }}" alt="Invoice QR" class="w-20 h-20 border border-slate-300 p-1 rounded-2xl bg-white">
         <div class="text-[10px] text-slate-400 font-medium">
           স্মার্ট কিউআর যাচাইকরণ<br>
           ডিজিটাল চালানের কপি
@@ -214,7 +230,7 @@
     </div>
 
     <!-- Signatures -->
-    <div class="pt-12 grid grid-cols-2 gap-8 text-center text-xs">
+    <div class="pt-10 grid grid-cols-2 gap-8 text-center text-xs">
       <div>
         <div class="border-t border-slate-400 pt-1 font-bold text-slate-700">গ্রহীতা / খামারির স্বাক্ষর</div>
       </div>
@@ -255,40 +271,6 @@
       }
     }
 
-    async function downloadPDF() {
-      const btn = event.currentTarget;
-      const originalText = btn.innerHTML;
-      btn.innerHTML = '<span>⏳</span> <span class="text-white font-bold">PDF তৈরি হচ্ছে...</span>';
-      btn.disabled = true;
-
-      try {
-        if (document.fonts && document.fonts.ready) {
-          await document.fonts.ready;
-        }
-        const element = document.getElementById('printableMemo');
-        const opt = {
-          margin: [10, 10, 10, 10],
-          filename: 'Invoice_{{ invoice.invoice_no }}.pdf',
-          image: { type: 'jpeg', quality: 0.98 },
-          html2canvas: {
-            scale: 2,
-            useCORS: true,
-            foreignObjectRendering: true,
-            letterRendering: false,
-            logging: false
-          },
-          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-        };
-        await html2pdf().set(opt).from(element).save();
-      } catch(err) {
-        console.warn('foreignObject export note:', err);
-        handlePrint();
-      } finally {
-        btn.innerHTML = originalText;
-        btn.disabled = false;
-      }
-    }
-
     function openPhotoModal(imgUrl) {
       document.getElementById('modalPhotoImg').src = imgUrl;
       document.getElementById('modalDownloadLink').href = imgUrl;
@@ -299,6 +281,13 @@
       document.getElementById('photoModal').classList.add('hidden');
       document.getElementById('modalPhotoImg').src = '';
     }
+
+    window.addEventListener('DOMContentLoaded', function() {
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('print') === '1') {
+        setTimeout(handlePrint, 400);
+      }
+    });
   </script>
 
 </body>
