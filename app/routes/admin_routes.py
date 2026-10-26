@@ -381,6 +381,7 @@ async def batch_detail(request: Request, batch_id: str):
 
     products = db.get_products()
     batch_qr_url = generate_qr_data_url(f"SRE:BAT:{batch['id']}")
+    batch_payments = db.get_payments(batch_id=batch_id)
 
     return render_template(request, "admin/batch_detail.html", {
         "batch": batch,
@@ -388,6 +389,7 @@ async def batch_detail(request: Request, batch_id: str):
         "logs": logs,
         "products": products,
         "batch_qr_url": batch_qr_url,
+        "batch_payments": batch_payments,
     })
 
 @router.post("/batch/{batch_id}/add-log")
@@ -601,13 +603,15 @@ async def delete_batch_log_route(log_id: str, batch_id: str):
 @router.get("/payments", response_class=HTMLResponse)
 async def payments_page(request: Request, farmer_id: Optional[str] = None):
     farmers = db.get_farmers()
-    payments = db.get_payments(farmer_id=farmer_id, limit=50)
+    payments = db.get_payments(farmer_id=farmer_id, limit=100)
     selected_farmer = db.get_farmer_by_id(farmer_id) if farmer_id else None
+    all_batches = db.get_batches()
 
     return render_template(request, "admin/payments.html", {
         "farmers": farmers,
         "payments": payments,
         "selected_farmer": selected_farmer,
+        "batches": all_batches,
     })
 
 @router.post("/payments/record")
@@ -619,11 +623,18 @@ async def record_payment(
     payment_date: str = Form(...),
     batch_id: Optional[str] = Form(None),
     note: Optional[str] = Form(""),
+    redirect_to: Optional[str] = Form(None),
     voucher_file: Optional[UploadFile] = File(None)
 ):
     farmer = db.get_farmer_by_id(farmer_id)
     if not farmer:
         raise HTTPException(status_code=400, detail="Invalid farmer")
+
+    clean_batch_id = (batch_id or "").strip()
+    if clean_batch_id:
+        b_check = db.get_batch_by_id(clean_batch_id)
+        if not b_check:
+            clean_batch_id = ""
 
     voucher_url = ""
     if voucher_file and voucher_file.filename:
@@ -634,7 +645,7 @@ async def record_payment(
     payment_data = {
         "farmer_id": farmer["id"],
         "farmer_name": farmer["name"],
-        "batch_id": batch_id or "",
+        "batch_id": clean_batch_id,
         "amount": amount,
         "payment_method": payment_method,
         "transaction_ref": transaction_ref or "",
@@ -643,6 +654,11 @@ async def record_payment(
         "note": note or "",
     }
     db.record_payment(payment_data)
+
+    if redirect_to:
+        return RedirectResponse(url=redirect_to, status_code=303)
+    if clean_batch_id:
+        return RedirectResponse(url=f"/admin/batch/{clean_batch_id}", status_code=303)
     return RedirectResponse(url=f"/admin/farmer/{farmer['id']}", status_code=303)
 
 @router.post("/payments/update")
@@ -652,10 +668,13 @@ async def update_payment_route(
     payment_method: str = Form("cash"),
     transaction_ref: Optional[str] = Form(""),
     payment_date: str = Form(...),
+    batch_id: Optional[str] = Form(None),
     note: Optional[str] = Form(""),
     redirect_to: Optional[str] = Form(None)
 ):
+    clean_batch_id = (batch_id or "").strip()
     db.update_payment(payment_id, {
+        "batch_id": clean_batch_id,
         "amount": amount,
         "payment_method": payment_method,
         "transaction_ref": transaction_ref or "",
@@ -684,9 +703,11 @@ async def update_request_status(req_id: str, status: str = Form(...)):
 
 # ==================== SETTINGS & INTEGRATIONS ====================
 @router.get("/settings", response_class=HTMLResponse)
-async def settings_page(request: Request, msg: Optional[str] = None):
+async def settings_page(request: Request, msg: Optional[str] = None, pwd_msg: Optional[str] = None, pwd_error: Optional[str] = None):
     return render_template(request, "admin/settings.html", {
-        "msg": msg
+        "msg": msg,
+        "pwd_msg": pwd_msg,
+        "pwd_error": pwd_error
     })
 
 @router.post("/settings/save")
@@ -712,3 +733,38 @@ async def save_settings(
     }
     db.update_settings(settings_dict)
     return RedirectResponse(url="/admin/settings?msg=তথ্য+সফলভাবে+সংরক্ষণ+হয়েছে", status_code=303)
+
+@router.post("/settings/change-password")
+async def change_admin_password(
+    current_password: str = Form(...),
+    new_password: str = Form(...),
+    confirm_password: str = Form(...)
+):
+    shop_settings = db.get_settings()
+    active_password = shop_settings.get("admin_password") or settings.ADMIN_PASSWORD
+
+    if current_password.strip() != active_password:
+        return RedirectResponse(url="/admin/settings?pwd_error=বর্তমান+পাসওয়ার্ডটি+সঠিক+নয়!", status_code=303)
+
+    if new_password != confirm_password:
+        return RedirectResponse(url="/admin/settings?pwd_error=নতুন+পাসওয়ার্ড+এবং+নিশ্চিতকরণ+পাসওয়ার্ড+মেলেনি!", status_code=303)
+
+    if len(new_password.strip()) < 4:
+        return RedirectResponse(url="/admin/settings?pwd_error=নতুন+পাসওয়ার্ড+কমপক্ষে+৪+অক্ষরের+হতে+হবে!", status_code=303)
+
+    db.update_settings({"admin_password": new_password.strip()})
+
+    try:
+        env_path = settings.BASE_DIR / ".env"
+        if env_path.exists():
+            content = env_path.read_text(encoding="utf-8")
+            if "ADMIN_PASSWORD=" in content:
+                import re
+                new_content = re.sub(r'ADMIN_PASSWORD=.*', f'ADMIN_PASSWORD={new_password.strip()}', content)
+                env_path.write_text(new_content, encoding="utf-8")
+            else:
+                env_path.write_text(content.strip() + f"\nADMIN_PASSWORD={new_password.strip()}\n", encoding="utf-8")
+    except Exception as e:
+        print(f"[SETTINGS] Could not write .env: {e}")
+
+    return RedirectResponse(url="/admin/settings?pwd_msg=অ্যাডমিন+পাসওয়ার্ড+সফলভাবে+পরিবর্তন+করা+হয়েছে!", status_code=303)

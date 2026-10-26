@@ -562,24 +562,47 @@ class DatabaseManager:
     def get_batches(self, status: Optional[str] = None, farmer_id: Optional[str] = None) -> List[Dict[str, Any]]:
         with self._get_connection() as conn:
             cur = conn.cursor()
-            query = "SELECT * FROM batches WHERE 1=1"
+            query = """
+            SELECT batches.*, COALESCE(p.total_paid, 0) AS total_paid
+            FROM batches
+            LEFT JOIN (
+                SELECT batch_id, SUM(amount) AS total_paid
+                FROM payments
+                WHERE batch_id IS NOT NULL AND batch_id != ''
+                GROUP BY batch_id
+            ) p ON batches.id = p.batch_id
+            WHERE 1=1
+            """
             params = []
             if status:
-                query += " AND status = ?"
+                query += " AND batches.status = ?"
                 params.append(status)
             if farmer_id:
-                query += " AND farmer_id = ?"
+                query += " AND batches.farmer_id = ?"
                 params.append(farmer_id)
-            query += " ORDER BY start_date DESC"
+            query += " ORDER BY batches.start_date DESC"
             cur.execute(query, params)
-            return [dict(row) for row in cur.fetchall()]
+            results = []
+            for row in cur.fetchall():
+                b = dict(row)
+                b["total_paid"] = float(b.get("total_paid", 0) or 0)
+                b["remaining_due"] = max(0.0, float(b.get("total_investment", 0)) - b["total_paid"])
+                results.append(b)
+            return results
 
     def get_batch_by_id(self, batch_id: str) -> Optional[Dict[str, Any]]:
         with self._get_connection() as conn:
             cur = conn.cursor()
             cur.execute("SELECT * FROM batches WHERE id = ?", (batch_id,))
             row = cur.fetchone()
-            return dict(row) if row else None
+            if not row:
+                return None
+            b = dict(row)
+            cur.execute("SELECT COALESCE(SUM(amount), 0) FROM payments WHERE batch_id = ?", (batch_id,))
+            total_paid = float(cur.fetchone()[0] or 0)
+            b["total_paid"] = total_paid
+            b["remaining_due"] = max(0.0, float(b.get("total_investment", 0)) - total_paid)
+            return b
 
     def save_batch(self, data: Dict[str, Any]) -> str:
         batch_id = data.get("id") or f"BATCH-{datetime.now().strftime('%y%m%d')}-{uuid.uuid4().hex[:4].upper()}"
@@ -803,11 +826,17 @@ class DatabaseManager:
             total_inv = float(b["total_investment"])
             farmer_id = b["farmer_id"]
 
+            # Check payments already made against this batch
+            cur.execute("SELECT COALESCE(SUM(amount), 0) FROM payments WHERE batch_id = ?", (batch_id,))
+            already_paid = float(cur.fetchone()[0] or 0)
+
             net_profit = total_sale_amount - total_inv
-            # Dealer recovers their investment from sales
-            dealer_recovery = min(total_inv, total_sale_amount)
-            # Remaining goes to farmer profit, or if deficit, farmer owes difference
-            farmer_profit = total_sale_amount - dealer_recovery
+            # Dealer recovers unrecovered investment from sales
+            unrecovered_inv = max(0.0, total_inv - already_paid)
+            dealer_recovery_from_sale = min(unrecovered_inv, total_sale_amount)
+            # Farmer profit / cash return from harvest
+            farmer_profit = total_sale_amount - dealer_recovery_from_sale
+            total_dealer_recovery = already_paid + dealer_recovery_from_sale
 
             cur.execute("""
             UPDATE batches SET
@@ -824,14 +853,15 @@ class DatabaseManager:
             WHERE id = ?
             """, (
                 harvest_date, birds_sold, total_weight_kg, rate_per_kg,
-                total_sale_amount, net_profit, dealer_recovery, farmer_profit,
-                f" [শেড সম্পন্ন: বিক্রয় ৳{total_sale_amount:,.2f}, নীট লাভ: ৳{net_profit:,.2f}]",
+                total_sale_amount, net_profit, total_dealer_recovery, farmer_profit,
+                f" [শেড সম্পন্ন: বিক্রয় ৳{total_sale_amount:,.2f}, নীট লাভ: ৳{net_profit:,.2f}, সংগৃহীত: ৳{already_paid:,.2f}]",
                 batch_id
             ))
 
-            # Since the dealer recovers their investment from harvest revenue,
-            # we credit the farmer's account with the dealer recovery amount!
-            cur.execute("UPDATE farmers SET total_due = total_due - ? WHERE id = ?", (dealer_recovery, farmer_id))
+            # Since the dealer recovers remaining investment from harvest revenue,
+            # we credit the farmer's account with the dealer recovery from this harvest!
+            if dealer_recovery_from_sale > 0:
+                cur.execute("UPDATE farmers SET total_due = total_due - ? WHERE id = ?", (dealer_recovery_from_sale, farmer_id))
 
             # Log the harvest event
             now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -841,7 +871,7 @@ class DatabaseManager:
             """, (
                 f"LOG-{uuid.uuid4().hex[:8].upper()}", batch_id, farmer_id, "harvest",
                 harvest_date, "", "মুরগী বিক্রয় ও শেড সম্পন্ন", total_weight_kg, "কেজি", rate_per_kg, total_sale_amount,
-                f"মোট বিক্রয়: ৳{total_sale_amount:,.2f} | ডিলার সমন্বয়: ৳{dealer_recovery:,.2f} | খামারির লাভ: ৳{farmer_profit:,.2f}", now_str
+                f"মোট বিক্রয়: ৳{total_sale_amount:,.2f} | ডিলার সমন্বয়: ৳{total_dealer_recovery:,.2f} | খামারির লাভ: ৳{farmer_profit:,.2f}", now_str
             ))
 
             conn.commit()
@@ -850,8 +880,9 @@ class DatabaseManager:
                 "batch_id": batch_id,
                 "total_sale_amount": total_sale_amount,
                 "total_investment": total_inv,
+                "already_paid": already_paid,
                 "net_profit": net_profit,
-                "dealer_recovery": dealer_recovery,
+                "dealer_recovery": total_dealer_recovery,
                 "farmer_profit": farmer_profit
             }
 
@@ -984,15 +1015,23 @@ class DatabaseManager:
         return invoice_id
 
     # ==================== PAYMENTS ====================
-    def get_payments(self, farmer_id: Optional[str] = None, limit: int = 50) -> List[Dict[str, Any]]:
+    def get_payments(self, farmer_id: Optional[str] = None, batch_id: Optional[str] = None, limit: int = 100) -> List[Dict[str, Any]]:
         with self._get_connection() as conn:
             cur = conn.cursor()
-            query = "SELECT * FROM payments WHERE 1=1"
+            query = """
+            SELECT payments.*, batches.batch_no, batches.bird_type, batches.status AS batch_status
+            FROM payments
+            LEFT JOIN batches ON payments.batch_id = batches.id
+            WHERE 1=1
+            """
             params = []
             if farmer_id:
-                query += " AND farmer_id = ?"
+                query += " AND payments.farmer_id = ?"
                 params.append(farmer_id)
-            query += " ORDER BY payment_date DESC, created_at DESC LIMIT ?"
+            if batch_id:
+                query += " AND payments.batch_id = ?"
+                params.append(batch_id)
+            query += " ORDER BY payments.payment_date DESC, payments.created_at DESC LIMIT ?"
             params.append(limit)
             cur.execute(query, params)
             return [dict(row) for row in cur.fetchall()]
@@ -1034,7 +1073,12 @@ class DatabaseManager:
     def get_payment_by_id(self, payment_id: str) -> Optional[Dict[str, Any]]:
         with self._get_connection() as conn:
             cur = conn.cursor()
-            cur.execute("SELECT * FROM payments WHERE id = ? OR receipt_no = ?", (payment_id, payment_id))
+            cur.execute("""
+            SELECT payments.*, batches.batch_no, batches.bird_type, batches.status AS batch_status
+            FROM payments
+            LEFT JOIN batches ON payments.batch_id = batches.id
+            WHERE payments.id = ? OR payments.receipt_no = ?
+            """, (payment_id, payment_id))
             row = cur.fetchone()
             return dict(row) if row else None
 
@@ -1051,9 +1095,11 @@ class DatabaseManager:
 
             new_amount = float(data.get("amount", old_amount))
             delta = new_amount - old_amount
+            new_batch_id = data.get("batch_id") if "batch_id" in data else old_payment.get("batch_id")
 
             cur.execute("""
             UPDATE payments SET
+                batch_id = ?,
                 amount = ?,
                 payment_date = ?,
                 payment_method = ?,
@@ -1061,6 +1107,7 @@ class DatabaseManager:
                 note = ?
             WHERE id = ?
             """, (
+                new_batch_id,
                 new_amount,
                 data.get("payment_date", old_payment.get("payment_date")),
                 data.get("payment_method", old_payment.get("payment_method")),

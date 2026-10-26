@@ -1,5 +1,7 @@
 import asyncio
 import sys
+import uuid
+import json
 import httpx
 sys.stdout.reconfigure(encoding='utf-8')
 from main import app
@@ -431,6 +433,151 @@ async def run_tests():
         db.delete_batch(batch_1_id)
         db.delete_batch(batch_2_id)
         db.delete_farmer(f_multi_id)
+
+        print("\n--- 15. Testing Admin Settings Password Change ---")
+        # 1. Verify settings page renders security section
+        res = await client.get("/admin/settings")
+        assert res.status_code == 200
+        assert "ডিলার অ্যাডমিন পাসওয়ার্ড পরিবর্তন" in res.text
+        print("GET /admin/settings -> Security section verified")
+
+        # 2. Test wrong current password
+        res = await client.post("/admin/settings/change-password", data={
+            "current_password": "wrongpassword999",
+            "new_password": "newpass2026",
+            "confirm_password": "newpass2026"
+        }, follow_redirects=False)
+        assert res.status_code == 303
+        assert "pwd_error" in res.headers["location"]
+        print("Wrong current password successfully rejected!")
+
+        # 3. Test password confirmation mismatch
+        res = await client.post("/admin/settings/change-password", data={
+            "current_password": "admin123",
+            "new_password": "newpass2026",
+            "confirm_password": "mismatchpass"
+        }, follow_redirects=False)
+        assert res.status_code == 303
+        assert "pwd_error" in res.headers["location"]
+        print("Password mismatch successfully rejected!")
+
+        # 4. Successfully change admin password
+        res = await client.post("/admin/settings/change-password", data={
+            "current_password": "admin123",
+            "new_password": "newpass2026",
+            "confirm_password": "newpass2026"
+        }, follow_redirects=False)
+        assert res.status_code == 303
+        assert "pwd_msg" in res.headers["location"]
+        print("Password successfully updated to 'newpass2026'")
+
+        # 5. Verify old password no longer works
+        test_login_client = httpx.AsyncClient(transport=transport, base_url="http://testserver")
+        old_login_res = await test_login_client.post("/login/admin", data={"username": "admin", "password": "admin123"}, follow_redirects=False)
+        assert old_login_res.status_code == 400
+        print("Old password 'admin123' correctly rejected!")
+
+        # 6. Verify new password logs in successfully
+        new_login_res = await test_login_client.post("/login/admin", data={"username": "admin", "password": "newpass2026"}, follow_redirects=False)
+        assert new_login_res.status_code == 303
+        print("New password 'newpass2026' logs in successfully!")
+
+        # 7. Reset password back to default 'admin123'
+        res = await client.post("/admin/settings/change-password", data={
+            "current_password": "newpass2026",
+            "new_password": "admin123",
+            "confirm_password": "admin123"
+        }, follow_redirects=False)
+        assert res.status_code == 303
+        print("Admin password successfully restored to 'admin123'")
+
+        print("\n--- 16. Testing Shed Selection during Payment Collection & Auto-Coordination ---")
+        # 1. Create a test farmer and batch
+        f_shed_id = f"FARMER-{uuid.uuid4().hex[:6].upper()}"
+        f_phone = f"01788{uuid.uuid4().hex[:6]}"
+        db.save_farmer({
+            "id": f_shed_id,
+            "name": "হুমায়ূন কবির",
+            "phone": f_phone,
+            "shed_name": "কবির ব্রয়লার ফার্ম",
+            "address": "কাপাসিয়া",
+            "shed_capacity": 1000,
+            "total_due": 0
+        })
+
+        b_shed_id = db.save_batch({
+            "batch_no": "SHED-TEST-PAY-01",
+            "farmer_id": f_shed_id,
+            "farmer_name": "হুমায়ূন কবির",
+            "bird_type": "ব্রয়লার",
+            "chick_qty": 1000,
+            "chick_unit_cost": 50,
+            "start_date": "2026-10-01"
+        })
+
+        b_initial = db.get_batch_by_id(b_shed_id)
+        assert b_initial["total_investment"] == 50000 # 1000 * 50
+        assert b_initial["total_paid"] == 0
+        assert b_initial["remaining_due"] == 50000
+        f_initial = db.get_farmer_by_id(f_shed_id)
+        assert f_initial["total_due"] == 50000
+        print(f"Initial State: Shed Investment: ৳{b_initial['total_investment']}, Paid: ৳{b_initial['total_paid']}, Farmer Due: ৳{f_initial['total_due']}")
+
+        # 2. Collect ৳20,000 payment explicitly selecting this shed/batch
+        pay_res = await client.post("/admin/payments/record", data={
+            "farmer_id": f_shed_id,
+            "batch_id": b_shed_id,
+            "amount": 20000,
+            "payment_method": "bKash",
+            "transaction_ref": "TRX-SHED-PAY-123",
+            "payment_date": "2026-10-15",
+            "note": "শেড ১ এর অগ্রিম কিস্তি জমা",
+            "redirect_to": "/admin/payments"
+        }, follow_redirects=False)
+        assert pay_res.status_code == 303
+
+        # Verify automatic coordination with farmer due and shed balance
+        b_after_pay = db.get_batch_by_id(b_shed_id)
+        assert b_after_pay["total_paid"] == 20000
+        assert b_after_pay["remaining_due"] == 30000 # 50000 - 20000
+        f_after_pay = db.get_farmer_by_id(f_shed_id)
+        assert f_after_pay["total_due"] == 30000 # 50000 - 20000
+        print(f"After ৳20,000 Payment: Shed Paid: ৳{b_after_pay['total_paid']}, Shed Remaining Due: ৳{b_after_pay['remaining_due']}, Farmer Due: ৳{f_after_pay['total_due']}")
+
+        # 3. Check /admin/payments renders the shed/batch column
+        payments_page_res = await client.get("/admin/payments")
+        assert payments_page_res.status_code == 200
+        assert "SHED-TEST-PAY-01" in payments_page_res.text
+        print("GET /admin/payments successfully displays 'SHED-TEST-PAY-01' in table!")
+
+        # 4. Check /admin/batch/{b_shed_id} displays payments and payment collection button
+        batch_page_res = await client.get(f"/admin/batch/{b_shed_id}")
+        assert batch_page_res.status_code == 200
+        assert "TRX-SHED-PAY-123" in batch_page_res.text
+        assert "শেডের টাকা গ্রহণ" in batch_page_res.text
+        print("GET /admin/batch/{batch_id} successfully displays payment history and collection button!")
+
+        # 5. Test harvest settlement coordination with already collected payment
+        # Harvest sale = 1500 kg @ ৳60 = ৳90,000
+        # Dealer investment was 50,000, already received 20,000 -> remaining to recover is 30,000
+        settle_result = db.close_and_settle_batch(b_shed_id, {
+            "harvest_date": "2026-10-26",
+            "birds_sold": 950,
+            "total_weight_kg": 1500,
+            "rate_per_kg": 60
+        })
+        assert settle_result["dealer_recovery"] == 50000 # Total dealer recovery = 20k paid + 30k from sale
+        assert settle_result["farmer_profit"] == 60000 # 90k sale - 30k unrecovered investment
+        f_settled = db.get_farmer_by_id(f_shed_id)
+        assert f_settled["total_due"] == 0 # 30k remaining was recovered from sale -> 0 due! No double deduction!
+        print(f"Flock Harvest Settlement: Total Sale: ৳90,000, Total Dealer Recovery: ৳{settle_result['dealer_recovery']}, Farmer Profit: ৳{settle_result['farmer_profit']}, Farmer Final Due: ৳{f_settled['total_due']}")
+
+        # Clean up test data
+        payments = db.get_payments(batch_id=b_shed_id)
+        for p in payments:
+            db.delete_payment(p["id"])
+        db.delete_batch(b_shed_id)
+        db.delete_farmer(f_shed_id)
 
         print("\n=======================================================")
         print("ALL TESTS PASSED SUCCESSFULLY! 100% VERIFIED!")

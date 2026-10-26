@@ -26,8 +26,12 @@ async def login_page(request: Request, error: str = None, tab: str = "dealer"):
 
 @router.post("/login/admin")
 async def login_admin(request: Request, response: Response, username: str = Form(...), password: str = Form(...)):
-    # Verify dealer admin credentials
-    if username == settings.ADMIN_USERNAME and password == settings.ADMIN_PASSWORD:
+    # Verify dealer admin credentials against DB settings (or environment fallback)
+    shop_settings = db.get_settings()
+    expected_username = shop_settings.get("admin_username") or settings.ADMIN_USERNAME
+    expected_password = shop_settings.get("admin_password") or settings.ADMIN_PASSWORD
+
+    if username == expected_username and password == expected_password:
         token = create_session_token({
             "role": "admin",
             "username": username,

@@ -187,6 +187,7 @@
             <tr>
               <th class="p-3">রশিদ নং</th>
               <th class="p-3">তারিখ</th>
+              <th class="p-3">শেড / ব্যাচ</th>
               <th class="p-3">পদ্ধতি</th>
               <th class="p-3">ট্রানজেকশন আইডি / নোট</th>
               <th class="p-3 text-right">আদায়কৃত টাকা</th>
@@ -198,7 +199,22 @@
             {% for p in payments %}
             <tr class="hover:bg-orangeBrand-50/20">
               <td class="p-3 font-mono font-bold text-slate-900">{{ p.receipt_no }}</td>
-              <td class="p-3 text-slate-600">{{ p.payment_date }}</td>
+              <td class="p-3 text-slate-600 whitespace-nowrap">{{ p.payment_date }}</td>
+              <td class="p-3 whitespace-nowrap">
+                {% if p.batch_id and p.batch_no %}
+                  <a href="/admin/batch/{{ p.batch_id }}" class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 transition" title="শেড বিস্তারিত দেখুন">
+                    <span>🏠</span> {{ p.batch_no }} <span class="text-[9px] text-blue-500 font-semibold">({{ p.bird_type }})</span>
+                  </a>
+                {% elif p.batch_id %}
+                  <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700">
+                    <span>🏠</span> শেড যুক্ত
+                  </span>
+                {% else %}
+                  <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-stone-100 text-slate-500">
+                    <span>📑</span> সাধারণ দেনা শোধ
+                  </span>
+                {% endif %}
+              </td>
               <td class="p-3">
                 <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-orangeBrand-100 text-orangeBrand-800">
                   {{ p.payment_method }}
@@ -243,14 +259,29 @@
 
     <form action="/admin/payments/record" method="POST" enctype="multipart/form-data" class="p-5 space-y-4">
       <input type="hidden" name="farmer_id" value="{{ farmer.id }}">
-      {% if active_batch %}
-        <input type="hidden" name="batch_id" value="{{ active_batch.id }}">
-      {% endif %}
+      <input type="hidden" name="redirect_to" value="/admin/farmer/{{ farmer.id }}">
 
       <div>
         <label class="block text-xs font-black text-slate-700 mb-1">খামারির নাম</label>
         <input type="text" value="{{ farmer.name }}" readonly
           class="w-full px-3.5 py-2.5 bg-stone-100 border rounded-2xl text-sm font-bold text-slate-800">
+      </div>
+
+      <!-- Shed Selection Dropdown -->
+      <div>
+        <label class="block text-xs font-black text-slate-700 mb-1">কোন শেডের টাকা গ্রহণ করা হচ্ছে? (শেড নির্বাচন)</label>
+        <select name="batch_id" class="w-full px-3.5 py-2.5 bg-white border border-orangeBrand-200 rounded-2xl text-xs font-bold text-slate-800 focus:ring-2 focus:ring-crimson-500">
+          <option value="">-- কোনো নির্দিষ্ট শেড নেই (সাধারণ বকেয়া আদায়) --</option>
+          {% for b in batches %}
+            <option value="{{ b.id }}" {{ 'selected' if active_batch and active_batch.id == b.id else '' }}>
+              {{ b.batch_no }} • {{ b.bird_type }} ({{ '🟢 চলতি শেড' if b.status == 'active' else '⚪ সমাপনী' }} - মোট খরচ: ৳{{ "{:,.0f}".format(b.total_investment) }}{{ ", আদায়: ৳{:,.0f}".format(b.total_paid) if b.total_paid else "" }})
+            </option>
+          {% endfor %}
+        </select>
+        <p class="text-[11px] text-slate-500 mt-1 flex items-start gap-1">
+          <span class="text-orangeBrand-600">💡</span>
+          <span>শেড নির্বাচন করলে টাকাটি খামারির সার্বিক বকেয়া এবং এই শেডের মোট খরচের সাথে স্বয়ংক্রিয়ভাবে সমন্বয় হবে।</span>
+        </p>
       </div>
 
       <div class="grid grid-cols-2 gap-3">

@@ -38,6 +38,9 @@
         <span>🗑️</span> ডিলিট
       </button>
       {% if batch.status == 'active' %}
+        <button onclick="openBatchPaymentModal()" class="px-3.5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black transition flex items-center gap-1 shadow-sm touch-press">
+          <span>💰</span> শেডের টাকা গ্রহণ
+        </button>
         <button onclick="openLogModal()" class="px-4 py-2.5 bg-maroon-950 hover:bg-black text-white text-xs font-black rounded-xl transition touch-press">
           ➕ খরচ / ফিড / মর্টালিটি যোগ
         </button>
@@ -53,34 +56,48 @@
   </div>
 
   <!-- FINANCIAL BREAKDOWN / INVESTMENT STATS -->
-  <div class="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+  <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
     
     <!-- Chick cost -->
     <div class="bg-white p-4 sm:p-5 rounded-3xl border border-orange-100 shadow-sm">
       <span class="text-[11px] font-bold text-slate-400 uppercase block">বাচ্চা খরচ</span>
-      <div class="text-lg font-black text-slate-900 mt-1">৳ {{ "{:,.0f}".format(batch.total_chick_cost) }}</div>
+      <div class="text-base sm:text-lg font-black text-slate-900 mt-1">৳ {{ "{:,.0f}".format(batch.total_chick_cost) }}</div>
       <div class="text-[11px] text-slate-500 mt-0.5">{{ batch.chick_qty }} টি @ ৳{{ batch.chick_unit_cost }}</div>
     </div>
 
     <!-- Feed cost -->
     <div class="bg-white p-4 sm:p-5 rounded-3xl border border-orange-100 shadow-sm">
       <span class="text-[11px] font-bold text-slate-400 uppercase block">খাদ্য (ফিড) খরচ</span>
-      <div class="text-lg font-black text-orangeBrand-700 mt-1">৳ {{ "{:,.0f}".format(batch.total_feed_cost) }}</div>
+      <div class="text-base sm:text-lg font-black text-orangeBrand-700 mt-1">৳ {{ "{:,.0f}".format(batch.total_feed_cost) }}</div>
       <div class="text-[11px] text-slate-500 mt-0.5">মোট {{ batch.total_feed_bags }} বস্তা খাদ্য</div>
     </div>
 
     <!-- Medicine cost -->
     <div class="bg-white p-4 sm:p-5 rounded-3xl border border-orange-100 shadow-sm">
-      <span class="text-[11px] font-bold text-slate-400 uppercase block">ঔষধ ও ভ্যাকসিন</span>
-      <div class="text-lg font-black text-crimson-700 mt-1">৳ {{ "{:,.0f}".format(batch.total_med_cost) }}</div>
-      <div class="text-[11px] text-slate-500 mt-0.5">ভ্যাকসিন ও টনিক সহ</div>
+      <span class="text-[11px] font-bold text-slate-400 uppercase block">ঔষধ ও অন্যান্য</span>
+      <div class="text-base sm:text-lg font-black text-crimson-700 mt-1">৳ {{ "{:,.0f}".format(batch.total_med_cost + batch.total_other_cost) }}</div>
+      <div class="text-[11px] text-slate-500 mt-0.5">ভ্যাকসিন ও আনুষঙ্গিক</div>
     </div>
 
     <!-- Total SR Enterprise Investment -->
     <div class="bg-gradient-to-br from-maroon-900 via-crimson-700 to-orangeBrand-600 text-white p-4 sm:p-5 rounded-3xl shadow-md">
-      <span class="text-[11px] font-bold text-orangeBrand-100 uppercase block">SR Enterprise মোট বিনিয়োগ</span>
-      <div class="text-xl font-black mt-1">৳ {{ "{:,.0f}".format(batch.total_investment) }}</div>
+      <span class="text-[11px] font-bold text-orangeBrand-100 uppercase block">মোট শেড খরচ</span>
+      <div class="text-base sm:text-lg font-black mt-1">৳ {{ "{:,.0f}".format(batch.total_investment) }}</div>
       <div class="text-[11px] text-orangeBrand-200 mt-0.5">মর্টালিটি: {{ batch.mortality_count }} টি</div>
+    </div>
+
+    <!-- Total Paid for this Batch -->
+    <div class="bg-white p-4 sm:p-5 rounded-3xl border border-emerald-200 shadow-sm">
+      <span class="text-[11px] font-bold text-emerald-700 uppercase block">আদায়কৃত টাকা</span>
+      <div class="text-base sm:text-lg font-black text-emerald-700 mt-1">৳ {{ "{:,.0f}".format(batch.total_paid or 0) }}</div>
+      <div class="text-[11px] text-slate-500 mt-0.5">{{ batch_payments|length if batch_payments else 0 }}টি জমার রশিদ</div>
+    </div>
+
+    <!-- Remaining Due for this Batch -->
+    <div class="bg-white p-4 sm:p-5 rounded-3xl border border-orange-200 shadow-sm">
+      <span class="text-[11px] font-bold text-slate-500 uppercase block">অবশিষ্ট শেড দেনা</span>
+      <div class="text-base sm:text-lg font-black text-crimson-600 mt-1">৳ {{ "{:,.0f}".format(batch.remaining_due or 0) }}</div>
+      <div class="text-[11px] text-slate-500 mt-0.5">সমন্বয়যোগ্য দেনা</div>
     </div>
 
   </div>
@@ -203,6 +220,80 @@
     </div>
   </div>
 
+  <!-- PAYMENTS RECEIVED FOR THIS BATCH -->
+  <div class="bg-white rounded-3xl border border-orange-100 shadow-sm overflow-hidden">
+    <div class="p-5 border-b border-orange-50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div class="flex items-center gap-2.5">
+        <span class="text-xl">💰</span>
+        <div>
+          <h2 class="font-black text-slate-900 text-base">এই শেডের টাকা আদায় ও জমার ইতিহাস</h2>
+          <p class="text-xs text-slate-500">এই শেড বাবদ সংগৃহীত টাকা (খামারি ও শেডের সার্বিক হিসাবের সাথে সমন্বয়কৃত)</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2 flex-wrap">
+        <span class="text-xs font-black px-3 py-1.5 bg-emerald-50 text-emerald-800 rounded-xl border border-emerald-200">
+          মোট আদায়: ৳ {{ "{:,.0f}".format(batch.total_paid or 0) }}
+        </span>
+        {% if batch.status == 'active' %}
+        <button onclick="openBatchPaymentModal()" class="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black transition flex items-center gap-1 shadow-sm touch-press">
+          ➕ টাকা গ্রহণ
+        </button>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="overflow-x-auto">
+      {% if batch_payments %}
+      <table class="w-full text-left text-xs">
+        <thead class="bg-stone-50 text-slate-500 font-bold border-b">
+          <tr>
+            <th class="p-3">রশিদ নং</th>
+            <th class="p-3">তারিখ</th>
+            <th class="p-3">পদ্ধতি</th>
+            <th class="p-3">রেফারেন্স / নোট</th>
+            <th class="p-3 text-right">আদায়কৃত টাকা</th>
+            <th class="p-3 text-center">ভাউচার স্লিপ</th>
+            <th class="p-3 text-center no-print">অ্যাকশন</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          {% for p in batch_payments %}
+          <tr class="hover:bg-orangeBrand-50/20">
+            <td class="p-3 font-mono font-bold text-slate-900">{{ p.receipt_no }}</td>
+            <td class="p-3 text-slate-600 whitespace-nowrap">{{ p.payment_date }}</td>
+            <td class="p-3">
+              <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-orangeBrand-100 text-orangeBrand-800 border border-orangeBrand-200">
+                {{ p.payment_method }}
+              </span>
+            </td>
+            <td class="p-3 text-slate-600 font-medium">{{ p.transaction_ref or p.note or '—' }}</td>
+            <td class="p-3 text-right font-black text-emerald-700 text-sm">৳ {{ "{:,.0f}".format(p.amount) }}</td>
+            <td class="p-3 text-center">
+              {% if p.voucher_image_url %}
+                <a href="{{ p.voucher_image_url }}" target="_blank" class="px-2.5 py-1 bg-crimson-50 hover:bg-crimson-100 text-crimson-700 rounded-lg font-black text-[10px] transition">
+                  📷 স্লিপ দেখুন
+                </a>
+              {% else %}
+                <span class="text-slate-400 text-[10px]">—</span>
+              {% endif %}
+            </td>
+            <td class="p-3 text-center no-print whitespace-nowrap">
+              <a href="/admin/payments/delete/{{ p.id }}?redirect_to=/admin/batch/{{ batch.id }}" onclick="return confirm('পেমেন্টটি মুছে ফেললে শেডের আদায় ও খামারির বাকি পূর্বের অবস্থায় ফিরে যাবে। আপনি কি নিশ্চিত?')" class="p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg font-black text-[11px] transition" title="মুছে ফেলুন">
+                🗑️
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="p-6 text-center text-xs text-slate-400">
+        এই শেডের অনুকূলে এখনো কোনো টাকা আদায়ের রেকর্ড নেই। উপরে <strong>"টাকা গ্রহণ"</strong> বাটনে ক্লিক করে সরাসরি এই শেডের টাকা এন্ট্রি দিতে পারেন।
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
 </div>
 
 <!-- ADD EXPENSE / LOG MODAL -->
@@ -286,6 +377,91 @@
   </div>
 </div>
 
+<!-- BATCH PAYMENT MODAL -->
+<div id="batchPaymentModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+  <div class="bg-white w-full max-w-md rounded-3xl shadow-2xl border border-orange-100 overflow-hidden max-h-[90vh] flex flex-col">
+    <div class="p-5 bg-gradient-to-r from-maroon-900 via-crimson-700 to-orangeBrand-600 text-white flex items-center justify-between">
+      <div>
+        <h3 class="font-black text-base">💰 শেডের টাকা জমা গ্রহণ</h3>
+        <p class="text-xs text-orangeBrand-100">{{ batch.batch_no }} • {{ farmer.name }}</p>
+      </div>
+      <button onclick="closeBatchPaymentModal()" class="text-white/80 hover:text-white text-xl">✕</button>
+    </div>
+
+    <form action="/admin/payments/record" method="POST" enctype="multipart/form-data" class="p-5 space-y-4 overflow-y-auto">
+      <input type="hidden" name="farmer_id" value="{{ batch.farmer_id }}">
+      <input type="hidden" name="batch_id" value="{{ batch.id }}">
+      <input type="hidden" name="redirect_to" value="/admin/batch/{{ batch.id }}">
+
+      <div class="p-3 bg-orangeBrand-50 border border-orangeBrand-200 rounded-2xl text-xs space-y-1">
+        <div class="flex justify-between font-bold text-slate-700">
+          <span>মোট শেড খরচ:</span>
+          <span>৳ {{ "{:,.0f}".format(batch.total_investment) }}</span>
+        </div>
+        <div class="flex justify-between font-bold text-emerald-700">
+          <span>ইতোমধ্যে আদায়কৃত:</span>
+          <span>৳ {{ "{:,.0f}".format(batch.total_paid or 0) }}</span>
+        </div>
+        <div class="flex justify-between font-black text-maroon-900 pt-1 border-t border-orangeBrand-200">
+          <span>অবশিষ্ট দেনা:</span>
+          <span>৳ {{ "{:,.0f}".format(batch.remaining_due or 0) }}</span>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-black text-slate-700 mb-1">জমার পরিমাণ (টাকা) *</label>
+          <input type="number" step="1" name="amount" placeholder="যেমন: 20000" required
+            class="w-full px-3.5 py-2.5 border rounded-2xl text-sm font-black text-crimson-700 focus:ring-2 focus:ring-crimson-500">
+        </div>
+        <div>
+          <label class="block text-xs font-black text-slate-700 mb-1">পেমেন্ট মেথড *</label>
+          <select name="payment_method" class="w-full px-3.5 py-2.5 border rounded-2xl text-sm font-semibold">
+            <option value="Cash">ক্যাশ / নগদ</option>
+            <option value="bKash">বিকাশ (bKash)</option>
+            <option value="Nagad">নগদ (Nagad)</option>
+            <option value="Bank">ব্যাংক ট্রান্সফার</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-black text-slate-700 mb-1">তারিখ *</label>
+          <input type="date" name="payment_date" value="{{ now_date }}" required
+            class="w-full px-3.5 py-2.5 border rounded-2xl text-sm">
+        </div>
+        <div>
+          <label class="block text-xs font-black text-slate-700 mb-1">ট্রানজেকশন আইডি / রেফারেন্স</label>
+          <input type="text" name="transaction_ref" placeholder="TrxID..."
+            class="w-full px-3.5 py-2.5 border rounded-2xl text-sm font-mono">
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-xs font-black text-slate-700 mb-1">ভাউচার স্লিপের ছবি</label>
+        <input type="file" name="voucher_file" accept="image/*"
+          class="w-full text-xs text-slate-500 file:mr-2 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-orangeBrand-50 file:text-orangeBrand-700">
+      </div>
+
+      <div>
+        <label class="block text-xs font-black text-slate-700 mb-1">মন্তব্য / বিবরণ</label>
+        <input type="text" name="note" placeholder="যেমন: শেডের ফিড বাবদ কিস্তি পরিশোধ"
+          class="w-full px-3.5 py-2.5 border rounded-2xl text-sm">
+      </div>
+
+      <div class="flex items-center justify-end gap-2 pt-3 border-t">
+        <button type="button" onclick="closeBatchPaymentModal()" class="px-4 py-2.5 border rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50">
+          বাতিল
+        </button>
+        <button type="submit" class="px-5 py-2.5 bg-gradient-to-r from-crimson-600 to-orangeBrand-500 hover:opacity-95 text-white rounded-xl text-xs font-black shadow-md shadow-crimson-600/20 touch-press">
+          টাকা জমা গ্রহণ সম্পন্ন করুন ➔
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <!-- SETTLE HARVEST MODAL -->
 <div id="settleModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
   <div class="bg-white w-full max-w-lg rounded-3xl shadow-2xl border border-orange-100 overflow-hidden max-h-[90vh] flex flex-col">
@@ -295,9 +471,13 @@
     </div>
 
     <form action="/admin/batch/{{ batch.id }}/settle" method="POST" class="p-5 space-y-4 overflow-y-auto">
-      <div class="p-3.5 bg-orangeBrand-50 rounded-2xl border border-orangeBrand-200 text-xs text-orangeBrand-950 font-medium">
-        SR Enterprise এর মোট বিনিয়োগ খরচ: <strong class="text-maroon-900">৳ {{ "{:,.0f}".format(batch.total_investment) }}</strong><br>
-        মুরগী বিক্রির টাকা থেকে এটি প্রথমে সমন্বয় হবে এবং অবশিষ্ট টাকা খামারির লাভ হিসেবে জমা হবে।
+      <div class="p-3.5 bg-orangeBrand-50 rounded-2xl border border-orangeBrand-200 text-xs text-orangeBrand-950 font-medium space-y-1">
+        <div>SR Enterprise এর মোট খরচ: <strong class="text-maroon-900">৳ {{ "{:,.0f}".format(batch.total_investment) }}</strong></div>
+        {% if batch.total_paid and batch.total_paid > 0 %}
+          <div class="text-emerald-700 font-bold">ইতোমধ্যে আদায়কৃত টাকা: ৳ {{ "{:,.0f}".format(batch.total_paid) }}</div>
+          <div class="text-slate-800 font-bold">বিক্রয় থেকে সমন্বয়যোগ্য বাকি: ৳ {{ "{:,.0f}".format(batch.remaining_due) }}</div>
+        {% endif %}
+        <div class="text-[11px] text-slate-500 pt-1 border-t border-orangeBrand-200">মুরগী বিক্রির টাকা থেকে অবশিষ্ট বকেয়া সমন্বয় হয়ে বাকি টাকা সরাসরি খামারির লাভ হিসেবে জমা হবে।</div>
       </div>
 
       <div class="grid grid-cols-2 gap-3">
@@ -333,11 +513,11 @@
           <span id="previewTotalSale" class="font-black text-slate-900">৳ 0</span>
         </div>
         <div class="flex justify-between">
-          <span class="text-slate-500 font-bold">ডিলারের বিনিয়োগ সমন্বয়:</span>
-          <span id="previewDealerRecovery" class="font-black text-orangeBrand-700">৳ {{ "{:,.0f}".format(batch.total_investment) }}</span>
+          <span class="text-slate-500 font-bold">ডিলারের অবিক্রিত বিনিয়োগ সমন্বয়:</span>
+          <span id="previewDealerRecovery" class="font-black text-orangeBrand-700">৳ {{ "{:,.0f}".format(batch.remaining_due or batch.total_investment) }}</span>
         </div>
         <div class="flex justify-between pt-2 border-t font-black text-sm">
-          <span class="text-slate-700">খামারির নীট লাভ:</span>
+          <span class="text-slate-700">খামারির নীট পাওনা / লভ্যাংশ:</span>
           <span id="previewFarmerProfit" class="text-emerald-700">৳ 0</span>
         </div>
       </div>
@@ -458,12 +638,23 @@
     document.getElementById('settleModal').classList.add('hidden');
   }
 
-  const batchInvestment = {{ batch.total_investment }};
+  function openBatchPaymentModal() {
+    document.getElementById('batchPaymentModal').classList.remove('hidden');
+  }
+  function closeBatchPaymentModal() {
+    document.getElementById('batchPaymentModal').classList.add('hidden');
+  }
+
+  const batchInvestment = {{ batch.total_investment or 0 }};
+  const batchAlreadyPaid = {{ batch.total_paid or 0 }};
+  const batchRemainingDue = {{ batch.remaining_due or 0 }};
+
   function calcHarvest() {
     const weight = parseFloat(document.getElementById('harvestWeight').value) || 0;
     const rate = parseFloat(document.getElementById('harvestRate').value) || 0;
     const totalSale = weight * rate;
-    const dealerRecovery = Math.min(totalSale, batchInvestment);
+    const unrecoveredInv = Math.max(0, batchInvestment - batchAlreadyPaid);
+    const dealerRecovery = Math.min(totalSale, unrecoveredInv);
     const farmerProfit = totalSale - dealerRecovery;
 
     document.getElementById('previewTotalSale').innerText = formatTaka(totalSale);

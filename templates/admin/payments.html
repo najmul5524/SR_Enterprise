@@ -36,6 +36,7 @@
             <th class="p-3">রশিদ নং</th>
             <th class="p-3">তারিখ</th>
             <th class="p-3">খামারির নাম</th>
+            <th class="p-3">শেড / ব্যাচ</th>
             <th class="p-3">পদ্ধতি</th>
             <th class="p-3">ট্রানজেকশন আইডি / রেফারেন্স</th>
             <th class="p-3 text-right">টাকার পরিমাণ</th>
@@ -50,6 +51,21 @@
             <td class="p-3 text-slate-600 whitespace-nowrap">{{ p.payment_date }}</td>
             <td class="p-3 font-bold text-slate-900">
               <a href="/admin/farmer/{{ p.farmer_id }}" class="hover:underline font-black">{{ p.farmer_name }}</a>
+            </td>
+            <td class="p-3 whitespace-nowrap">
+              {% if p.batch_id and p.batch_no %}
+                <a href="/admin/batch/{{ p.batch_id }}" class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-black bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 transition" title="শেড বিস্তারিত হিসাব দেখুন">
+                  <span>🏠</span> {{ p.batch_no }} <span class="text-[9px] text-blue-500 font-semibold">({{ p.bird_type }})</span>
+                </a>
+              {% elif p.batch_id %}
+                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700">
+                  <span>🏠</span> শেড যুক্ত
+                </span>
+              {% else %}
+                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-stone-100 text-slate-500">
+                  <span>📑</span> সাধারণ দেনা শোধ
+                </span>
+              {% endif %}
             </td>
             <td class="p-3">
               <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-orangeBrand-100 text-orangeBrand-800 border border-orangeBrand-200">
@@ -72,7 +88,7 @@
                 <button type="button" onclick='openEditPaymentModal({{ p | tojson | safe }})' class="p-1.5 bg-orangeBrand-50 hover:bg-orangeBrand-100 text-orangeBrand-800 rounded-lg font-black text-[11px] transition" title="সম্পাদনা">
                   ✏️
                 </button>
-                <a href="/admin/payments/delete/{{ p.id }}" onclick="return confirm('সতর্কতা: এই পেমেন্টটি মুছে ফেললে খামারির মোট বাকি পাওনা পূর্বের অবস্থায় (৳{{ p.amount }} বেড়ে) ফিরে যাবে। আপনি কি নিশ্চিত?')" class="p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg font-black text-[11px] transition" title="মুছে ফেলুন">
+                <a href="/admin/payments/delete/{{ p.id }}?redirect_to=/admin/payments" onclick="return confirm('সতর্কতা: এই পেমেন্টটি মুছে ফেললে খামারির মোট বাকি পাওনা পূর্বের অবস্থায় (৳{{ p.amount }} বেড়ে) ফিরে যাবে। আপনি কি নিশ্চিত?')" class="p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg font-black text-[11px] transition" title="মুছে ফেলুন">
                   🗑️
                 </a>
               </div>
@@ -88,22 +104,48 @@
 
 <!-- PAYMENT MODAL -->
 <div id="paymentModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-  <div class="bg-white w-full max-w-md rounded-3xl shadow-2xl border border-orange-100 overflow-hidden max-h-[90vh] flex flex-col">
+  <div class="bg-white w-full max-w-lg rounded-3xl shadow-2xl border border-orange-100 overflow-hidden max-h-[90vh] flex flex-col">
     
     <div class="p-5 bg-gradient-to-r from-maroon-900 via-crimson-700 to-orangeBrand-600 text-white flex items-center justify-between">
-      <h3 class="font-black text-base">টাকা জমা গ্রহণ (Payment Entry)</h3>
+      <div>
+        <h3 class="font-black text-base">টাকা জমা গ্রহণ (Payment Entry)</h3>
+        <p class="text-xs text-orangeBrand-100">খামারি ও নির্দিষ্ট শেডের সাথে স্বয়ংক্রিয় হিসাব সমন্বয়</p>
+      </div>
       <button onclick="closePaymentModal()" class="text-white/80 hover:text-white text-xl">✕</button>
     </div>
 
-    <form action="/admin/payments/record" method="POST" enctype="multipart/form-data" class="p-5 space-y-4">
+    <form action="/admin/payments/record" method="POST" enctype="multipart/form-data" class="p-5 space-y-4 overflow-y-auto">
+      <input type="hidden" name="redirect_to" value="/admin/payments">
+
       <div>
         <label class="block text-xs font-black text-slate-700 mb-1">খামারি নির্বাচন করুন *</label>
-        <select name="farmer_id" required class="w-full px-3.5 py-2.5 border rounded-2xl text-sm font-semibold">
+        <select id="modalFarmerSelect" name="farmer_id" onchange="onModalFarmerChange()" required class="w-full px-3.5 py-2.5 border rounded-2xl text-sm font-semibold">
           <option value="">-- খামারি নির্বাচন করুন --</option>
           {% for f in farmers %}
-            <option value="{{ f.id }}">{{ f.name }} (বাকি: ৳{{ "{:,.0f}".format(f.total_due) }})</option>
+            <option value="{{ f.id }}" {{ 'selected' if selected_farmer and selected_farmer.id == f.id else '' }}>
+              {{ f.name }} (বাকি: ৳{{ "{:,.0f}".format(f.total_due) }})
+            </option>
           {% endfor %}
         </select>
+      </div>
+
+      <!-- Shed / Batch Selection Dropdown -->
+      <div>
+        <div class="flex items-center justify-between mb-1">
+          <label class="block text-xs font-black text-slate-700">
+            কোন শেডের টাকা আদায়? (শেড নির্বাচন)
+          </label>
+          <span id="modalShedBadge" class="hidden text-[10px] font-black px-2 py-0.5 rounded-full bg-orangeBrand-100 text-orangeBrand-800 border border-orangeBrand-200">
+          </span>
+        </div>
+        <select id="modalBatchSelect" name="batch_id" onchange="onModalBatchChange()"
+          class="w-full px-3.5 py-2.5 bg-white border border-orangeBrand-200 rounded-2xl text-xs font-bold text-slate-800 focus:ring-2 focus:ring-crimson-500 focus:outline-none transition">
+          <option value="">-- কোনো নির্দিষ্ট শেড নেই (সাধারণ বকেয়া আদায়) --</option>
+        </select>
+        <p id="modalBatchHelp" class="text-[11px] text-slate-500 mt-1 flex items-start gap-1">
+          <span class="text-orangeBrand-600">💡</span>
+          <span id="modalBatchNoticeText">খামারি নির্বাচন করলে তার চলতি ও পূর্ববর্তী শেডসমূহ এই ড্রপডাউনে আসবে।</span>
+        </p>
       </div>
 
       <div class="grid grid-cols-2 gap-3">
@@ -144,7 +186,7 @@
 
       <div>
         <label class="block text-xs font-black text-slate-700 mb-1">মন্তব্য / নোট</label>
-        <input type="text" name="note" placeholder="বকেয়া কিস্তি পরিশোধ..."
+        <input type="text" name="note" placeholder="বকেয়া কিস্তি বা শেডের খরচ পরিশোধ..."
           class="w-full px-3.5 py-2.5 border rounded-2xl text-sm">
       </div>
 
@@ -172,10 +214,18 @@
 
     <form action="/admin/payments/update" method="POST" class="p-5 space-y-4 overflow-y-auto">
       <input type="hidden" id="editPayId" name="payment_id">
+      <input type="hidden" name="redirect_to" value="/admin/payments">
 
       <div>
         <label class="block text-xs font-black text-slate-700 mb-1">রশিদ নম্বর</label>
         <input type="text" id="editPayReceipt" readonly class="w-full px-3.5 py-2.5 bg-stone-50 border rounded-2xl text-xs font-mono font-bold text-slate-600">
+      </div>
+
+      <div>
+        <label class="block text-xs font-black text-slate-700 mb-1">শেড / ব্যাচ নির্বাচন</label>
+        <select id="editPayBatchId" name="batch_id" class="w-full px-3.5 py-2.5 border rounded-2xl text-xs font-bold text-slate-800">
+          <option value="">-- কোনো নির্দিষ্ট শেড নেই (সাধারণ বাকি) --</option>
+        </select>
       </div>
 
       <div class="grid grid-cols-2 gap-3">
@@ -228,11 +278,74 @@
 </div>
 
 <script>
+  // All batches data passed from backend
+  const allBatches = {{ (batches or []) | tojson | safe }};
+
   function openPaymentModal() {
     document.getElementById('paymentModal').classList.remove('hidden');
+    onModalFarmerChange();
   }
   function closePaymentModal() {
     document.getElementById('paymentModal').classList.add('hidden');
+  }
+
+  function onModalFarmerChange() {
+    const farmerSel = document.getElementById('modalFarmerSelect');
+    const batchSel = document.getElementById('modalBatchSelect');
+    const badge = document.getElementById('modalShedBadge');
+    const notice = document.getElementById('modalBatchNoticeText');
+    if (!farmerSel || !batchSel) return;
+
+    const farmerId = farmerSel.value;
+    batchSel.innerHTML = '<option value="">-- কোনো নির্দিষ্ট শেড নেই (সাধারণ বকেয়া আদায়) --</option>';
+
+    if (!farmerId) {
+      if (badge) badge.classList.add('hidden');
+      if (notice) notice.innerHTML = 'খামারি নির্বাচন করলে তার চলতি ও পূর্ববর্তী শেডসমূহ এই ড্রপডাউনে আসবে।';
+      return;
+    }
+
+    const farmerBatches = allBatches.filter(b => b.farmer_id === farmerId);
+
+    if (badge) {
+      if (farmerBatches.length > 0) {
+        badge.innerText = `${farmerBatches.length}টি শেড পাওয়া গেছে`;
+        badge.classList.remove('hidden');
+      } else {
+        badge.classList.add('hidden');
+      }
+    }
+
+    let activeBatch = null;
+    farmerBatches.forEach(b => {
+      const opt = document.createElement('option');
+      opt.value = b.id;
+      const isAct = (b.status === 'active');
+      const statusText = isAct ? '🟢 চলতি শেড' : '⚪ সমাপনী';
+      const invText = b.total_investment ? `খরচ: ৳${Math.round(b.total_investment).toLocaleString()}` : '';
+      const paidText = b.total_paid ? `, আদায়: ৳${Math.round(b.total_paid).toLocaleString()}` : '';
+      opt.textContent = `${b.batch_no} • ${b.bird_type} (${statusText} - ${invText}${paidText})`;
+      if (isAct && !activeBatch) {
+        opt.selected = true;
+        activeBatch = b;
+      }
+      batchSel.appendChild(opt);
+    });
+
+    onModalBatchChange();
+  }
+
+  function onModalBatchChange() {
+    const batchSel = document.getElementById('modalBatchSelect');
+    const notice = document.getElementById('modalBatchNoticeText');
+    if (!batchSel || !notice) return;
+
+    if (!batchSel.value) {
+      notice.innerHTML = 'কোনো শেড নির্বাচন না করলে টাকাটি খামারির <strong>সার্বিক বকেয়া খাতা</strong> থেকে বিয়োগ হবে।';
+    } else {
+      const text = batchSel.options[batchSel.selectedIndex].textContent;
+      notice.innerHTML = `টাকাটি স্বয়ংক্রিয়ভাবে খামারির বকেয়া এবং <strong>${text}</strong> শেডের আদায়ের সাথে সমন্বয় হবে।`;
+    }
   }
 
   function openEditPaymentModal(p) {
@@ -243,6 +356,24 @@
     document.getElementById('editPayMethod').value = p.payment_method || 'cash';
     document.getElementById('editPayRef').value = p.transaction_ref || '';
     document.getElementById('editPayNote').value = p.note || '';
+
+    // Populate edit batch select
+    const editBatchSel = document.getElementById('editPayBatchId');
+    if (editBatchSel) {
+      editBatchSel.innerHTML = '<option value="">-- কোনো নির্দিষ্ট শেড নেই (সাধারণ বাকি) --</option>';
+      const farmerBatches = allBatches.filter(b => b.farmer_id === p.farmer_id);
+      farmerBatches.forEach(b => {
+        const opt = document.createElement('option');
+        opt.value = b.id;
+        const isAct = (b.status === 'active');
+        opt.textContent = `${b.batch_no} • ${b.bird_type} (${isAct ? '🟢 চলতি' : '⚪ সম্পন্ন'})`;
+        if (b.id === p.batch_id) {
+          opt.selected = true;
+        }
+        editBatchSel.appendChild(opt);
+      });
+    }
+
     document.getElementById('editPaymentModal').classList.remove('hidden');
   }
   function closeEditPaymentModal() {

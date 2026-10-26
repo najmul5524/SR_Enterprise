@@ -83,11 +83,12 @@ async def farmer_ledger(request: Request):
             "ref_id": inv["id"]
         })
     for p in payments:
+        shed_info = f" • শেড: {p.get('batch_no')}" if p.get("batch_no") else ""
         ledger_entries.append({
             "date": p["payment_date"],
             "type": "credit", # Payment / Jama
             "title": f"জমা পরিশোধ ({p.get('payment_method','ক্যাশ')})",
-            "details": f"রশিদ #{p['receipt_no']} - {p.get('note', '')}",
+            "details": f"রশিদ #{p['receipt_no']}{shed_info} - {p.get('note', '')}",
             "amount": p["amount"],
             "ref_id": p["id"],
             "voucher": p.get("voucher_image_url")
