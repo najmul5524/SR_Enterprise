@@ -129,9 +129,6 @@
           <a href="/admin/inventory" class="nav-item px-3.5 py-1.5 rounded-2xl transition {{ 'bg-gradient-to-r from-maroon-900 to-crimson-700 text-white font-black shadow-md shadow-crimson-900/20 border border-crimson-600/40 active-nav' if current_path and current_path.startswith('/admin/inventory') else 'text-slate-600 hover:text-crimson-700 hover:bg-orangeBrand-50' }}">
             স্টক ইনভেন্টরি
           </a>
-          <a href="/admin/scanner" class="nav-item px-3.5 py-1.5 rounded-2xl transition flex items-center gap-1.5 {{ 'bg-gradient-to-r from-crimson-600 to-orangeBrand-500 text-white ring-2 ring-orangeBrand-400 font-black shadow-md shadow-crimson-500/25 active-nav' if current_path and current_path.startswith('/admin/scanner') else 'bg-orangeBrand-50 text-orangeBrand-800 border border-orangeBrand-200 hover:bg-orangeBrand-100 font-bold' }}">
-            <span>📷</span> কিউআর স্ক্যান
-          </a>
           <a href="/admin/farmers" class="nav-item px-3.5 py-1.5 rounded-2xl transition {{ 'bg-gradient-to-r from-maroon-900 to-crimson-700 text-white font-black shadow-md shadow-crimson-900/20 border border-crimson-600/40 active-nav' if current_path and current_path.startswith('/admin/farmer') else 'text-slate-600 hover:text-crimson-700 hover:bg-orangeBrand-50' }}">
             খামারিদের খাতা
           </a>
@@ -164,13 +161,6 @@
 
         <!-- Right Side User & Badges -->
         <div class="flex items-center gap-2">
-          <!-- Mobile Quick Scan Shortcut on header -->
-          {% if user and user.role == 'admin' %}
-            <a href="/admin/scanner" class="md:hidden p-2 text-crimson-600 hover:bg-crimson-50 rounded-xl transition" title="কিউআর স্ক্যানার">
-              <span class="text-xl">📷</span>
-            </a>
-          {% endif %}
-
           {% if is_cloudinary %}
             <span class="hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-sky-50 text-sky-700 border border-sky-200" title="Cloudinary ব্যান্ডউইথ ফ্রি">
               ☁️ Cloudinary
@@ -223,12 +213,12 @@
         <span class="text-[10px] mt-0.5">স্টক</span>
       </a>
 
-      <!-- Center Prominent Scan Button with Glowing Ring -->
-      <a href="/admin/scanner" class="flex flex-col items-center justify-center -mt-6 group touch-press">
-        <div class="w-14 h-14 rounded-full bg-gradient-to-tr from-maroon-800 via-crimson-600 to-orangeBrand-500 text-white scan-glow flex items-center justify-center border-4 border-white transition-transform {{ 'ring-4 ring-orangeBrand-400 scale-105' if current_path and current_path.startswith('/admin/scanner') else 'group-active:scale-95' }}">
+      <!-- Center Prominent Scan Button with Glowing Ring (Directly opens POS Camera Scanner) -->
+      <a href="/admin/dispatch?scan=1" class="flex flex-col items-center justify-center -mt-6 group touch-press" title="মালামাল স্ক্যান ও চালান">
+        <div class="w-14 h-14 rounded-full bg-gradient-to-tr from-maroon-800 via-crimson-600 to-orangeBrand-500 text-white scan-glow flex items-center justify-center border-4 border-white transition-transform {{ 'ring-4 ring-orangeBrand-400 scale-105' if current_path and current_path.startswith('/admin/dispatch') else 'group-active:scale-95' }}">
           <span class="text-2xl animate-pulse">📷</span>
         </div>
-        <span class="text-[10px] font-black {{ 'text-crimson-700 font-black' if current_path and current_path.startswith('/admin/scanner') else 'bg-gradient-to-r from-crimson-700 to-orangeBrand-600 bg-clip-text text-transparent' }} mt-1">স্ক্যানার</span>
+        <span class="text-[10px] font-black {{ 'text-crimson-700 font-black' if current_path and current_path.startswith('/admin/dispatch') else 'bg-gradient-to-r from-crimson-700 to-orangeBrand-600 bg-clip-text text-transparent' }} mt-1">স্ক্যানার</span>
       </a>
 
       <!-- Farmers -->

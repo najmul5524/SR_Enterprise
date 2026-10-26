@@ -629,13 +629,83 @@ class DatabaseManager:
 
             conn.commit()
 
-        if self.is_firebase_active():
-            try:
-                _firestore_client.collection("batches").document(batch_id).set(data, merge=True)
-            except Exception as e:
-                print(f"[FIRESTORE BATCH SYNC ERROR] {e}")
-
         return batch_id
+
+    def update_batch(self, batch_id: str, data: Dict[str, Any]) -> bool:
+        with self._get_connection() as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT * FROM batches WHERE id = ?", (batch_id,))
+            row = cur.fetchone()
+            if not row:
+                return False
+            old_batch = dict(row)
+
+            batch_no = data.get("batch_no", old_batch["batch_no"]).strip()
+            bird_type = data.get("bird_type", old_batch["bird_type"]).strip()
+            start_date = data.get("start_date", old_batch["start_date"]).strip()
+            status = data.get("status", old_batch["status"]).strip()
+            notes = data.get("notes", old_batch.get("notes", "")).strip()
+            chick_qty = int(data.get("chick_qty", old_batch["chick_qty"]))
+            chick_unit_cost = float(data.get("chick_unit_cost", old_batch["chick_unit_cost"]))
+            new_chick_cost = chick_qty * chick_unit_cost
+
+            delta_chick_cost = new_chick_cost - float(old_batch["total_chick_cost"])
+            new_investment = float(old_batch["total_investment"]) + delta_chick_cost
+
+            cur.execute("""
+            UPDATE batches SET
+                batch_no = ?,
+                bird_type = ?,
+                start_date = ?,
+                status = ?,
+                notes = ?,
+                chick_qty = ?,
+                chick_unit_cost = ?,
+                total_chick_cost = ?,
+                total_investment = ?
+            WHERE id = ?
+            """, (
+                batch_no, bird_type, start_date, status, notes,
+                chick_qty, chick_unit_cost, new_chick_cost, new_investment,
+                batch_id
+            ))
+
+            if delta_chick_cost != 0:
+                farmer_id = old_batch["farmer_id"]
+                cur.execute("UPDATE farmers SET total_due = total_due + ? WHERE id = ?", (delta_chick_cost, farmer_id))
+                cur.execute("""
+                UPDATE batch_logs SET
+                    qty = ?,
+                    unit_price = ?,
+                    total_amount = ?
+                WHERE batch_id = ? AND log_type = 'chick'
+                """, (chick_qty, chick_unit_cost, new_chick_cost, batch_id))
+
+            conn.commit()
+            return True
+
+    def delete_batch(self, batch_id: str) -> bool:
+        with self._get_connection() as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT * FROM batches WHERE id = ?", (batch_id,))
+            row = cur.fetchone()
+            if not row:
+                return False
+            batch = dict(row)
+            farmer_id = batch["farmer_id"]
+
+            if batch.get("status") == "active":
+                inv = float(batch.get("total_investment", 0))
+                if inv > 0 and farmer_id:
+                    cur.execute("UPDATE farmers SET total_due = total_due - ? WHERE id = ?", (inv, farmer_id))
+
+            if farmer_id:
+                cur.execute("UPDATE farmers SET total_batches = MAX(0, total_batches - 1) WHERE id = ?", (farmer_id,))
+
+            cur.execute("DELETE FROM batch_logs WHERE batch_id = ?", (batch_id,))
+            cur.execute("DELETE FROM batches WHERE id = ?", (batch_id,))
+            conn.commit()
+            return True
 
     def get_batch_logs(self, batch_id: str) -> List[Dict[str, Any]]:
         with self._get_connection() as conn:

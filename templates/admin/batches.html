@@ -116,8 +116,15 @@
         {% endif %}
       </div>
 
-      <div class="px-5 py-3.5 bg-orangeBrand-50/30 border-t border-orange-50 flex items-center justify-between">
-        <span class="text-[11px] text-slate-400 font-mono">{{ b.id }}</span>
+      <div class="px-5 py-3.5 bg-orangeBrand-50/30 border-t border-orange-50 flex items-center justify-between gap-2">
+        <div class="flex items-center gap-1.5">
+          <button type="button" onclick='openEditBatchModal({{ b|tojson }})' class="p-1.5 bg-white border border-slate-200 hover:bg-orangeBrand-100 text-slate-700 hover:text-orangeBrand-800 rounded-lg text-xs font-bold transition flex items-center gap-1" title="শেডের তথ্য সম্পাদনা">
+            <span>✏️</span> এডিট
+          </button>
+          <button type="button" onclick="confirmDeleteBatch('{{ b.id }}', '{{ b.batch_no }}')" class="p-1.5 bg-white border border-rose-200 hover:bg-rose-100 text-rose-600 rounded-lg text-xs font-bold transition flex items-center gap-1" title="শেড ডিলিট করুন">
+            <span>🗑️</span> ডিলিট
+          </button>
+        </div>
         <a href="/admin/batch/{{ b.id }}" class="px-4 py-2 bg-gradient-to-r from-maroon-900 to-crimson-700 hover:opacity-95 text-white text-xs font-black rounded-xl shadow-sm transition touch-press">
           শেড খতিয়ান ও হিসাব ➔
         </a>
@@ -204,12 +211,109 @@
   </div>
 </div>
 
+<!-- EDIT BATCH MODAL -->
+<div id="editBatchModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+  <div class="bg-white w-full max-w-lg rounded-3xl shadow-2xl border border-orange-100 overflow-hidden max-h-[90vh] flex flex-col">
+    
+    <div class="p-5 bg-gradient-to-r from-maroon-900 via-crimson-700 to-orangeBrand-600 text-white flex items-center justify-between">
+      <h3 class="font-black text-base flex items-center gap-2">
+        <span>✏️</span> শেড / ব্যাচের তথ্য সম্পাদনা
+      </h3>
+      <button onclick="closeEditBatchModal()" class="text-white/80 hover:text-white text-xl">✕</button>
+    </div>
+
+    <form action="/admin/batch/update" method="POST" class="p-5 space-y-4 overflow-y-auto">
+      <input type="hidden" name="batch_id" id="edit_batch_id">
+
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-black text-slate-700 mb-1">ব্যাচ নং / নাম *</label>
+          <input type="text" name="batch_no" id="edit_batch_no" required
+            class="w-full px-3.5 py-2.5 border rounded-2xl text-sm font-bold">
+        </div>
+        <div>
+          <label class="block text-xs font-black text-slate-700 mb-1">বাচ্চার জাত *</label>
+          <input type="text" name="bird_type" id="edit_bird_type" required
+            class="w-full px-3.5 py-2.5 border rounded-2xl text-sm font-semibold">
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-black text-slate-700 mb-1">বাচ্চা সংখ্যা (পিস) *</label>
+          <input type="number" step="1" name="chick_qty" id="edit_chick_qty" required
+            class="w-full px-3.5 py-2.5 border rounded-2xl text-sm font-bold">
+        </div>
+        <div>
+          <label class="block text-xs font-black text-slate-700 mb-1">বাচ্চার দর (প্রতি পিস ৳) *</label>
+          <input type="number" step="0.5" name="chick_unit_cost" id="edit_chick_unit_cost" required
+            class="w-full px-3.5 py-2.5 border rounded-2xl text-sm font-bold">
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-black text-slate-700 mb-1">শুরুর তারিখ *</label>
+          <input type="date" name="start_date" id="edit_start_date" required
+            class="w-full px-3.5 py-2.5 border rounded-2xl text-sm font-medium">
+        </div>
+        <div>
+          <label class="block text-xs font-black text-slate-700 mb-1">শেডের অবস্থা *</label>
+          <select name="status" id="edit_batch_status" class="w-full px-3.5 py-2.5 border rounded-2xl text-sm font-bold">
+            <option value="active">চলতি শেড (Active)</option>
+            <option value="completed">সমাপ্ত শেড (Completed)</option>
+          </select>
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-xs font-black text-slate-700 mb-1">নোট / বিশেষ শর্তাবলী</label>
+        <textarea name="notes" id="edit_batch_notes" rows="2"
+          class="w-full px-3.5 py-2.5 border rounded-2xl text-sm"></textarea>
+      </div>
+
+      <div class="flex items-center justify-end gap-2 pt-3 border-t">
+        <button type="button" onclick="closeEditBatchModal()" class="px-4 py-2.5 border rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50">
+          বাতিল
+        </button>
+        <button type="submit" class="px-5 py-2.5 bg-gradient-to-r from-maroon-900 to-crimson-700 hover:opacity-95 text-white rounded-xl text-xs font-black shadow-md shadow-crimson-900/20 touch-press">
+          আপডেট করুন ➔
+        </button>
+      </div>
+    </form>
+
+  </div>
+</div>
+
 <script>
   function openNewBatchModal() {
     document.getElementById('newBatchModal').classList.remove('hidden');
   }
   function closeNewBatchModal() {
     document.getElementById('newBatchModal').classList.add('hidden');
+  }
+
+  function openEditBatchModal(batch) {
+    if (!batch) return;
+    document.getElementById('edit_batch_id').value = batch.id || '';
+    document.getElementById('edit_batch_no').value = batch.batch_no || '';
+    document.getElementById('edit_bird_type').value = batch.bird_type || '';
+    document.getElementById('edit_chick_qty').value = batch.chick_qty || 0;
+    document.getElementById('edit_chick_unit_cost').value = batch.chick_unit_cost || 0;
+    document.getElementById('edit_start_date').value = batch.start_date || '';
+    document.getElementById('edit_batch_status').value = batch.status || 'active';
+    document.getElementById('edit_batch_notes').value = batch.notes || '';
+    document.getElementById('editBatchModal').classList.remove('hidden');
+  }
+
+  function closeEditBatchModal() {
+    document.getElementById('editBatchModal').classList.add('hidden');
+  }
+
+  function confirmDeleteBatch(batchId, batchNo) {
+    if (confirm(`আপনি কি নিশ্চিতভাবে শেড/ব্যাচ "${batchNo}" ডিলিট করতে চান?\n\nসতর্কতা: এটি ডিলিট করলে এই শেডের সকল খাদ্য, ঔষধ ও মর্টালিটি খরচ মুছে যাবে।`)) {
+      window.location.href = `/admin/batch/delete/${batchId}`;
+    }
   }
 </script>
 {% endblock %}

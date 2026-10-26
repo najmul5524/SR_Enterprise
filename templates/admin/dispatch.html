@@ -594,6 +594,18 @@
         }
       });
     }
+
+    // Auto-launch camera scanner if clicked from mobile bottom bar or ?scan=1
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('scan') === '1' || urlParams.get('camera') === '1') {
+      setTimeout(() => {
+        toggleCheckoutCamera();
+        const scanArea = document.getElementById('checkoutScannerArea');
+        if (scanArea) {
+          scanArea.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 350);
+    }
   });
 </script>
 {% endblock %}

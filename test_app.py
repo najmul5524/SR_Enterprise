@@ -293,6 +293,50 @@ async def run_tests():
         assert db.get_farmer_by_id(new_farmer_id) is None
         print(f"Farmer {new_farmer_id} successfully deleted from database!")
 
+        print("\n--- 13. Testing Shed (Batch) Edit, Delete & Dispatch with ?scan=1 ---")
+        # 1. Test dispatch page with scan=1
+        res = await client.get("/admin/dispatch?scan=1")
+        print(f"GET /admin/dispatch?scan=1 -> Status {res.status_code}")
+        assert res.status_code == 200
+        assert "checkoutScannerArea" in res.text
+
+        # 2. Create test batch
+        test_batch_id = db.save_batch({
+            "batch_no": "টেস্ট ব্যাচ-৯৯",
+            "farmer_id": test_farmer["id"],
+            "farmer_name": test_farmer["name"],
+            "bird_type": "ব্রয়লার (Cobb 500)",
+            "chick_qty": 500,
+            "chick_unit_cost": 50.0,
+            "start_date": "2026-10-26",
+            "notes": "টেস্টিং নোট"
+        })
+        print(f"Created batch for testing: {test_batch_id}")
+
+        # 3. Update batch
+        res = await client.post("/admin/batch/update", data={
+            "batch_id": test_batch_id,
+            "batch_no": "টেস্ট ব্যাচ-৯৯ (আপডেটেড)",
+            "bird_type": "সোনালী হাইব্রিড",
+            "chick_qty": 600,
+            "chick_unit_cost": 45.0,
+            "start_date": "2026-10-26",
+            "status": "active",
+            "notes": "আপডেটেড টেস্টিং নোট"
+        }, follow_redirects=False)
+        print(f"POST /admin/batch/update -> Status {res.status_code}")
+        assert res.status_code == 303
+        updated_b = db.get_batch_by_id(test_batch_id)
+        assert updated_b["batch_no"] == "টেস্ট ব্যাচ-৯৯ (আপডেটেড)"
+        assert updated_b["chick_qty"] == 600
+
+        # 4. Delete batch
+        res = await client.get(f"/admin/batch/delete/{test_batch_id}", follow_redirects=False)
+        print(f"GET /admin/batch/delete -> Status {res.status_code}")
+        assert res.status_code == 303
+        assert db.get_batch_by_id(test_batch_id) is None
+        print(f"Batch {test_batch_id} successfully deleted from database!")
+
         print("\n=======================================================")
         print("ALL TESTS PASSED SUCCESSFULLY! 100% VERIFIED!")
         print("=======================================================\n")

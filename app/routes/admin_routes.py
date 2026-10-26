@@ -329,6 +329,35 @@ async def create_new_batch(
     batch_id = db.save_batch(batch_data)
     return RedirectResponse(url=f"/admin/batch/{batch_id}", status_code=303)
 
+@router.post("/batch/update")
+async def update_batch_route(
+    request: Request,
+    batch_id: str = Form(...),
+    batch_no: str = Form(...),
+    bird_type: str = Form("ব্রয়লার"),
+    chick_qty: int = Form(1000),
+    chick_unit_cost: float = Form(50.0),
+    start_date: str = Form(...),
+    status: str = Form("active"),
+    notes: Optional[str] = Form("")
+):
+    db.update_batch(batch_id, {
+        "batch_no": batch_no.strip(),
+        "bird_type": bird_type.strip(),
+        "chick_qty": chick_qty,
+        "chick_unit_cost": chick_unit_cost,
+        "start_date": start_date.strip(),
+        "status": status.strip(),
+        "notes": notes.strip() if notes else ""
+    })
+    return RedirectResponse(url=f"/admin/batch/{batch_id}", status_code=303)
+
+@router.get("/batch/delete/{batch_id}")
+@router.post("/batch/delete/{batch_id}")
+async def delete_batch_route(request: Request, batch_id: str):
+    db.delete_batch(batch_id)
+    return RedirectResponse(url="/admin/batches?deleted=1", status_code=303)
+
 @router.get("/batch/{batch_id}", response_class=HTMLResponse)
 async def batch_detail(request: Request, batch_id: str):
     batch = db.get_batch_by_id(batch_id)
