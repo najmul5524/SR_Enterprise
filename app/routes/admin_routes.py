@@ -16,7 +16,8 @@ templates = Jinja2Templates(directory=str(settings.BASE_DIR / "templates"))
 
 # Context processor helper for base templates
 def admin_context(request: Request, extra: dict = None) -> dict:
-    pending_reqs = db.get_feed_requests(status="pending")
+    unread_notifs = db.get_unread_notification_count(recipient_role="admin")
+    admin_notifs = db.get_notifications(recipient_role="admin", limit=10)
     ctx = {
         "current_path": request.url.path,
         "user": get_current_user(request),
@@ -25,8 +26,8 @@ def admin_context(request: Request, extra: dict = None) -> dict:
         "is_firebase": db.is_firebase_active(),
         "is_mobile_app": is_mobile_app_client(request),
         "now_date": datetime.now().strftime("%Y-%m-%d"),
-        "pending_requests_count": len(pending_reqs),
-        "pending_requests": pending_reqs[:6],
+        "pending_requests_count": unread_notifs,
+        "pending_requests": admin_notifs,
     }
     if extra:
         ctx.update(extra)
@@ -37,11 +38,24 @@ def render_template(request: Request, name: str, extra: dict = None):
 
 @router.get("/api/notifications")
 async def get_admin_notifications_api():
-    pending = db.get_feed_requests(status="pending")
+    unread_count = db.get_unread_notification_count(recipient_role="admin")
+    notifs = db.get_notifications(recipient_role="admin", limit=15)
     return {
-        "count": len(pending),
-        "requests": pending[:6]
+        "count": unread_count,
+        "notifications": notifs,
+        "requests": notifs
     }
+
+@router.post("/api/notifications/{notif_id}/read")
+async def mark_admin_notif_read_api(notif_id: str):
+    db.mark_notification_as_read(notif_id, recipient_role="admin")
+    unread = db.get_unread_notification_count(recipient_role="admin")
+    return {"status": "success", "count": unread}
+
+@router.post("/api/notifications/mark-all-read")
+async def mark_all_admin_notifs_read_api():
+    db.mark_all_notifications_as_read(recipient_role="admin")
+    return {"status": "success", "count": 0}
 
 # ==================== DASHBOARD ====================
 @router.get("", response_class=HTMLResponse)
@@ -474,17 +488,37 @@ async def settle_batch(
 
 # ==================== DISPATCH / BILLING (POS) ====================
 @router.get("/dispatch", response_class=HTMLResponse)
-async def dispatch_page(request: Request, farmer_id: Optional[str] = None, add_item: Optional[str] = None):
+async def dispatch_page(
+    request: Request,
+    farmer_id: Optional[str] = None,
+    batch_id: Optional[str] = None,
+    add_item: Optional[str] = None,
+    feed_request_id: Optional[str] = None
+):
     farmers = db.get_farmers()
     products = db.get_products()
+    
+    feed_req = db.get_feed_request_by_id(feed_request_id) if feed_request_id else None
+    if feed_req:
+        if not farmer_id:
+            farmer_id = feed_req.get("farmer_id")
+        if not batch_id:
+            batch_id = feed_req.get("batch_id")
+
     selected_farmer = db.get_farmer_by_id(farmer_id) if farmer_id else None
     farmer_batches = []
     active_batch = None
     if selected_farmer:
         all_batches = db.get_batches(farmer_id=selected_farmer["id"])
         farmer_batches = all_batches
-        active_batches = [b for b in all_batches if b.get("status") == "active"]
-        active_batch = active_batches[0] if active_batches else (all_batches[0] if all_batches else None)
+        if batch_id:
+            for b in all_batches:
+                if b["id"] == batch_id:
+                    active_batch = b
+                    break
+        if not active_batch:
+            active_batches = [b for b in all_batches if b.get("status") == "active"]
+            active_batch = active_batches[0] if active_batches else (all_batches[0] if all_batches else None)
 
     initial_product = db.get_product_by_id(add_item) if add_item else None
 
@@ -495,6 +529,8 @@ async def dispatch_page(request: Request, farmer_id: Optional[str] = None, add_i
         "farmer_batches": farmer_batches,
         "active_batch": active_batch,
         "initial_product": initial_product,
+        "feed_request_id": feed_request_id,
+        "feed_request": feed_req,
     })
 
 @router.post("/dispatch/create")
@@ -512,6 +548,7 @@ async def create_dispatch(
     paid_amount: float = Form(0),
     payment_type: str = Form("credit"),
     note: Optional[str] = Form(""),
+    feed_request_id: Optional[str] = Form(None),
     receipt_file: Optional[UploadFile] = File(None)
 ):
     if customer_type == "retail" or not farmer_id or farmer_id in ("WALK_IN", "RETAIL"):
@@ -570,6 +607,17 @@ async def create_dispatch(
         "receipt_image_url": receipt_url
     }
     inv_id = db.create_invoice(invoice_data)
+
+    # Requirement 3: Automatically mark feed request as approved upon creating dispatch
+    if feed_request_id:
+        db.update_feed_request_status(feed_request_id, "approved")
+    elif final_farmer_id not in ("WALK_IN", "RETAIL", "COUNTER_SALE", "GENERAL_CUSTOMER", ""):
+        pending_reqs = db.get_feed_requests(farmer_id=final_farmer_id, status="pending")
+        for pr in pending_reqs:
+            if not final_batch_id or pr.get("batch_id") == final_batch_id:
+                db.update_feed_request_status(pr["id"], "approved")
+                break
+
     return RedirectResponse(url=f"/admin/invoice/{inv_id}/print", status_code=303)
 
 @router.get("/invoice/{invoice_id}/print", response_class=HTMLResponse)

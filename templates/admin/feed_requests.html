@@ -51,7 +51,7 @@
 
         <div class="flex items-center gap-2">
           {% if req.status == 'pending' %}
-            <a href="/admin/dispatch?farmer_id={{ req.farmer_id }}{% if req.batch_id %}&batch_id={{ req.batch_id }}{% endif %}" class="px-4 py-2 bg-gradient-to-r from-crimson-600 to-orangeBrand-500 hover:opacity-95 text-white rounded-xl text-xs font-black transition touch-press shadow-sm">
+            <a href="/admin/dispatch?farmer_id={{ req.farmer_id }}{% if req.batch_id %}&batch_id={{ req.batch_id }}{% endif %}&feed_request_id={{ req.id }}" class="px-4 py-2 bg-gradient-to-r from-crimson-600 to-orangeBrand-500 hover:opacity-95 text-white rounded-xl text-xs font-black transition touch-press shadow-sm">
               📝 চালান তৈরি করুন
             </a>
             <form action="/admin/feed-requests/{{ req.id }}/status" method="POST" class="inline">

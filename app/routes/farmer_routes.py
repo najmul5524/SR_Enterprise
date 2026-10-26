@@ -14,10 +14,11 @@ templates = Jinja2Templates(directory=str(settings.BASE_DIR / "templates"))
 
 def farmer_context(request: Request, extra: dict = None) -> dict:
     user = get_current_user(request)
-    farmer = db.get_farmer_by_id(user["farmer_id"]) if user.get("farmer_id") else None
+    fid = user.get("farmer_id") if user else None
+    farmer = db.get_farmer_by_id(fid) if fid else None
     
-    farmer_requests = db.get_feed_requests(farmer_id=user["farmer_id"]) if user.get("farmer_id") else []
-    farmer_notif_count = len([r for r in farmer_requests if r.get("status") in ("pending", "approved")])
+    unread_count = db.get_unread_notification_count(recipient_role="farmer", recipient_id=fid) if fid else 0
+    farmer_notifs = db.get_notifications(recipient_role="farmer", recipient_id=fid, limit=10) if fid else []
     
     ctx = {
         "current_path": request.url.path,
@@ -25,8 +26,8 @@ def farmer_context(request: Request, extra: dict = None) -> dict:
         "farmer": farmer,
         "shop": db.get_settings(),
         "is_mobile_app": is_mobile_app_client(request),
-        "farmer_requests": farmer_requests[:6],
-        "farmer_notif_count": farmer_notif_count,
+        "farmer_requests": farmer_notifs,
+        "farmer_notif_count": unread_count,
     }
     if extra:
         ctx.update(extra)
@@ -201,46 +202,47 @@ async def farmer_notifications_api(request: Request):
         return {"count": 0, "notifications": []}
 
     fid = user["farmer_id"]
-    requests = db.get_feed_requests(farmer_id=fid)[:6]
-    invoices = db.get_invoices(farmer_id=fid, limit=5)
-    payments = db.get_payments(farmer_id=fid, limit=3)
-
-    notifs = []
-    for r in requests:
-        st_text = "অনুমোদিত হয়েছে" if r["status"] == "approved" else ("বাতিল" if r["status"] == "rejected" else "ডিলারের অপেক্ষমান")
-        notifs.append({
-            "type": "request",
-            "id": r["id"],
-            "title": f"মালামাল রিকুয়েস্ট ({st_text})",
-            "details": r["items_requested"],
-            "note": r.get("farmer_note", ""),
-            "status": r["status"],
+    unread_count = db.get_unread_notification_count(recipient_role="farmer", recipient_id=fid)
+    notifs = db.get_notifications(recipient_role="farmer", recipient_id=fid, limit=15)
+    
+    formatted = []
+    for n in notifs:
+        st_text = "অনুমোদিত হয়েছে" if n.get("req_status") == "approved" else ("বাতিল" if n.get("req_status") == "rejected" else ("ডিলারের অপেক্ষমান" if n.get("req_status") == "pending" else "ডেলিভারি সম্পন্ন"))
+        notif_type = "request" if n.get("type") in ("feed_request", "request") else n.get("type", "general")
+        formatted.append({
+            "id": n["id"],
+            "type": notif_type,
+            "title": n["title"],
+            "details": n.get("items_requested") or n.get("message") or "",
+            "note": n.get("farmer_note", ""),
+            "status": n.get("req_status") or n.get("status", ""),
             "status_text": st_text,
-            "shed": r.get("batch_no", ""),
-            "date": r["created_at"]
-        })
-    for inv in invoices:
-        notifs.append({
-            "type": "invoice",
-            "id": inv["id"],
-            "invoice_no": inv["invoice_no"],
-            "title": f"চালান #{inv['invoice_no']} ডেলিভারি",
-            "details": f"মোট বিল: ৳{inv['net_total']:,.0f} (বাকি: ৳{inv['due_amount']:,.0f})",
-            "date": inv["invoice_date"]
-        })
-    for p in payments:
-        notifs.append({
-            "type": "payment",
-            "id": p["id"],
-            "receipt_no": p["receipt_no"],
-            "title": f"পরিশোধ রসিদ #{p['receipt_no']}",
-            "details": f"৳{p['amount']:,.0f} জমা হয়েছে ({p.get('payment_method','নগদ')})",
-            "date": p["payment_date"]
+            "shed": n.get("batch_no", ""),
+            "date": n.get("created_at", ""),
+            "is_read": n.get("is_read", 0),
+            "ref_id": n.get("ref_id", ""),
+            "link_url": n.get("link_url", "")
         })
 
-    notifs.sort(key=lambda x: str(x.get("date", "")), reverse=True)
-    count = len([r for r in requests if r.get("status") in ("pending", "approved")])
     return {
-        "count": count,
-        "notifications": notifs[:10]
+        "count": unread_count,
+        "notifications": formatted
     }
+
+@router.post("/api/notifications/{notif_id}/read")
+async def mark_farmer_notif_read_api(request: Request, notif_id: str):
+    user = get_current_user(request)
+    fid = user.get("farmer_id") if user else None
+    if fid:
+        db.mark_notification_as_read(notif_id, recipient_role="farmer", recipient_id=fid)
+        unread = db.get_unread_notification_count(recipient_role="farmer", recipient_id=fid)
+        return {"status": "success", "count": unread}
+    return {"status": "error", "count": 0}
+
+@router.post("/api/notifications/mark-all-read")
+async def mark_all_farmer_notifs_read_api(request: Request):
+    user = get_current_user(request)
+    fid = user.get("farmer_id") if user else None
+    if fid:
+        db.mark_all_notifications_as_read(recipient_role="farmer", recipient_id=fid)
+    return {"status": "success", "count": 0}

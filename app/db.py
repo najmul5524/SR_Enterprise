@@ -167,6 +167,38 @@ class DatabaseManager:
             """)
 
             cur.execute("""
+            CREATE TABLE IF NOT EXISTS notifications (
+                id TEXT PRIMARY KEY,
+                recipient_role TEXT NOT NULL,
+                recipient_id TEXT,
+                title TEXT NOT NULL,
+                message TEXT NOT NULL,
+                type TEXT NOT NULL,
+                ref_id TEXT,
+                link_url TEXT,
+                is_read INTEGER DEFAULT 0,
+                created_at TEXT
+            )
+            """)
+
+            # Seed any existing pending feed requests into notifications if not present
+            cur.execute("SELECT id, farmer_name, items_requested, farmer_id, batch_id, created_at FROM feed_requests WHERE status = 'pending'")
+            for pr in cur.fetchall():
+                cur.execute("SELECT COUNT(*) FROM notifications WHERE ref_id = ?", (pr["id"],))
+                if cur.fetchone()[0] == 0:
+                    cur.execute("""
+                    INSERT INTO notifications (id, recipient_role, recipient_id, title, message, type, ref_id, link_url, is_read, created_at)
+                    VALUES (?, 'admin', 'admin', ?, ?, 'feed_request', ?, ?, 0, ?)
+                    """, (
+                        f"NOTIF-{uuid.uuid4().hex[:8].upper()}",
+                        f"মালামাল রিকুয়েস্ট: {pr['farmer_name']}",
+                        pr["items_requested"],
+                        pr["id"],
+                        f"/admin/dispatch?farmer_id={pr['farmer_id']}&batch_id={pr['batch_id'] or ''}&feed_request_id={pr['id']}",
+                        pr["created_at"]
+                    ))
+
+            cur.execute("""
             CREATE TABLE IF NOT EXISTS settings (
                 key TEXT PRIMARY KEY,
                 value TEXT
@@ -1122,6 +1154,21 @@ class DatabaseManager:
             if due_amount > 0 and farmer_id and farmer_id not in ("WALK_IN", "RETAIL", "COUNTER_SALE", "GENERAL_CUSTOMER", "none", "None", ""):
                 cur.execute("UPDATE farmers SET total_due = total_due + ? WHERE id = ?", (due_amount, farmer_id))
 
+            # If registered farmer, create notification for farmer (Requirement 2)
+            if farmer_id and farmer_id not in ("WALK_IN", "RETAIL", "COUNTER_SALE", "GENERAL_CUSTOMER", "none", "None", ""):
+                cur.execute("""
+                INSERT INTO notifications (id, recipient_role, recipient_id, title, message, type, ref_id, link_url, is_read, created_at)
+                VALUES (?, 'farmer', ?, ?, ?, 'new_invoice', ?, ?, 0, ?)
+                """, (
+                    f"NOTIF-{uuid.uuid4().hex[:8].upper()}",
+                    farmer_id,
+                    f"নতুন চালান #{invoice_no} ডেলিভারি",
+                    f"মোট বিল: ৳{net_total:,.0f} (নগদ: ৳{paid_amount:,.0f}, বাকি: ৳{due_amount:,.0f})",
+                    invoice_id,
+                    f"/farmer/invoice/{invoice_id}/memo",
+                    now_str
+                ))
+
             conn.commit()
 
         if self.is_firebase_active():
@@ -1509,6 +1556,21 @@ class DatabaseManager:
             cur.execute(query, params)
             return [dict(row) for row in cur.fetchall()]
 
+    def get_feed_request_by_id(self, req_id: str) -> Optional[Dict[str, Any]]:
+        with self._get_connection() as conn:
+            cur = conn.cursor()
+            cur.execute("""
+            SELECT feed_requests.*, batches.batch_no, batches.bird_type,
+                   farmers.phone AS farmer_phone, farmers.address AS farmer_address,
+                   COALESCE(farmers.total_due, 0) AS farmer_due
+            FROM feed_requests
+            LEFT JOIN batches ON feed_requests.batch_id = batches.id
+            LEFT JOIN farmers ON feed_requests.farmer_id = farmers.id
+            WHERE feed_requests.id = ?
+            """, (req_id,))
+            row = cur.fetchone()
+            return dict(row) if row else None
+
     def create_feed_request(self, data: Dict[str, Any]) -> str:
         req_id = f"REQ-{datetime.now().strftime('%y%m%d')}-{uuid.uuid4().hex[:4].upper()}"
         now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -1522,14 +1584,171 @@ class DatabaseManager:
                 data.get("batch_id", ""), data.get("items_requested", ""),
                 "pending", data.get("farmer_note", ""), now_str
             ))
+            # Insert notification for admin
+            cur.execute("""
+            INSERT INTO notifications (id, recipient_role, recipient_id, title, message, type, ref_id, link_url, is_read, created_at)
+            VALUES (?, 'admin', 'admin', ?, ?, 'feed_request', ?, ?, 0, ?)
+            """, (
+                f"NOTIF-{uuid.uuid4().hex[:8].upper()}",
+                f"মালামাল রিকুয়েস্ট: {data.get('farmer_name', '')}",
+                data.get("items_requested", ""),
+                req_id,
+                f"/admin/dispatch?farmer_id={data.get('farmer_id', '')}&batch_id={data.get('batch_id') or ''}&feed_request_id={req_id}",
+                now_str
+            ))
+
+            # Insert notification for farmer (Requirement 1 & 2)
+            cur.execute("""
+            INSERT INTO notifications (id, recipient_role, recipient_id, title, message, type, ref_id, link_url, is_read, created_at)
+            VALUES (?, 'farmer', ?, 'মালামাল রিকুয়েস্ট (অপেক্ষমান)', ?, 'request', ?, '/farmer', 0, ?)
+            """, (
+                f"NOTIF-{uuid.uuid4().hex[:8].upper()}",
+                data.get("farmer_id", ""),
+                data.get("items_requested", ""),
+                req_id,
+                now_str
+            ))
             conn.commit()
         return req_id
 
     def update_feed_request_status(self, req_id: str, status: str):
+        now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         with self._get_connection() as conn:
             cur = conn.cursor()
+            cur.execute("SELECT * FROM feed_requests WHERE id = ?", (req_id,))
+            req_row = cur.fetchone()
+            if not req_row:
+                return
+
             cur.execute("UPDATE feed_requests SET status = ? WHERE id = ?", (status, req_id))
+            # Mark any admin notification referring to this feed request as read
+            cur.execute("UPDATE notifications SET is_read = 1 WHERE ref_id = ? AND recipient_role = 'admin'", (req_id,))
+
+            # Create notification for farmer informing about approval/rejection
+            status_bn = "অনুমোদিত হয়েছে" if status == "approved" else ("বাতিল করা হয়েছে" if status == "rejected" else status)
+            cur.execute("""
+            INSERT INTO notifications (id, recipient_role, recipient_id, title, message, type, ref_id, link_url, is_read, created_at)
+            VALUES (?, 'farmer', ?, ?, ?, ?, ?, ?, 0, ?)
+            """, (
+                f"NOTIF-{uuid.uuid4().hex[:8].upper()}",
+                req_row["farmer_id"],
+                f"মালামাল রিকুয়েস্ট {status_bn}",
+                f"আপনার রিকোয়েস্টকৃত মালামাল ({req_row['items_requested']}) {status_bn}।",
+                f"request_{status}",
+                req_id,
+                "/farmer",
+                now_str
+            ))
             conn.commit()
+
+    # ==================== NOTIFICATIONS ====================
+    def create_notification(self, data: Dict[str, Any]) -> str:
+        notif_id = data.get("id") or f"NOTIF-{uuid.uuid4().hex[:8].upper()}"
+        now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        with self._get_connection() as conn:
+            cur = conn.cursor()
+            cur.execute("""
+            INSERT INTO notifications (id, recipient_role, recipient_id, title, message, type, ref_id, link_url, is_read, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                notif_id,
+                data.get("recipient_role", "admin"),
+                data.get("recipient_id", "admin"),
+                data.get("title", ""),
+                data.get("message", ""),
+                data.get("type", "general"),
+                data.get("ref_id", ""),
+                data.get("link_url", ""),
+                int(data.get("is_read", 0)),
+                data.get("created_at") or now_str
+            ))
+            conn.commit()
+        return notif_id
+
+    def get_notifications(self, recipient_role: str, recipient_id: Optional[str] = None, unread_only: bool = False, limit: int = 30) -> List[Dict[str, Any]]:
+        with self._get_connection() as conn:
+            cur = conn.cursor()
+            query = """
+            SELECT notifications.*,
+                   feed_requests.farmer_id AS req_farmer_id,
+                   feed_requests.farmer_name AS req_farmer_name,
+                   feed_requests.items_requested,
+                   feed_requests.farmer_note,
+                   feed_requests.status AS req_status,
+                   batches.batch_no,
+                   batches.bird_type,
+                   farmers.phone AS farmer_phone,
+                   farmers.address AS farmer_address,
+                   COALESCE(farmers.total_due, 0) AS farmer_due,
+                   invoices.invoice_no,
+                   invoices.net_total AS inv_net_total,
+                   invoices.due_amount AS inv_due_amount
+            FROM notifications
+            LEFT JOIN feed_requests ON notifications.ref_id = feed_requests.id
+            LEFT JOIN batches ON feed_requests.batch_id = batches.id
+            LEFT JOIN farmers ON (feed_requests.farmer_id = farmers.id OR notifications.recipient_id = farmers.id)
+            LEFT JOIN invoices ON notifications.ref_id = invoices.id
+            WHERE notifications.recipient_role = ?
+            """
+            params = [recipient_role]
+            if recipient_id:
+                query += " AND (notifications.recipient_id = ? OR notifications.recipient_id = 'all')"
+                params.append(recipient_id)
+            if unread_only:
+                query += " AND notifications.is_read = 0"
+            query += " ORDER BY notifications.created_at DESC LIMIT ?"
+            params.append(limit)
+
+            cur.execute(query, params)
+            rows = [dict(r) for r in cur.fetchall()]
+            for r in rows:
+                if r["type"] == "feed_request":
+                    r["farmer_id"] = r["req_farmer_id"] or r["recipient_id"]
+                    r["farmer_name"] = r["req_farmer_name"] or r["title"]
+                    r["status"] = r["req_status"] or "pending"
+                elif r["type"] == "new_invoice":
+                    r["status"] = "delivered"
+                if not r.get("farmer_due"):
+                    r["farmer_due"] = 0
+            return rows
+
+    def get_unread_notification_count(self, recipient_role: str, recipient_id: Optional[str] = None) -> int:
+        with self._get_connection() as conn:
+            cur = conn.cursor()
+            query = "SELECT COUNT(*) FROM notifications WHERE recipient_role = ? AND is_read = 0"
+            params = [recipient_role]
+            if recipient_id:
+                query += " AND (recipient_id = ? OR recipient_id = 'all')"
+                params.append(recipient_id)
+            cur.execute(query, params)
+            return int(cur.fetchone()[0])
+
+    def mark_notification_as_read(self, notif_id: str, recipient_role: Optional[str] = None, recipient_id: Optional[str] = None) -> bool:
+        with self._get_connection() as conn:
+            cur = conn.cursor()
+            query = "UPDATE notifications SET is_read = 1 WHERE (id = ? OR ref_id = ?)"
+            params = [notif_id, notif_id]
+            if recipient_role:
+                query += " AND recipient_role = ?"
+                params.append(recipient_role)
+            if recipient_id:
+                query += " AND (recipient_id = ? OR recipient_id = 'all')"
+                params.append(recipient_id)
+            cur.execute(query, params)
+            conn.commit()
+            return True
+
+    def mark_all_notifications_as_read(self, recipient_role: str, recipient_id: Optional[str] = None) -> bool:
+        with self._get_connection() as conn:
+            cur = conn.cursor()
+            query = "UPDATE notifications SET is_read = 1 WHERE recipient_role = ?"
+            params = [recipient_role]
+            if recipient_id:
+                query += " AND (recipient_id = ? OR recipient_id = 'all')"
+                params.append(recipient_id)
+            cur.execute(query, params)
+            conn.commit()
+            return True
 
     # ==================== SETTINGS ====================
     def get_settings(self) -> Dict[str, str]:

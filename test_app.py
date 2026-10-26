@@ -10,6 +10,14 @@ from app.auth import create_session_token
 
 async def run_tests():
     transport = httpx.ASGITransport(app=app)
+    # Clean up any leftover test data and ensure healthy stock before test suite starts
+    for f in db.get_farmers():
+        if f["name"] not in ("আব্দুল মোতালেব", "মোঃ রফিকুল ইসলাম"):
+            db.delete_farmer(f["id"])
+    for p in db.get_products():
+        if p["stock"] < 30:
+            db.adjust_stock(p["id"], 100.0)
+
     async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
         print("\n--- 1. Testing Root and Login Pages ---")
         res = await client.get("/")
@@ -887,6 +895,90 @@ async def run_tests():
         assert "farmer_address" in top_req
         assert "farmer_due" in top_req
         print(f"Enriched Feed Request details: farmer={top_req['farmer_name']}, phone={top_req['farmer_phone']}, due={top_req['farmer_due']}")
+
+        print("\n--- 20. Testing Notification Mark-as-Read & Auto-Approval on Dispatch ---")
+        # 20a: Test Admin Mark Single and Mark All Read
+        test_notif_id = a_notif_data["notifications"][0]["id"]
+        res_mark_one = await client.post(f"/admin/api/notifications/{test_notif_id}/read")
+        assert res_mark_one.status_code == 200
+        assert res_mark_one.json()["status"] == "success"
+        print("Admin marked single notification as read!")
+
+        res_mark_all_admin = await client.post("/admin/api/notifications/mark-all-read")
+        assert res_mark_all_admin.status_code == 200
+        assert res_mark_all_admin.json()["count"] == 0
+        print("Admin marked all notifications as read! Count is now 0")
+
+        # 20b: Test Auto-Approval of Feed Request on Dispatch Creation (Requirement 3)
+        # Farmer submits a fresh feed request
+        await client.post("/login/farmer", data={"phone": farmer_phone, "pin": "1234"}, follow_redirects=False)
+        res_new_feed_req = await client.post("/farmer/request-feed/submit", data={
+            "batch_id": f_shed_id,
+            "items_requested": "৫ বস্তা গ্রোয়ার ফিড",
+            "farmer_note": "জরুরি ডেলিভারি"
+        }, follow_redirects=False)
+        assert res_new_feed_req.status_code == 303
+        
+        # Get the new feed request id from DB
+        fresh_reqs = db.get_feed_requests(farmer_id=f_test_id, status="pending")
+        assert len(fresh_reqs) > 0
+        target_feed_req = fresh_reqs[0]
+        assert target_feed_req["status"] == "pending"
+        print(f"Fresh pending feed request created: {target_feed_req['id']}")
+
+        # Dealer Admin dispatches with feed_request_id (Simulating clicking 'এই রিকোয়েস্ট থেকে সরাসরি চালান তৈরি করুন')
+        await client.post("/login/admin", data={"username": "admin", "password": "admin123"}, follow_redirects=False)
+        
+        # Check GET /admin/dispatch with feed_request_id pre-loads request
+        res_dispatch_view = await client.get(f"/admin/dispatch?farmer_id={f_test_id}&batch_id={f_shed_id}&feed_request_id={target_feed_req['id']}")
+        assert res_dispatch_view.status_code == 200
+        assert "স্বয়ংক্রিয়ভাবে অনুমোদিত হবে" in res_dispatch_view.text
+        assert target_feed_req['id'] in res_dispatch_view.text
+
+        # Create the dispatch invoice with feed_request_id
+        res_auto_approve_inv = await client.post("/admin/dispatch/create", data={
+            "farmer_id": f_test_id,
+            "batch_id": f_shed_id,
+            "invoice_date": "2026-10-26",
+            "payment_type": "credit",
+            "discount": "0",
+            "paid_amount": "0",
+            "feed_request_id": target_feed_req["id"],
+            "items_json": json.dumps([{"id": "P001", "name": "গ্রোয়ার ফিড", "name_bn": "গ্রোয়ার ফিড", "price": 3600.0, "qty": 5.0, "unit": "বস্তা", "total": 18000.0}])
+        }, follow_redirects=False)
+        assert res_auto_approve_inv.status_code == 303
+        
+        # Verify the feed request is now automatically APPROVED in database!
+        req_after_dispatch = db.get_feed_request_by_id(target_feed_req["id"])
+        print(f"Feed request status after dispatch: {req_after_dispatch['status']}")
+        assert req_after_dispatch["status"] == "approved"
+        print("Requirement 3 PASSED: Feed request automatically marked as APPROVED upon dispatch creation!")
+
+        # 20c: Test Farmer Notification on New Invoice (Requirement 2)
+        await client.post("/login/farmer", data={"phone": farmer_phone, "pin": "1234"}, follow_redirects=False)
+        res_f_notifs_after_inv = await client.get("/farmer/api/notifications")
+        assert res_f_notifs_after_inv.status_code == 200
+        f_notif_payload = res_f_notifs_after_inv.json()
+        print(f"Farmer unread notification count after invoice: {f_notif_payload['count']}")
+        assert f_notif_payload["count"] >= 1
+        
+        # Verify new invoice notification exists
+        inv_notif = next((n for n in f_notif_payload["notifications"] if n.get("type") == "new_invoice"), None)
+        assert inv_notif is not None, "Farmer did not receive notification for new invoice!"
+        print(f"Requirement 2 PASSED: Farmer received invoice notification: '{inv_notif['title']}' ({inv_notif['details']})")
+        assert inv_notif["is_read"] == 0
+
+        # 20d: Test Farmer Mark Notification Read & Mark All Read (Requirement 1)
+        res_f_mark_one = await client.post(f"/farmer/api/notifications/{inv_notif['id']}/read")
+        assert res_f_mark_one.status_code == 200
+        assert res_f_mark_one.json()["status"] == "success"
+        print("Farmer marked invoice notification as read!")
+
+        res_f_mark_all = await client.post("/farmer/api/notifications/mark-all-read")
+        assert res_f_mark_all.status_code == 200
+        assert res_f_mark_all.json()["count"] == 0
+        print("Farmer marked all notifications as read! Count is 0")
+        print("Requirement 1 PASSED: Both admin and farmer can mark notifications as read!")
 
         # Clean up second farmer
         db.delete_farmer(other_farmer_id)

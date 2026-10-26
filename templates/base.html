@@ -220,28 +220,47 @@
 
                 <!-- Notification Dropdown Panel -->
                 <div id="notifDropdown" class="hidden absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-3xl shadow-2xl border border-orange-100 z-50 overflow-hidden transform origin-top-right transition-all duration-200">
-                  <div class="p-4 bg-gradient-to-r from-maroon-950 via-maroon-900 to-crimson-800 text-white flex items-center justify-between">
+                  <div class="p-3.5 bg-gradient-to-r from-maroon-950 via-maroon-900 to-crimson-800 text-white flex items-center justify-between">
                     <div class="flex items-center gap-2">
                       <span class="text-lg">📥</span>
                       <h3 class="text-xs font-black uppercase tracking-wider">খামারিদের মালামাল রিকুয়েস্ট</h3>
                     </div>
-                    <span id="notifCountHeader" class="px-2 py-0.5 rounded-full text-[10px] font-black bg-white/20 text-white">
-                      {{ pending_requests_count or 0 }} টি নতুন
-                    </span>
+                    <div class="flex items-center gap-1.5">
+                      <span id="notifCountHeader" class="px-2 py-0.5 rounded-full text-[10px] font-black bg-white/20 text-white">
+                        {{ pending_requests_count or 0 }} টি নতুন
+                      </span>
+                      <button type="button" onclick="markAllAdminNotifsRead(event)"
+                        class="px-2 py-0.5 rounded-md text-[10px] font-black bg-white/15 hover:bg-white/30 text-white border border-white/20 transition touch-press"
+                        title="সবগুলো পড়া হয়েছে বলে মার্ক করুন">
+                        ✓ সব পড়া হয়েছে
+                      </button>
+                    </div>
                   </div>
 
                   <!-- Notification List Items -->
                   <div id="notifListContainer" class="max-h-80 overflow-y-auto divide-y divide-orange-50 text-xs">
                     {% if pending_requests %}
                       {% for req in pending_requests %}
-                      <div class="p-3.5 hover:bg-orangeBrand-50/60 cursor-pointer transition flex flex-col gap-1.5 group"
+                      <div id="adminNotifItem-{{ req.id }}"
+                           class="p-3.5 hover:bg-orangeBrand-50/60 cursor-pointer transition flex flex-col gap-1.5 group {{ 'opacity-70 bg-stone-50/60' if req.is_read else '' }}"
                            onclick="showAdminNotifDetails('{{ req.id }}')">
                         <div class="flex items-center justify-between">
                           <span class="font-black text-slate-900 text-sm group-hover:text-crimson-600 transition flex items-center gap-1.5">
-                            <span class="w-2 h-2 rounded-full bg-crimson-500 animate-pulse"></span>
+                            {% if req.is_read %}
+                              <span class="text-slate-400 text-xs font-bold">✓</span>
+                            {% else %}
+                              <span class="w-2 h-2 rounded-full bg-crimson-500 animate-pulse"></span>
+                            {% endif %}
                             {{ req.farmer_name }}
                           </span>
-                          <span class="text-[10px] text-slate-400 font-medium">{{ req.created_at }}</span>
+                          <div class="flex items-center gap-1.5">
+                            <span class="text-[10px] text-slate-400 font-medium">{{ req.created_at }}</span>
+                            {% if not req.is_read %}
+                              <button type="button" onclick="event.stopPropagation(); markAdminNotifRead('{{ req.id }}')"
+                                      class="quick-read-btn px-1.5 py-0.5 rounded bg-stone-100 hover:bg-emerald-100 text-slate-500 hover:text-emerald-700 text-[10px] font-bold transition"
+                                      title="দেখা হয়েছে হিসেবে মার্ক করুন">✓ মার্ক</button>
+                            {% endif %}
+                          </div>
                         </div>
                         {% if req.batch_no %}
                           <div>
@@ -251,7 +270,7 @@
                           </div>
                         {% endif %}
                         <div class="text-slate-700 font-semibold bg-stone-50 p-2.5 rounded-xl border border-slate-100">
-                          📦 {{ req.items_requested }}
+                          📦 {{ req.items_requested or req.message }}
                         </div>
                         {% if req.farmer_note %}
                           <div class="text-[11px] text-slate-500 italic">
@@ -300,36 +319,53 @@
 
                 <!-- Notification Dropdown Panel -->
                 <div id="farmerNotifDropdown" class="hidden absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-3xl shadow-2xl border border-orange-100 z-50 overflow-hidden transform origin-top-right transition-all duration-200">
-                  <div class="p-4 bg-gradient-to-r from-maroon-950 via-maroon-900 to-crimson-800 text-white flex items-center justify-between">
+                  <div class="p-3.5 bg-gradient-to-r from-maroon-950 via-maroon-900 to-crimson-800 text-white flex items-center justify-between">
                     <div class="flex items-center gap-2">
                       <span class="text-lg">🔔</span>
                       <h3 class="text-xs font-black uppercase tracking-wider">আপনার নোটিফিকেশন</h3>
                     </div>
-                    <span id="farmerNotifCountHeader" class="px-2 py-0.5 rounded-full text-[10px] font-black bg-white/20 text-white">
-                      {{ farmer_notif_count or 0 }} টি
-                    </span>
+                    <div class="flex items-center gap-1.5">
+                      <span id="farmerNotifCountHeader" class="px-2 py-0.5 rounded-full text-[10px] font-black bg-white/20 text-white">
+                        {{ farmer_notif_count or 0 }} টি নতুন
+                      </span>
+                      <button type="button" onclick="markAllFarmerNotifsRead(event)"
+                        class="px-2 py-0.5 rounded-md text-[10px] font-black bg-white/15 hover:bg-white/30 text-white border border-white/20 transition touch-press"
+                        title="সবগুলো পড়া হয়েছে বলে চিহ্নিত করুন">
+                        ✓ সব পড়া হয়েছে
+                      </button>
+                    </div>
                   </div>
 
                   <!-- Notification List Items -->
                   <div id="farmerNotifListContainer" class="max-h-80 overflow-y-auto divide-y divide-orange-50 text-xs">
                     {% if farmer_requests %}
                       {% for req in farmer_requests %}
-                      <div class="p-3.5 hover:bg-orangeBrand-50/60 cursor-pointer transition flex flex-col gap-1.5 group"
+                      <div id="farmerNotifItem-{{ req.id }}"
+                           class="p-3.5 hover:bg-orangeBrand-50/60 cursor-pointer transition flex flex-col gap-1.5 group {{ 'opacity-70 bg-stone-50/60' if req.is_read else '' }}"
                            onclick="showFarmerNotifDetails('{{ req.id }}')">
                         <div class="flex items-center justify-between">
                           <span class="font-black text-slate-900 text-sm group-hover:text-crimson-600 transition flex items-center gap-1.5">
-                            {% if req.status == 'approved' %}
+                            {% if req.is_read %}
+                              <span class="text-slate-400 text-xs font-bold">✓</span>
+                            {% elif req.type == 'new_invoice' %}
+                              <span class="w-2 h-2 rounded-full bg-crimson-500 animate-pulse"></span>
+                            {% elif req.status == 'approved' or req.req_status == 'approved' %}
                               <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
-                              <span class="text-emerald-700">অনুমোদিত হয়েছে</span>
-                            {% elif req.status == 'rejected' %}
+                            {% elif req.status == 'rejected' or req.req_status == 'rejected' %}
                               <span class="w-2 h-2 rounded-full bg-rose-500"></span>
-                              <span class="text-rose-700">বাতিল</span>
                             {% else %}
                               <span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
-                              <span class="text-amber-700">অপেক্ষমান</span>
                             {% endif %}
+                            {{ req.title }}
                           </span>
-                          <span class="text-[10px] text-slate-400 font-medium">{{ req.created_at }}</span>
+                          <div class="flex items-center gap-1.5">
+                            <span class="text-[10px] text-slate-400 font-medium">{{ req.created_at or req.date }}</span>
+                            {% if not req.is_read %}
+                              <button type="button" onclick="event.stopPropagation(); markFarmerNotifRead('{{ req.id }}')"
+                                      class="quick-read-btn px-1.5 py-0.5 rounded bg-stone-100 hover:bg-emerald-100 text-slate-500 hover:text-emerald-700 text-[10px] font-bold transition"
+                                      title="দেখা হয়েছে হিসেবে মার্ক করুন">✓ মার্ক</button>
+                            {% endif %}
+                          </div>
                         </div>
                         {% if req.batch_no %}
                           <div>
@@ -339,7 +375,7 @@
                           </div>
                         {% endif %}
                         <div class="text-slate-700 font-semibold bg-stone-50 p-2.5 rounded-xl border border-slate-100">
-                          📦 {{ req.items_requested }}
+                          📦 {{ req.items_requested or req.details or req.message }}
                         </div>
                         {% if req.farmer_note %}
                           <div class="text-[11px] text-slate-500 italic">
@@ -533,20 +569,23 @@
         <!-- Action Buttons -->
         <div class="pt-3 border-t border-slate-200 space-y-2">
           <a href="#" id="modalAdminDispatchLink" class="w-full py-2.5 px-4 bg-gradient-to-r from-crimson-600 via-rose-600 to-orangeBrand-500 hover:opacity-95 text-white font-black text-center rounded-2xl shadow-md transition flex items-center justify-center gap-2 text-sm">
-            <span>📝</span> এই রিকোয়েস্ট থেকে সরাসরি চালান তৈরি করুন (POS)
+            <span>📝</span> এই রিকোয়েস্ট থেকে সরাসরি চালান তৈরি করুন (স্বয়ংক্রিয় অনুমোদন)
           </a>
 
-          <div class="grid grid-cols-2 gap-2">
-            <form id="modalAdminApproveForm" method="POST" action="">
+          <div class="grid grid-cols-3 gap-2">
+            <button type="button" id="modalAdminMarkReadBtn" onclick="markAdminNotifRead(window.currentAdminNotifId)" class="py-2 px-2 bg-stone-100 hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 border border-slate-200 font-black rounded-xl transition text-xs flex items-center justify-center gap-1 shadow-xs">
+              <span>✓</span> পড়া হয়েছে
+            </button>
+            <form id="modalAdminApproveForm" method="POST" action="" class="w-full">
               <input type="hidden" name="status" value="approved">
-              <button type="submit" class="w-full py-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl transition text-xs flex items-center justify-center gap-1 shadow-sm">
-                <span>✅</span> অনুমোদন করুন
+              <button type="submit" class="w-full py-2 px-2 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl transition text-xs flex items-center justify-center gap-1 shadow-sm">
+                <span>✅</span> অনুমোদন
               </button>
             </form>
-            <form id="modalAdminRejectForm" method="POST" action="">
+            <form id="modalAdminRejectForm" method="POST" action="" class="w-full">
               <input type="hidden" name="status" value="rejected">
-              <button type="submit" onclick="return confirm('আপনি কি নিশ্চিত যে এই রিকোয়েস্টটি বাতিল করতে চান?')" class="w-full py-2 px-3 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-black rounded-xl transition text-xs flex items-center justify-center gap-1">
-                <span>❌</span> বাতিল করুন
+              <button type="submit" onclick="return confirm('আপনি কি নিশ্চিত যে এই রিকোয়েস্টটি বাতিল করতে চান?')" class="w-full py-2 px-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-black rounded-xl transition text-xs flex items-center justify-center gap-1">
+                <span>❌</span> বাতিল
               </button>
             </form>
           </div>
@@ -601,7 +640,10 @@
         </div>
       </div>
 
-      <div class="p-3 bg-stone-50 border-t border-slate-100 text-center">
+      <div class="p-3 bg-stone-50 border-t border-slate-100 text-center flex items-center justify-center gap-2">
+        <button type="button" id="modalFarmerMarkReadBtn" onclick="markFarmerNotifRead(window.currentFarmerNotifId)" class="px-4 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 font-black text-xs rounded-xl transition shadow-xs">
+          ✓ পড়া হয়েছে হিসেবে মার্ক করুন
+        </button>
         <button type="button" onclick="closeFarmerNotifModal()" class="px-5 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold text-xs rounded-xl transition">
           বন্ধ করুন
         </button>
@@ -689,6 +731,7 @@
         {% for req in pending_requests %}
           "{{ req.id }}": {
             id: {{ req.id | tojson }},
+            ref_id: {{ (req.ref_id or req.id) | tojson }},
             farmer_id: {{ (req.farmer_id or "") | tojson }},
             batch_id: {{ (req.batch_id or "") | tojson }},
             farmer_name: {{ (req.farmer_name or "") | tojson }},
@@ -697,10 +740,11 @@
             farmer_due: {{ (req.farmer_due or 0) | tojson }},
             batch_no: {{ (req.batch_no or "") | tojson }},
             bird_type: {{ (req.bird_type or "") | tojson }},
-            items_requested: {{ (req.items_requested or "") | tojson }},
+            items_requested: {{ (req.items_requested or req.message or "") | tojson }},
             farmer_note: {{ (req.farmer_note or "") | tojson }},
             created_at: {{ (req.created_at or "") | tojson }},
-            status: {{ (req.status or "pending") | tojson }}
+            status: {{ (req.status or "pending") | tojson }},
+            is_read: {{ (req.is_read or 0) | tojson }}
           },
         {% endfor %}
       {% endif %}
@@ -711,13 +755,16 @@
         {% for req in farmer_requests %}
           "{{ req.id }}": {
             id: {{ req.id | tojson }},
-            type: "request",
-            title: "মালামাল রিকুয়েস্ট",
-            details: {{ (req.items_requested or "") | tojson }},
-            note: {{ (req.farmer_note or "") | tojson }},
-            status: {{ (req.status or "pending") | tojson }},
-            shed: {{ (req.batch_no or "") | tojson }},
-            date: {{ (req.created_at or "") | tojson }}
+            ref_id: {{ (req.ref_id or req.id) | tojson }},
+            type: {{ (req.type or "request") | tojson }},
+            title: {{ (req.title or "নোটিফিকেশন") | tojson }},
+            details: {{ (req.items_requested or req.details or req.message or "") | tojson }},
+            note: {{ (req.farmer_note or req.note or "") | tojson }},
+            status: {{ (req.status or req.req_status or "pending") | tojson }},
+            shed: {{ (req.batch_no or req.shed or "") | tojson }},
+            date: {{ (req.created_at or req.date or "") | tojson }},
+            is_read: {{ (req.is_read or 0) | tojson }},
+            link_url: {{ (req.link_url or "") | tojson }}
           },
         {% endfor %}
       {% endif %}
@@ -731,9 +778,79 @@
       }
     }
 
+    function markAdminNotifRead(id) {
+      if (!id) return;
+      fetch('/admin/api/notifications/' + encodeURIComponent(id) + '/read', { method: 'POST' })
+        .then(res => res.json())
+        .then(data => {
+          if (data && typeof data.count === 'number') {
+            const badge = document.getElementById('notifBadge');
+            const headerCount = document.getElementById('notifCountHeader');
+            if (badge) {
+              if (data.count > 0) {
+                badge.innerText = data.count;
+                badge.classList.remove('hidden');
+              } else {
+                badge.classList.add('hidden');
+              }
+            }
+            if (headerCount) headerCount.innerText = data.count + ' টি নতুন';
+          }
+          if (window.adminNotifsCache && window.adminNotifsCache[id]) {
+            window.adminNotifsCache[id].is_read = 1;
+          }
+          const el = document.getElementById('adminNotifItem-' + id);
+          if (el) {
+            el.classList.add('opacity-70', 'bg-stone-50/60');
+            const dot = el.querySelector('.animate-pulse');
+            if (dot) {
+              dot.className = 'text-slate-400 text-xs font-bold';
+              dot.innerText = '✓';
+            }
+            const qBtn = el.querySelector('.quick-read-btn');
+            if (qBtn) qBtn.remove();
+          }
+          const modalBtn = document.getElementById('modalAdminMarkReadBtn');
+          if (modalBtn) modalBtn.innerText = '✓ পড়া হয়েছে';
+        })
+        .catch(() => {});
+    }
+
+    function markAllAdminNotifsRead(e) {
+      if (e) e.stopPropagation();
+      fetch('/admin/api/notifications/mark-all-read', { method: 'POST' })
+        .then(res => res.json())
+        .then(() => {
+          const badge = document.getElementById('notifBadge');
+          if (badge) badge.classList.add('hidden');
+          const headerCount = document.getElementById('notifCountHeader');
+          if (headerCount) headerCount.innerText = '০ টি নতুন';
+          if (window.adminNotifsCache) {
+            Object.keys(window.adminNotifsCache).forEach(k => window.adminNotifsCache[k].is_read = 1);
+          }
+          document.querySelectorAll('#notifListContainer [id^="adminNotifItem-"]').forEach(el => {
+            el.classList.add('opacity-70', 'bg-stone-50/60');
+            const dot = el.querySelector('.animate-pulse');
+            if (dot) {
+              dot.className = 'text-slate-400 text-xs font-bold';
+              dot.innerText = '✓';
+            }
+            const qBtn = el.querySelector('.quick-read-btn');
+            if (qBtn) qBtn.remove();
+          });
+        })
+        .catch(() => {});
+    }
+
     function showAdminNotifDetails(id) {
+      window.currentAdminNotifId = id;
       const req = window.adminNotifsCache ? window.adminNotifsCache[id] : null;
       if (!req) return;
+
+      // Automatically mark as read when inspected
+      if (!req.is_read) {
+        markAdminNotifRead(id);
+      }
 
       document.getElementById('modalAdminFarmerName').innerText = req.farmer_name || '-';
       document.getElementById('modalAdminFarmerPhone').innerText = req.farmer_phone || 'নেই';
@@ -775,12 +892,14 @@
         noteWrap.classList.add('hidden');
       }
 
-      let dispatchUrl = '/admin/dispatch?farmer_id=' + encodeURIComponent(req.farmer_id || '');
-      if (req.batch_id) dispatchUrl += '&batch_id=' + encodeURIComponent(req.batch_id);
+      let dispatchUrl = '/admin/dispatch?farmer_id=' + encodeURIComponent(req.farmer_id || '') + (req.batch_id ? ('&batch_id=' + encodeURIComponent(req.batch_id)) : '') + '&feed_request_id=' + encodeURIComponent(req.ref_id || req.id);
       document.getElementById('modalAdminDispatchLink').href = dispatchUrl;
 
-      document.getElementById('modalAdminApproveForm').action = '/admin/feed-requests/' + encodeURIComponent(req.id) + '/status';
-      document.getElementById('modalAdminRejectForm').action = '/admin/feed-requests/' + encodeURIComponent(req.id) + '/status';
+      document.getElementById('modalAdminApproveForm').action = '/admin/feed-requests/' + encodeURIComponent(req.ref_id || req.id) + '/status';
+      document.getElementById('modalAdminRejectForm').action = '/admin/feed-requests/' + encodeURIComponent(req.ref_id || req.id) + '/status';
+
+      const readBtn = document.getElementById('modalAdminMarkReadBtn');
+      if (readBtn) readBtn.innerText = req.is_read ? '✓ দেখা হয়েছে' : '✓ পড়া হয়েছে';
 
       document.getElementById('adminNotifModal').classList.remove('hidden');
       const dd = document.getElementById('notifDropdown');
@@ -808,30 +927,35 @@
             } else {
               badge.classList.add('hidden');
             }
-            if (headerCount) {
-              headerCount.innerText = data.count + ' টি নতুন';
-            }
-            if (data.requests && Array.isArray(data.requests)) {
+            if (headerCount) headerCount.innerText = data.count + ' টি নতুন';
+            
+            const notifList = data.notifications || data.requests;
+            if (notifList && Array.isArray(notifList)) {
               window.adminNotifsCache = window.adminNotifsCache || {};
               let html = '';
-              if (data.requests.length === 0) {
+              if (notifList.length === 0) {
                 html = '<div id="emptyNotifMsg" class="p-6 text-center text-slate-400 text-xs font-medium">বর্তমানে কোনো নতুন মালামাল রিকুয়েস্ট অপেক্ষমান নেই।</div>';
               } else {
-                data.requests.forEach(req => {
+                notifList.forEach(req => {
                   window.adminNotifsCache[req.id] = req;
+                  const isRead = req.is_read == 1;
                   html += `
-                    <div class="p-3.5 hover:bg-orangeBrand-50/60 cursor-pointer transition flex flex-col gap-1.5 group"
+                    <div id="adminNotifItem-${req.id}"
+                         class="p-3.5 hover:bg-orangeBrand-50/60 cursor-pointer transition flex flex-col gap-1.5 group ${isRead ? 'opacity-70 bg-stone-50/60' : ''}"
                          onclick="showAdminNotifDetails('${req.id}')">
                       <div class="flex items-center justify-between">
                         <span class="font-black text-slate-900 text-sm group-hover:text-crimson-600 transition flex items-center gap-1.5">
-                          <span class="w-2 h-2 rounded-full bg-crimson-500 animate-pulse"></span>
-                          ${req.farmer_name}
+                          ${isRead ? '<span class="text-slate-400 text-xs font-bold">✓</span>' : '<span class="w-2 h-2 rounded-full bg-crimson-500 animate-pulse"></span>'}
+                          ${req.farmer_name || req.title}
                         </span>
-                        <span class="text-[10px] text-slate-400 font-medium">${req.created_at || ''}</span>
+                        <div class="flex items-center gap-1.5">
+                          <span class="text-[10px] text-slate-400 font-medium">${req.created_at || ''}</span>
+                          ${!isRead ? `<button type="button" onclick="event.stopPropagation(); markAdminNotifRead('${req.id}')" class="quick-read-btn px-1.5 py-0.5 rounded bg-stone-100 hover:bg-emerald-100 text-slate-500 hover:text-emerald-700 text-[10px] font-bold transition" title="দেখা হয়েছে হিসেবে মার্ক করুন">✓ মার্ক</button>` : ''}
+                        </div>
                       </div>
                       ${req.batch_no ? `<div><span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-orangeBrand-100 text-orangeBrand-800 border border-orangeBrand-200">🏘️ শেড: ${req.batch_no} ${req.bird_type ? '(' + req.bird_type + ')' : ''}</span></div>` : ''}
                       <div class="text-slate-700 font-semibold bg-stone-50 p-2.5 rounded-xl border border-slate-100">
-                        📦 ${req.items_requested}
+                        📦 ${req.items_requested || req.message}
                       </div>
                       ${req.farmer_note ? `<div class="text-[11px] text-slate-500 italic">💬 "${req.farmer_note}"</div>` : ''}
                       <div class="flex items-center justify-between pt-1">
@@ -850,7 +974,7 @@
             }
           }
         })
-        .catch(function() {});
+        .catch(() => {});
     }
 
     if (document.getElementById('adminNotificationWrapper')) {
@@ -865,23 +989,96 @@
       }
     }
 
+    function markFarmerNotifRead(id) {
+      if (!id) return;
+      fetch('/farmer/api/notifications/' + encodeURIComponent(id) + '/read', { method: 'POST' })
+        .then(res => res.json())
+        .then(data => {
+          if (data && typeof data.count === 'number') {
+            const badge = document.getElementById('farmerNotifBadge');
+            const headerCount = document.getElementById('farmerNotifCountHeader');
+            if (badge) {
+              if (data.count > 0) {
+                badge.innerText = data.count;
+                badge.classList.remove('hidden');
+              } else {
+                badge.classList.add('hidden');
+              }
+            }
+            if (headerCount) headerCount.innerText = data.count + ' টি নতুন';
+          }
+          if (window.farmerNotifsCache && window.farmerNotifsCache[id]) {
+            window.farmerNotifsCache[id].is_read = 1;
+          }
+          const el = document.getElementById('farmerNotifItem-' + id);
+          if (el) {
+            el.classList.add('opacity-70', 'bg-stone-50/60');
+            const dot = el.querySelector('.animate-pulse');
+            if (dot) {
+              dot.className = 'text-slate-400 text-xs font-bold';
+              dot.innerText = '✓';
+            }
+            const qBtn = el.querySelector('.quick-read-btn');
+            if (qBtn) qBtn.remove();
+          }
+          const modalBtn = document.getElementById('modalFarmerMarkReadBtn');
+          if (modalBtn) modalBtn.innerText = '✓ পড়া হয়েছে';
+        })
+        .catch(() => {});
+    }
+
+    function markAllFarmerNotifsRead(e) {
+      if (e) e.stopPropagation();
+      fetch('/farmer/api/notifications/mark-all-read', { method: 'POST' })
+        .then(res => res.json())
+        .then(() => {
+          const badge = document.getElementById('farmerNotifBadge');
+          if (badge) badge.classList.add('hidden');
+          const headerCount = document.getElementById('farmerNotifCountHeader');
+          if (headerCount) headerCount.innerText = '০ টি নতুন';
+          if (window.farmerNotifsCache) {
+            Object.keys(window.farmerNotifsCache).forEach(k => window.farmerNotifsCache[k].is_read = 1);
+          }
+          document.querySelectorAll('#farmerNotifListContainer [id^="farmerNotifItem-"]').forEach(el => {
+            el.classList.add('opacity-70', 'bg-stone-50/60');
+            const dot = el.querySelector('.animate-pulse');
+            if (dot) {
+              dot.className = 'text-slate-400 text-xs font-bold';
+              dot.innerText = '✓';
+            }
+            const qBtn = el.querySelector('.quick-read-btn');
+            if (qBtn) qBtn.remove();
+          });
+        })
+        .catch(() => {});
+    }
+
     function showFarmerNotifDetails(id) {
+      window.currentFarmerNotifId = id;
       const item = window.farmerNotifsCache ? window.farmerNotifsCache[id] : null;
       if (!item) return;
+
+      // Automatically mark as read when inspected
+      if (!item.is_read) {
+        markFarmerNotifRead(id);
+      }
 
       document.getElementById('modalFarmerTitle').innerText = item.title || 'নোটিফিকেশন';
       document.getElementById('modalFarmerDate').innerText = item.date || '-';
       
       const statusBadge = document.getElementById('modalFarmerStatusBadge');
-      if (item.status === 'approved') {
+      if (item.status === 'approved' || item.type === 'request_approved') {
         statusBadge.innerText = '✅ অনুমোদিত হয়েছে';
         statusBadge.className = 'px-2.5 py-1 rounded-full text-xs font-black bg-emerald-100 text-emerald-800';
-      } else if (item.status === 'rejected') {
+      } else if (item.status === 'rejected' || item.type === 'request_rejected') {
         statusBadge.innerText = '❌ বাতিল';
         statusBadge.className = 'px-2.5 py-1 rounded-full text-xs font-black bg-rose-100 text-rose-800';
       } else if (item.status === 'pending') {
         statusBadge.innerText = '⏳ ডিলারের অপেক্ষমান';
         statusBadge.className = 'px-2.5 py-1 rounded-full text-xs font-black bg-amber-100 text-amber-800';
+      } else if (item.type === 'new_invoice' || item.type === 'invoice') {
+        statusBadge.innerText = '📦 ডেলিভারি সম্পন্ন';
+        statusBadge.className = 'px-2.5 py-1 rounded-full text-xs font-black bg-sky-100 text-sky-800';
       } else {
         statusBadge.innerText = item.status_text || 'সম্পন্ন';
         statusBadge.className = 'px-2.5 py-1 rounded-full text-xs font-black bg-sky-100 text-sky-800';
@@ -907,9 +1104,10 @@
 
       const actionContainer = document.getElementById('modalFarmerActionContainer');
       actionContainer.innerHTML = '';
-      if (item.type === 'invoice') {
+      const invoiceRefId = item.type === 'new_invoice' || item.type === 'invoice' ? (item.ref_id || item.id) : null;
+      if (invoiceRefId) {
         actionContainer.innerHTML = `
-          <a href="/farmer/invoice/${encodeURIComponent(item.id)}/memo" class="w-full py-2.5 px-4 bg-gradient-to-r from-crimson-600 to-orangeBrand-500 hover:opacity-95 text-white font-black text-center rounded-2xl shadow-md transition flex items-center justify-center gap-2 text-sm">
+          <a href="/farmer/invoice/${encodeURIComponent(invoiceRefId)}/memo" class="w-full py-2.5 px-4 bg-gradient-to-r from-crimson-600 to-orangeBrand-500 hover:opacity-95 text-white font-black text-center rounded-2xl shadow-md transition flex items-center justify-center gap-2 text-sm">
             <span>📄</span> ডিজিটাল মেমো দেখুন
           </a>
         `;
@@ -920,6 +1118,9 @@
           </a>
         `;
       }
+
+      const readBtn = document.getElementById('modalFarmerMarkReadBtn');
+      if (readBtn) readBtn.innerText = item.is_read ? '✓ দেখা হয়েছে' : '✓ পড়া হয়েছে হিসেবে মার্ক করুন';
 
       document.getElementById('farmerNotifModal').classList.remove('hidden');
       const dd = document.getElementById('farmerNotifDropdown');
@@ -947,9 +1148,7 @@
             } else {
               badge.classList.add('hidden');
             }
-            if (headerCount) {
-              headerCount.innerText = data.count + ' টি';
-            }
+            if (headerCount) headerCount.innerText = data.count + ' টি নতুন';
             if (data.notifications && Array.isArray(data.notifications)) {
               window.farmerNotifsCache = window.farmerNotifsCache || {};
               let html = '';
@@ -958,16 +1157,21 @@
               } else {
                 data.notifications.forEach(item => {
                   window.farmerNotifsCache[item.id] = item;
-                  let dotColor = item.status === 'approved' ? 'bg-emerald-500' : (item.status === 'rejected' ? 'bg-rose-500' : (item.status === 'pending' ? 'bg-amber-500' : 'bg-sky-500'));
+                  const isRead = item.is_read == 1;
+                  let dotColor = item.status === 'approved' ? 'bg-emerald-500' : (item.status === 'rejected' ? 'bg-rose-500' : (item.type === 'new_invoice' ? 'bg-crimson-500' : 'bg-amber-500'));
                   html += `
-                    <div class="p-3.5 hover:bg-orangeBrand-50/60 cursor-pointer transition flex flex-col gap-1.5 group"
+                    <div id="farmerNotifItem-${item.id}"
+                         class="p-3.5 hover:bg-orangeBrand-50/60 cursor-pointer transition flex flex-col gap-1.5 group ${isRead ? 'opacity-70 bg-stone-50/60' : ''}"
                          onclick="showFarmerNotifDetails('${item.id}')">
                       <div class="flex items-center justify-between">
                         <span class="font-black text-slate-900 text-sm group-hover:text-crimson-600 transition flex items-center gap-1.5">
-                          <span class="w-2 h-2 rounded-full ${dotColor}"></span>
+                          ${isRead ? '<span class="text-slate-400 text-xs font-bold">✓</span>' : `<span class="w-2 h-2 rounded-full ${dotColor} animate-pulse"></span>`}
                           ${item.title}
                         </span>
-                        <span class="text-[10px] text-slate-400 font-medium">${item.date || ''}</span>
+                        <div class="flex items-center gap-1.5">
+                          <span class="text-[10px] text-slate-400 font-medium">${item.date || ''}</span>
+                          ${!isRead ? `<button type="button" onclick="event.stopPropagation(); markFarmerNotifRead('${item.id}')" class="quick-read-btn px-1.5 py-0.5 rounded bg-stone-100 hover:bg-emerald-100 text-slate-500 hover:text-emerald-700 text-[10px] font-bold transition" title="দেখা হয়েছে হিসেবে মার্ক করুন">✓ মার্ক</button>` : ''}
+                        </div>
                       </div>
                       ${item.shed ? `<div><span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-orangeBrand-100 text-orangeBrand-800 border border-orangeBrand-200">🏘️ শেড: ${item.shed}</span></div>` : ''}
                       <div class="text-slate-700 font-semibold bg-stone-50 p-2.5 rounded-xl border border-slate-100">
@@ -990,7 +1194,7 @@
             }
           }
         })
-        .catch(function() {});
+        .catch(() => {});
     }
 
     if (document.getElementById('farmerNotificationWrapper')) {
