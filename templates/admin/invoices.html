@@ -68,9 +68,16 @@
             <td class="p-3 font-mono font-bold text-slate-900">{{ inv.invoice_no }}</td>
             <td class="p-3 text-slate-600 whitespace-nowrap">{{ inv.invoice_date }}</td>
             <td class="p-3 font-bold text-slate-900">
+              {% if inv.farmer_id and inv.farmer_id != 'WALK_IN' %}
               <a href="/admin/farmer/{{ inv.farmer_id }}" class="hover:underline font-black text-slate-900">
                 {{ inv.farmer_name }}
               </a>
+              {% else %}
+              <div class="inline-flex items-center gap-1.5">
+                <span class="px-1.5 py-0.5 rounded text-[10px] font-black bg-amber-100 text-amber-900 border border-amber-200">খুচরা</span>
+                <span class="font-black text-slate-900">{{ inv.farmer_name }}</span>
+              </div>
+              {% endif %}
             </td>
             <td class="p-3 text-slate-600 max-w-xs">
               <div class="truncate font-medium">

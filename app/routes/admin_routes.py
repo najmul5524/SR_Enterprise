@@ -469,7 +469,10 @@ async def dispatch_page(request: Request, farmer_id: Optional[str] = None, add_i
 @router.post("/dispatch/create")
 async def create_dispatch(
     request: Request,
-    farmer_id: str = Form(...),
+    customer_type: str = Form("farmer"),
+    farmer_id: Optional[str] = Form(None),
+    customer_name: Optional[str] = Form(""),
+    customer_phone: Optional[str] = Form(""),
     batch_id: Optional[str] = Form(None),
     invoice_date: str = Form(...),
     items_json: str = Form(...),
@@ -480,9 +483,22 @@ async def create_dispatch(
     note: Optional[str] = Form(""),
     receipt_file: Optional[UploadFile] = File(None)
 ):
-    farmer = db.get_farmer_by_id(farmer_id)
-    if not farmer:
-        raise HTTPException(status_code=400, detail="Invalid farmer")
+    if customer_type == "retail" or not farmer_id or farmer_id in ("WALK_IN", "RETAIL"):
+        final_farmer_id = "WALK_IN"
+        c_name = (customer_name or "").strip() or "সাধারণ ক্রেতা (খুচরা)"
+        c_phone = (customer_phone or "").strip()
+        if c_phone:
+            final_farmer_name = f"{c_name} ({c_phone})"
+        else:
+            final_farmer_name = c_name
+        final_batch_id = ""
+    else:
+        farmer = db.get_farmer_by_id(farmer_id)
+        if not farmer:
+            raise HTTPException(status_code=400, detail="Invalid farmer")
+        final_farmer_id = farmer["id"]
+        final_farmer_name = farmer["name"]
+        final_batch_id = batch_id or ""
 
     items = []
     try:
@@ -497,9 +513,9 @@ async def create_dispatch(
             receipt_url = await upload_image_file(content, receipt_file.filename, subfolder="invoices")
 
     invoice_data = {
-        "farmer_id": farmer["id"],
-        "farmer_name": farmer["name"],
-        "batch_id": batch_id or "",
+        "farmer_id": final_farmer_id,
+        "farmer_name": final_farmer_name,
+        "batch_id": final_batch_id,
         "items": items,
         "subtotal": subtotal,
         "discount": discount,
@@ -520,7 +536,7 @@ async def print_invoice(request: Request, invoice_id: str):
     if not invoice:
         raise HTTPException(status_code=404, detail="চালান খুঁজে পাওয়া যায়নি")
 
-    farmer = db.get_farmer_by_id(invoice["farmer_id"])
+    farmer = db.get_farmer_by_id(invoice["farmer_id"]) if (invoice.get("farmer_id") and invoice["farmer_id"] != "WALK_IN") else None
     batch = db.get_batch_by_id(invoice["batch_id"]) if invoice.get("batch_id") else None
     qr_url = generate_qr_data_url(f"SRE:INV:{invoice['invoice_no']}")
 

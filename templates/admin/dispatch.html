@@ -29,72 +29,126 @@
     <!-- Left 2 Cols: Farmer & Items Table -->
     <div class="lg:col-span-2 space-y-4">
       
-      <!-- 1. Farmer Selection Card -->
+      <!-- 1. Farmer / Customer Selection Card -->
       <div class="bg-white p-5 rounded-3xl border border-orange-100 shadow-sm space-y-4">
-        <h2 class="text-xs font-black uppercase tracking-wider text-slate-400">১. খামারি ও শেড নির্বাচন</h2>
-        
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div>
-            <label class="block text-xs font-black text-slate-700 mb-1">খামারি বাছাই করুন *</label>
-            <div class="relative mb-2">
-              <input type="text" id="dispatchFarmerSearch" autocomplete="off"
-                placeholder="🔍 দ্রুত খামারি খুঁজুন (নাম বা মোবাইল লিখুন)..."
-                class="w-full px-3.5 py-2 border rounded-xl text-xs font-medium focus:ring-2 focus:ring-crimson-500 focus:outline-none bg-orangeBrand-50/50">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b pb-3">
+          <h2 class="text-xs font-black uppercase tracking-wider text-slate-400">১. কাস্টমার / খামারি নির্বাচন</h2>
+          
+          <!-- Customer Type Segmented Tabs -->
+          <div class="inline-flex p-1 bg-stone-100 rounded-2xl border border-stone-200">
+            <button type="button" id="tabFarmerBtn" onclick="switchCustomerType('farmer')"
+              class="px-3.5 py-1.5 rounded-xl text-xs font-black transition text-white bg-slate-900 shadow-sm flex items-center gap-1.5">
+              <span>👨‍🌾</span> নিবন্ধিত খামারি
+            </button>
+            <button type="button" id="tabRetailBtn" onclick="switchCustomerType('retail')"
+              class="px-3.5 py-1.5 rounded-xl text-xs font-black transition text-slate-600 hover:text-slate-900 flex items-center gap-1.5">
+              <span>🛒</span> সাধারণ / খুচরা ক্রেতা
+            </button>
+          </div>
+          <input type="hidden" name="customer_type" id="customerTypeInput" value="farmer">
+        </div>
+
+        <!-- Registered Farmer Fields Container -->
+        <div id="farmerFieldsContainer" class="space-y-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-black text-slate-700 mb-1">খামারি বাছাই করুন *</label>
+              <div class="relative mb-2">
+                <input type="text" id="dispatchFarmerSearch" autocomplete="off"
+                  placeholder="🔍 দ্রুত খামারি খুঁজুন (নাম বা মোবাইল লিখুন)..."
+                  class="w-full px-3.5 py-2 border rounded-xl text-xs font-medium focus:ring-2 focus:ring-crimson-500 focus:outline-none bg-orangeBrand-50/50">
+              </div>
+              <select id="farmerSelect" name="farmer_id" onchange="onFarmerSelectChange()" required class="w-full px-3.5 py-2.5 border rounded-2xl text-sm font-black">
+                <option value="">-- অথবা তালিকা থেকে খামারি নির্বাচন করুন --</option>
+                {% for f in farmers %}
+                  <option value="{{ f.id }}" data-due="{{ f.total_due }}" {{ 'selected' if selected_farmer and selected_farmer.id == f.id else '' }}>
+                    {{ f.name }} ({{ f.phone }})
+                  </option>
+                {% endfor %}
+              </select>
             </div>
-            <select id="farmerSelect" name="farmer_id" onchange="onFarmerSelectChange()" required class="w-full px-3.5 py-2.5 border rounded-2xl text-sm font-black">
-              <option value="">-- অথবা তালিকা থেকে খামারি নির্বাচন করুন --</option>
-              {% for f in farmers %}
-                <option value="{{ f.id }}" data-due="{{ f.total_due }}" {{ 'selected' if selected_farmer and selected_farmer.id == f.id else '' }}>
-                  {{ f.name }} ({{ f.phone }})
-                </option>
-              {% endfor %}
-            </select>
+
+            <div>
+              <div class="flex items-center justify-between mb-1">
+                <label class="block text-xs font-black text-slate-700">
+                  শেড / ব্যাচে যুক্ত হবে (খরচ যোগ হবে)
+                </label>
+                <span id="batchCountBadge" class="{{ '' if farmer_batches and farmer_batches|length > 1 else 'hidden' }} text-[10px] font-black px-2 py-0.5 rounded-full bg-orangeBrand-100 text-orangeBrand-800 border border-orangeBrand-200">
+                  {{ farmer_batches|length }}টি শেড রয়েছে
+                </span>
+              </div>
+              <select id="batchSelect" name="batch_id" onchange="onBatchSelectChange()"
+                class="w-full px-3.5 py-2.5 bg-white border border-orangeBrand-200 rounded-2xl text-sm font-bold text-slate-800 focus:ring-2 focus:ring-crimson-500 focus:outline-none transition">
+                <option value="">-- কোনো নির্দিষ্ট শেড নেই (সাধারণ চালান) --</option>
+                {% for b in farmer_batches %}
+                  <option value="{{ b.id }}" data-status="{{ b.status }}" data-no="{{ b.batch_no }}" data-bird="{{ b.bird_type }}" {{ 'selected' if active_batch and active_batch.id == b.id else '' }}>
+                    {{ b.batch_no }} • {{ b.bird_type }} ({{ '🟢 সক্রিয়' if b.status == 'active' else '⚪ সম্পন্ন' }}, {{ b.chick_qty }}টি বাচ্চা, শুরু: {{ b.start_date }})
+                  </option>
+                {% endfor %}
+              </select>
+              <div class="mt-1 flex items-start gap-1 text-[11px] text-slate-600 font-medium">
+                <span class="text-orangeBrand-600 text-xs mt-0.5">💡</span>
+                <span id="batchNoticeText">
+                  {% if active_batch %}
+                    চালানের খাদ্য/ঔষধ খরচ স্বয়ংক্রিয়ভাবে <strong>{{ active_batch.batch_no }} ({{ active_batch.bird_type }})</strong> শেডের মোট খরচে যোগ হবে।
+                  {% else %}
+                    খামারি নির্বাচন করলে তার রানিং শেড/ব্যাচসমূহ এই ড্রপডাউনে প্রদর্শিত হবে।
+                  {% endif %}
+                </span>
+              </div>
+            </div>
           </div>
 
-          <div>
-            <div class="flex items-center justify-between mb-1">
-              <label class="block text-xs font-black text-slate-700">
-                শেড / ব্যাচে যুক্ত হবে (খরচ যোগ হবে)
-              </label>
-              <span id="batchCountBadge" class="{{ '' if farmer_batches and farmer_batches|length > 1 else 'hidden' }} text-[10px] font-black px-2 py-0.5 rounded-full bg-orangeBrand-100 text-orangeBrand-800 border border-orangeBrand-200">
-                {{ farmer_batches|length }}টি শেড রয়েছে
-              </span>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-black text-slate-700 mb-1">চালানের তারিখ *</label>
+              <input type="date" id="mainInvoiceDate" name="invoice_date" value="{{ now_date }}" required
+                class="w-full px-3.5 py-2.5 border rounded-2xl text-sm font-medium">
             </div>
-            <select id="batchSelect" name="batch_id" onchange="onBatchSelectChange()"
-              class="w-full px-3.5 py-2.5 bg-white border border-orangeBrand-200 rounded-2xl text-sm font-bold text-slate-800 focus:ring-2 focus:ring-crimson-500 focus:outline-none transition">
-              <option value="">-- কোনো নির্দিষ্ট শেড নেই (সাধারণ চালান) --</option>
-              {% for b in farmer_batches %}
-                <option value="{{ b.id }}" data-status="{{ b.status }}" data-no="{{ b.batch_no }}" data-bird="{{ b.bird_type }}" {{ 'selected' if active_batch and active_batch.id == b.id else '' }}>
-                  {{ b.batch_no }} • {{ b.bird_type }} ({{ '🟢 সক্রিয়' if b.status == 'active' else '⚪ সম্পন্ন' }}, {{ b.chick_qty }}টি বাচ্চা, শুরু: {{ b.start_date }})
-                </option>
-              {% endfor %}
-            </select>
-            <div class="mt-1 flex items-start gap-1 text-[11px] text-slate-600 font-medium">
-              <span class="text-orangeBrand-600 text-xs mt-0.5">💡</span>
-              <span id="batchNoticeText">
-                {% if active_batch %}
-                  চালানের খাদ্য/ঔষধ খরচ স্বয়ংক্রিয়ভাবে <strong>{{ active_batch.batch_no }} ({{ active_batch.bird_type }})</strong> শেডের মোট খরচে যোগ হবে।
-                {% else %}
-                  খামারি নির্বাচন করলে তার রানিং শেড/ব্যাচসমূহ এই ড্রপডাউনে প্রদর্শিত হবে।
-                {% endif %}
-              </span>
+            <div>
+              <label class="block text-xs font-black text-slate-700 mb-1">বর্তমান বকেয়া পাওনা</label>
+              <div id="farmerDueDisplay" class="px-3.5 py-2.5 bg-crimson-50 border border-crimson-200 rounded-2xl text-sm font-black text-crimson-700">
+                ৳ {{ "{:,.0f}".format(selected_farmer.total_due) if selected_farmer else 0 }}
+              </div>
             </div>
           </div>
         </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div>
-            <label class="block text-xs font-black text-slate-700 mb-1">চালানের তারিখ *</label>
-            <input type="date" name="invoice_date" value="{{ now_date }}" required
-              class="w-full px-3.5 py-2.5 border rounded-2xl text-sm font-medium">
+        <!-- Retail / Walk-in Customer Fields Container (Hidden by default) -->
+        <div id="retailFieldsContainer" class="hidden space-y-4">
+          <div class="p-3.5 bg-amber-50 border border-amber-200 rounded-2xl flex items-center gap-2 text-xs text-amber-900 font-medium">
+            <span class="text-base">🛒</span>
+            <span>সাধারণ বা খুচরা খদ্দেরের কাছে খাদ্য/ঔষধ বিক্রয়। চালানের আইটেমগুলো সরাসরি মূল ইনভেন্টরি স্টক থেকে বাদ যাবে এবং মোট বিক্রয় হিসাবে যুক্ত হবে।</span>
           </div>
-          <div>
-            <label class="block text-xs font-black text-slate-700 mb-1">বর্তমান বকেয়া পাওনা</label>
-            <div id="farmerDueDisplay" class="px-3.5 py-2.5 bg-crimson-50 border border-crimson-200 rounded-2xl text-sm font-black text-crimson-700">
-              ৳ {{ "{:,.0f}".format(selected_farmer.total_due) if selected_farmer else 0 }}
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-black text-slate-700 mb-1">ক্রেতা / কাস্টমারের নাম *</label>
+              <input type="text" id="retailCustomerName" name="customer_name" placeholder="যেমন: সাধারণ ক্রেতা (খুচরা) অথবা ক্রেতার নাম" value="সাধারণ ক্রেতা (খুচরা)"
+                class="w-full px-3.5 py-2.5 border rounded-2xl text-sm font-bold bg-white focus:ring-2 focus:ring-amber-500 focus:outline-none">
+            </div>
+            <div>
+              <label class="block text-xs font-black text-slate-700 mb-1">মোবাইল নম্বর (ঐচ্ছিক)</label>
+              <input type="tel" id="retailCustomerPhone" name="customer_phone" placeholder="017XXXXXXXX"
+                class="w-full px-3.5 py-2.5 border rounded-2xl text-sm font-medium bg-white focus:ring-2 focus:ring-amber-500 focus:outline-none">
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-black text-slate-700 mb-1">বিক্রয়ের তারিখ *</label>
+              <input type="date" id="retailInvoiceDate" value="{{ now_date }}" onchange="document.getElementById('mainInvoiceDate').value = this.value"
+                class="w-full px-3.5 py-2.5 border rounded-2xl text-sm font-medium bg-white">
+            </div>
+            <div>
+              <label class="block text-xs font-black text-slate-700 mb-1">কাস্টমার ধরন</label>
+              <div class="px-3.5 py-2.5 bg-emerald-50 border border-emerald-200 rounded-2xl text-xs font-black text-emerald-800 flex items-center gap-2">
+                <span>⚡</span> কাউন্টার ক্যাশ সেল (কোনো নির্দিষ্ট খামারির খাতায় যাবে না)
+              </div>
             </div>
           </div>
         </div>
+
       </div>
 
       <!-- 2. Product Addition Bar -->
@@ -640,11 +694,54 @@
     }
   }
 
+  function switchCustomerType(type) {
+    const input = document.getElementById('customerTypeInput');
+    const tabFarmerBtn = document.getElementById('tabFarmerBtn');
+    const tabRetailBtn = document.getElementById('tabRetailBtn');
+    const farmerContainer = document.getElementById('farmerFieldsContainer');
+    const retailContainer = document.getElementById('retailFieldsContainer');
+    const farmerSelect = document.getElementById('farmerSelect');
+    const paymentType = document.getElementById('paymentType');
+
+    input.value = type;
+
+    if (type === 'retail') {
+      tabRetailBtn.className = "px-3.5 py-1.5 rounded-xl text-xs font-black transition text-white bg-amber-600 shadow-sm flex items-center gap-1.5";
+      tabFarmerBtn.className = "px-3.5 py-1.5 rounded-xl text-xs font-black transition text-slate-600 hover:text-slate-900 flex items-center gap-1.5";
+      farmerContainer.classList.add('hidden');
+      retailContainer.classList.remove('hidden');
+      farmerSelect.removeAttribute('required');
+      if (paymentType) {
+        paymentType.value = 'cash';
+        onPaymentTypeChange();
+      }
+    } else {
+      tabFarmerBtn.className = "px-3.5 py-1.5 rounded-xl text-xs font-black transition text-white bg-slate-900 shadow-sm flex items-center gap-1.5";
+      tabRetailBtn.className = "px-3.5 py-1.5 rounded-xl text-xs font-black transition text-slate-600 hover:text-slate-900 flex items-center gap-1.5";
+      farmerContainer.classList.remove('hidden');
+      retailContainer.classList.add('hidden');
+      farmerSelect.setAttribute('required', 'required');
+      if (paymentType) {
+        paymentType.value = 'credit';
+        onPaymentTypeChange();
+      }
+    }
+  }
+
   function validateBeforeSubmit() {
-    const farmer = document.getElementById('farmerSelect').value;
-    if (!farmer) {
-      alert("দয়া করে খামারি নির্বাচন করুন!");
-      return false;
+    const custType = document.getElementById('customerTypeInput').value;
+    if (custType === 'farmer') {
+      const farmer = document.getElementById('farmerSelect').value;
+      if (!farmer) {
+        alert("দয়া করে খামারি নির্বাচন করুন!");
+        return false;
+      }
+    } else {
+      const name = (document.getElementById('retailCustomerName').value || '').trim();
+      if (!name) {
+        alert("দয়া করে ক্রেতা/কাস্টমারের নাম লিখুন!");
+        return false;
+      }
     }
     if (invoiceItems.length === 0) {
       alert("চালানে কমপক্ষে একটি পণ্য যোগ করুন!");

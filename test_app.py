@@ -123,6 +123,67 @@ async def run_tests():
         print(f"Farmer due before: ৳{prev_due:,.0f} -> after invoice: ৳{updated_f['total_due']:,.0f}")
         assert updated_f["total_due"] > prev_due
 
+        print("\n--- 7b. Testing Retail / Walk-in Customer Sale & Auto Stock Sync ---")
+        # Grab a medicine product to sell to a retail customer
+        med_prods = [p for p in db.get_products() if "ঔষধ" in p.get("category", "")]
+        test_med = med_prods[0] if med_prods else test_prod
+        initial_stock = test_med["stock"]
+        retail_qty = 3
+        retail_items = [{
+            "id": test_med["id"],
+            "product_id": test_med["id"],
+            "sku": test_med["sku"],
+            "name": test_med["name"],
+            "name_bn": test_med["name_bn"],
+            "qty": retail_qty,
+            "unit": test_med["unit"],
+            "price": test_med["sell_price"],
+            "category": test_med["category"],
+            "total": retail_qty * test_med["sell_price"]
+        }]
+        total_retail_price = retail_qty * test_med["sell_price"]
+        farmer_due_before_retail = updated_f["total_due"]
+
+        res = await client.post("/admin/dispatch/create", data={
+            "customer_type": "retail",
+            "customer_name": "জালাল উদ্দিন",
+            "customer_phone": "01711223344",
+            "invoice_date": "2026-10-26",
+            "items_json": json.dumps(retail_items),
+            "subtotal": total_retail_price,
+            "discount": 0,
+            "paid_amount": total_retail_price,
+            "payment_type": "cash",
+            "note": "কাউন্টার ক্যাশ খুচরা বিক্রয়"
+        }, follow_redirects=False)
+        print(f"POST /admin/dispatch/create (Retail) -> Status {res.status_code}")
+        assert res.status_code == 303
+        retail_memo_url = res.headers.get("location")
+        retail_inv_id = retail_memo_url.split("/")[3]
+
+        # Verify stock decreased by retail_qty
+        stock_after_prod = db.get_product_by_id(test_med["id"])
+        print(f"Stock before retail sale: {initial_stock} -> after: {stock_after_prod['stock']}")
+        assert stock_after_prod["stock"] == initial_stock - retail_qty
+
+        # Verify registered farmers due was NOT modified
+        farmer_after_retail = db.get_farmer_by_id(test_farmer["id"])
+        assert farmer_after_retail["total_due"] == farmer_due_before_retail
+
+        # Check printable memo for retail customer
+        res = await client.get(retail_memo_url)
+        assert res.status_code == 200
+        assert "জালাল উদ্দিন" in res.text
+        assert "খুচরা / কাউন্টার বিক্রয়" in res.text
+
+        # Verify invoice appears in invoices list
+        res = await client.get("/admin/invoices")
+        assert res.status_code == 200
+        assert "জালাল উদ্দিন" in res.text
+        assert "খুচরা" in res.text
+
+        print("Retail walk-in sale passed with perfect stock deduction & memo generation!")
+
         print("\n--- 8. Testing Payment Collection ---")
         res = await client.post("/admin/payments/record", data={
             "farmer_id": test_farmer["id"],

@@ -1000,8 +1000,8 @@ class DatabaseManager:
                         f"চালান #{invoice_no}", now_str
                     ))
 
-            # Update farmer balance by due amount
-            if due_amount > 0 and farmer_id:
+            # Update farmer balance by due amount (only for registered farmers)
+            if due_amount > 0 and farmer_id and farmer_id not in ("WALK_IN", "RETAIL", "COUNTER_SALE", "GENERAL_CUSTOMER", "none", "None", ""):
                 cur.execute("UPDATE farmers SET total_due = total_due + ? WHERE id = ?", (due_amount, farmer_id))
 
             conn.commit()
