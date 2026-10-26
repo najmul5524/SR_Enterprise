@@ -94,6 +94,8 @@ public class MainActivity extends Activity implements View.OnClickListener {
         String defaultUA = settings.getUserAgentString();
         settings.setUserAgentString(defaultUA + " SREnterpriseMobileApp/1.0");
 
+        mWebView.addJavascriptInterface(new AppJsInterface(), "SRNativeApp");
+
         mWebView.setWebViewClient(new AppWebViewClient(this));
         mWebView.setWebChromeClient(new AppWebChromeClient(this));
     }

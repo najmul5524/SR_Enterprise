@@ -7,7 +7,7 @@ from fastapi.templating import Jinja2Templates
 
 from app.config import settings
 from app.db import db
-from app.auth import require_admin, get_current_user
+from app.auth import require_admin, get_current_user, is_mobile_app_client
 from app.storage import upload_image_file, is_cloudinary_active
 from app.qr_service import generate_qr_data_url, generate_product_label_image
 
@@ -22,6 +22,7 @@ def admin_context(request: Request, extra: dict = None) -> dict:
         "shop": db.get_settings(),
         "is_cloudinary": is_cloudinary_active(),
         "is_firebase": db.is_firebase_active(),
+        "is_mobile_app": is_mobile_app_client(request),
         "now_date": datetime.now().strftime("%Y-%m-%d"),
     }
     if extra:

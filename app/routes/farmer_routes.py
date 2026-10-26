@@ -6,7 +6,7 @@ from fastapi.templating import Jinja2Templates
 
 from app.config import settings
 from app.db import db
-from app.auth import require_farmer, get_current_user
+from app.auth import require_farmer, get_current_user, is_mobile_app_client
 from app.qr_service import generate_qr_data_url
 
 router = APIRouter(prefix="/farmer", dependencies=[Depends(require_farmer)])
@@ -20,6 +20,7 @@ def farmer_context(request: Request, extra: dict = None) -> dict:
         "user": user,
         "farmer": farmer,
         "shop": db.get_settings(),
+        "is_mobile_app": is_mobile_app_client(request),
     }
     if extra:
         ctx.update(extra)

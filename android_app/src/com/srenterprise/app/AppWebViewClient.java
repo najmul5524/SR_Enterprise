@@ -23,6 +23,13 @@ public class AppWebViewClient extends WebViewClient {
         if (mActivity.mProgressBar != null) {
             mActivity.mProgressBar.setVisibility(View.VISIBLE);
         }
+        view.evaluateJavascript(
+            "(function() {" +
+            "  window.isNativeApp = true;" +
+            "  document.documentElement.classList.add('in-mobile-app');" +
+            "  var b = document.getElementById('apkDownloadBanner');" +
+            "  if (b) { b.style.display = 'none'; b.remove(); }" +
+            "})();", null);
     }
 
     @Override
@@ -31,6 +38,13 @@ public class AppWebViewClient extends WebViewClient {
         if (mActivity.mProgressBar != null) {
             mActivity.mProgressBar.setVisibility(View.GONE);
         }
+        view.evaluateJavascript(
+            "(function() {" +
+            "  window.isNativeApp = true;" +
+            "  document.documentElement.classList.add('in-mobile-app');" +
+            "  var b = document.getElementById('apkDownloadBanner');" +
+            "  if (b) { b.style.display = 'none'; b.remove(); }" +
+            "})();", null);
     }
 
     @Override

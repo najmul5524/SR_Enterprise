@@ -47,3 +47,11 @@ def require_any_authenticated(request: Request) -> Dict[str, Any]:
             headers={"Location": "/login"}
         )
     return user
+
+def is_mobile_app_client(request: Request) -> bool:
+    ua = (request.headers.get("user-agent") or "").lower()
+    return (
+        "srenterprisemobileapp" in ua or
+        "srenterprise" in ua or
+        request.cookies.get("is_mobile_app") == "1"
+    )

@@ -312,6 +312,8 @@ public class MainActivity extends Activity implements View.OnClickListener {
         String defaultUA = settings.getUserAgentString();
         settings.setUserAgentString(defaultUA + " SREnterpriseMobileApp/1.0");
 
+        mWebView.addJavascriptInterface(new AppJsInterface(), "SRNativeApp");
+
         mWebView.setWebViewClient(new AppWebViewClient(this));
         mWebView.setWebChromeClient(new AppWebChromeClient(this));
     }
@@ -391,6 +393,13 @@ public class AppWebViewClient extends WebViewClient {
         if (mActivity.mProgressBar != null) {
             mActivity.mProgressBar.setVisibility(View.VISIBLE);
         }
+        view.evaluateJavascript(
+            "(function() {" +
+            "  window.isNativeApp = true;" +
+            "  document.documentElement.classList.add('in-mobile-app');" +
+            "  var b = document.getElementById('apkDownloadBanner');" +
+            "  if (b) { b.style.display = 'none'; b.remove(); }" +
+            "})();", null);
     }
 
     @Override
@@ -399,6 +408,13 @@ public class AppWebViewClient extends WebViewClient {
         if (mActivity.mProgressBar != null) {
             mActivity.mProgressBar.setVisibility(View.GONE);
         }
+        view.evaluateJavascript(
+            "(function() {" +
+            "  window.isNativeApp = true;" +
+            "  document.documentElement.classList.add('in-mobile-app');" +
+            "  var b = document.getElementById('apkDownloadBanner');" +
+            "  if (b) { b.style.display = 'none'; b.remove(); }" +
+            "})();", null);
     }
 
     @Override
@@ -502,6 +518,19 @@ public class PermissionGrantRunner implements Runnable {
         if (mRequest != null) {
             mRequest.grant(mRequest.getResources());
         }
+    }
+}
+""", encoding="utf-8")
+
+    # 6e. AppJsInterface.java
+    (src_dir / "AppJsInterface.java").write_text("""package com.srenterprise.app;
+
+import android.webkit.JavascriptInterface;
+
+public class AppJsInterface {
+    @JavascriptInterface
+    public boolean isApp() {
+        return true;
     }
 }
 """, encoding="utf-8")

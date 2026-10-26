@@ -3,7 +3,7 @@ from fastapi.responses import RedirectResponse, HTMLResponse
 from fastapi.templating import Jinja2Templates
 from app.config import settings
 from app.db import db
-from app.auth import create_session_token, get_current_user
+from app.auth import create_session_token, get_current_user, is_mobile_app_client
 
 router = APIRouter()
 templates = Jinja2Templates(directory=str(settings.BASE_DIR / "templates"))
@@ -20,7 +20,8 @@ async def login_page(request: Request, error: str = None, tab: str = "dealer"):
     return templates.TemplateResponse(request=request, name="login.html", context={
         "error": error,
         "tab": tab,
-        "shop_settings": db.get_settings()
+        "shop_settings": db.get_settings(),
+        "is_mobile_app": is_mobile_app_client(request)
     })
 
 @router.post("/login/admin")
@@ -39,7 +40,8 @@ async def login_admin(request: Request, response: Response, username: str = Form
     return templates.TemplateResponse(request=request, name="login.html", context={
         "error": "ব্যবহারকারী নাম অথবা পাসওয়ার্ড সঠিক নয়!",
         "tab": "dealer",
-        "shop_settings": db.get_settings()
+        "shop_settings": db.get_settings(),
+        "is_mobile_app": is_mobile_app_client(request)
     }, status_code=400)
 
 @router.post("/login/farmer")
@@ -60,7 +62,8 @@ async def login_farmer(request: Request, response: Response, phone: str = Form(.
     return templates.TemplateResponse(request=request, name="login.html", context={
         "error": "খামারির মোবাইল নাম্বার অথবা পিন সঠিক নয়!",
         "tab": "farmer",
-        "shop_settings": db.get_settings()
+        "shop_settings": db.get_settings(),
+        "is_mobile_app": is_mobile_app_client(request)
     }, status_code=400)
 
 @router.get("/logout")
