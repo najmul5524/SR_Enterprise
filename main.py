@@ -43,11 +43,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Aggressive Caching Middleware for Static Assets (Images, Icons, CSS, JS) to Speed Up Tab Transitions
+# Caching Middleware: Fast load for images/icons, instant revalidation for JS & CSS
 @app.middleware("http")
 async def add_cache_headers(request: Request, call_next):
     response = await call_next(request)
-    if request.url.path.startswith("/static/"):
+    if request.url.path.startswith("/static/js/") or request.url.path.startswith("/static/css/"):
+        response.headers["Cache-Control"] = "no-cache, must-revalidate"
+    elif request.url.path.startswith("/static/"):
         response.headers["Cache-Control"] = "public, max-age=86400, stale-while-revalidate=604800"
     return response
 

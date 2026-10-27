@@ -75,7 +75,7 @@ const SmartScanner = (function () {
         <video id="smartScannerVideo" autoplay playsinline muted class="w-full h-full object-cover"></video>
         
         <!-- Viewfinder Guide Box -->
-        <div class="pointer-events-none absolute inset-6 sm:inset-12 border-2 border-dashed border-orangeBrand-400/80 rounded-3xl flex flex-col justify-between p-4 shadow-[0_0_0_9999px_rgba(0,0,0,0.45)]">
+        <div id="scannerGuideBox" class="pointer-events-none absolute inset-6 sm:inset-12 border-2 border-dashed border-orangeBrand-400/80 rounded-3xl flex flex-col justify-between p-4 shadow-[0_0_0_9999px_rgba(0,0,0,0.45)]">
           <div class="flex justify-between items-start">
             <div class="w-7 h-7 border-t-4 border-l-4 border-orangeBrand-500 rounded-tl-xl shadow-sm"></div>
             <div class="w-7 h-7 border-t-4 border-r-4 border-orangeBrand-500 rounded-tr-xl shadow-sm"></div>
@@ -88,6 +88,26 @@ const SmartScanner = (function () {
           <div class="flex justify-between items-end">
             <div class="w-7 h-7 border-b-4 border-l-4 border-orangeBrand-500 rounded-bl-xl shadow-sm"></div>
             <div class="w-7 h-7 border-b-4 border-r-4 border-orangeBrand-500 rounded-br-xl shadow-sm"></div>
+          </div>
+        </div>
+
+        <!-- Error Overlay (Hidden by default, shown if webcam access fails on web) -->
+        <div id="scannerErrorOverlay" class="hidden absolute inset-4 max-w-sm mx-auto my-auto p-6 bg-slate-900/95 border-2 border-rose-500/50 rounded-3xl text-center flex flex-col items-center justify-center gap-3 shadow-2xl z-30 pointer-events-auto">
+          <div class="w-14 h-14 rounded-2xl bg-rose-500/20 text-rose-400 flex items-center justify-center text-2xl border border-rose-500/30">
+            📷
+          </div>
+          <h4 class="text-white font-black text-sm">ক্যামেরা চালু করা যায়নি</h4>
+          <p id="scannerErrorMessage" class="text-xs text-slate-300 leading-relaxed"></p>
+          <div class="flex flex-col gap-2 mt-2 w-full">
+            <button type="button" onclick="SmartScanner.retryCamera()" class="w-full py-2.5 px-3 bg-gradient-to-r from-orangeBrand-600 to-crimson-600 hover:opacity-95 text-white text-xs font-black rounded-xl transition shadow-md touch-press">
+              🔄 আবার চেষ্টা করুন
+            </button>
+            <button type="button" onclick="SmartScanner.fallbackToGallery()" class="w-full py-2 px-3 bg-stone-800 hover:bg-stone-700 text-slate-200 text-xs font-bold rounded-xl transition border border-stone-700 touch-press">
+              📁 ফাইল / গ্যালারি থেকে ছবি দিন
+            </button>
+            <button type="button" onclick="SmartScanner.closeCamera()" class="w-full py-2 px-3 bg-transparent text-slate-400 hover:text-white text-xs font-bold transition">
+              বাতিল করুন
+            </button>
           </div>
         </div>
       </div>
@@ -264,6 +284,25 @@ const SmartScanner = (function () {
     }
   }
 
+  function showCameraErrorModal(msg) {
+    if (!cameraModal) cameraModal = document.getElementById('smartScannerCameraModal');
+    if (cameraModal) cameraModal.classList.remove('hidden');
+    const overlay = document.getElementById('scannerErrorOverlay');
+    const msgEl = document.getElementById('scannerErrorMessage');
+    if (msgEl) msgEl.textContent = msg;
+    if (overlay) overlay.classList.remove('hidden');
+  }
+
+  function hideCameraErrorModal() {
+    const overlay = document.getElementById('scannerErrorOverlay');
+    if (overlay) overlay.classList.add('hidden');
+  }
+
+  function retryCamera() {
+    hideCameraErrorModal();
+    openCamera(cameraOptions);
+  }
+
   async function openCamera(options = {}) {
     cameraOptions = options;
     init();
@@ -274,12 +313,11 @@ const SmartScanner = (function () {
       return;
     }
 
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || ('ontouchstart' in window && navigator.maxTouchPoints > 1);
+
     // 2. Check secure context in Web browsers
     if (!window.isSecureContext && window.location.protocol === 'http:' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-      if (window.showToast) {
-        showToast("ব্রাউজারে ক্যামেরা ব্যবহারের জন্য HTTPS অথবা localhost প্রয়োজন।", "warning");
-      }
-      fallbackToNativeOrInput();
+      showCameraErrorModal("ব্রাউজারে লাইভ ক্যামেরা ব্যবহারের জন্য HTTPS অথবা localhost সংযোগ প্রয়োজন। দয়া করে নিরাপদ HTTPS সাইটে প্রবেশ করুন অথবা গ্যালারি/ফাইল থেকে ছবি দিন।");
       return;
     }
 
@@ -287,6 +325,7 @@ const SmartScanner = (function () {
     if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
       cameraModal = document.getElementById('smartScannerCameraModal');
       videoEl = document.getElementById('smartScannerVideo');
+      hideCameraErrorModal();
       cameraModal.classList.remove('hidden');
 
       let stream = null;
@@ -294,41 +333,40 @@ const SmartScanner = (function () {
 
       stopCameraStream();
 
-      // Attempt A: Preferred facingMode (ideal on mobile phones with rear camera)
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: { ideal: currentFacingMode } },
-          audio: false
-        });
-      } catch (errA) {
-        lastErr = errA;
-      }
+      // On Laptop/Desktop: Use direct { video: true } (100% works on laptop webcams without facingMode restrictions)
+      // On Mobile: Try facingMode environment first for rear camera, then basic video: true
+      const constraintsList = isMobile 
+        ? [
+            { video: { facingMode: { ideal: currentFacingMode } }, audio: false },
+            { video: true, audio: false }
+          ]
+        : [
+            { video: true, audio: false },
+            { video: { facingMode: 'user' }, audio: false }
+          ];
 
-      // Attempt B: Basic video constraint (perfect for laptop webcams, desktop USB cameras)
-      if (!stream) {
+      for (const c of constraintsList) {
         try {
-          stream = await navigator.mediaDevices.getUserMedia({
-            video: true,
-            audio: false
-          });
-        } catch (errB) {
-          lastErr = errB;
+          stream = await navigator.mediaDevices.getUserMedia(c);
+          if (stream) break;
+        } catch (e) {
+          lastErr = e;
         }
       }
 
-      // Attempt C: Enumerate devices and select first video device
+      // If still no stream, try enumerating devices
       if (!stream && navigator.mediaDevices.enumerateDevices) {
         try {
           const devices = await navigator.mediaDevices.enumerateDevices();
-          const videoDevs = devices.filter(d => d.kind === 'videoinput');
+          const videoDevs = devices.filter(d => d.kind === 'videoinput' && d.deviceId);
           if (videoDevs.length > 0) {
             stream = await navigator.mediaDevices.getUserMedia({
-              video: { deviceId: { exact: videoDevs[0].deviceId } },
+              video: { deviceId: { ideal: videoDevs[0].deviceId } },
               audio: false
             });
           }
-        } catch (errC) {
-          lastErr = errC;
+        } catch (e) {
+          lastErr = e;
         }
       }
 
@@ -345,25 +383,32 @@ const SmartScanner = (function () {
         }
       }
 
-      // If we reach here, camera stream failed
-      console.warn("[SmartScanner] getUserMedia failed:", lastErr);
-      closeCamera();
+      // If stream acquisition failed
+      console.warn("[SmartScanner] Camera stream failed:", lastErr);
+      
+      let errorMsg = "ক্যামেরা চালু করা যায়নি।";
+      if (lastErr) {
+        if (lastErr.name === 'NotAllowedError' || lastErr.name === 'PermissionDeniedError') {
+          errorMsg = "ব্রাউজারে ক্যামেরার পারমিশন (অনুমতি) ব্লক রয়েছে। অনুগ্রহ করে অ্যাড্রেস বারে ক্যামেরার পারমিশন Allow করে পেজ রিফ্রেশ দিন।";
+        } else if (lastErr.name === 'NotFoundError' || lastErr.name === 'DevicesNotFoundError') {
+          errorMsg = "আপনার ডিভাইসে কোনো ক্যামেরা বা ওয়েবক্যাম খুঁজে পাওয়া যায়নি।";
+        } else if (lastErr.name === 'NotReadableError' || lastErr.name === 'TrackStartError') {
+          errorMsg = "ক্যামেরাটি অন্য কোনো অ্যাপ্লিকেশনে (যেমন Zoom/Meet) ব্যবহৃত হতে পারে। অনুগ্রহ করে অন্য অ্যাপ বন্ধ করে আবার চেষ্টা করুন।";
+        } else {
+          errorMsg = `ক্যামেরা ত্রুটি: ${lastErr.message || lastErr.name}`;
+        }
+      }
 
-      if (lastErr && (lastErr.name === 'NotAllowedError' || lastErr.name === 'PermissionDeniedError')) {
-        if (window.showToast) {
-          showToast("ব্রাউজারে ক্যামেরা ব্যবহারের অনুমতি (Permission) দিন।", "error");
-        }
-        return;
-      }
-      if (lastErr && lastErr.name === 'NotFoundError') {
-        if (window.showToast) {
-          showToast("কোনো ক্যামেরা খুঁজে পাওয়া যায়নি। ফাইল বা গ্যালারি থেকে ছবি দিন।", "info");
-        }
-      }
+      showCameraErrorModal(errorMsg);
+      return;
     }
 
-    // 4. Fallback to native or file input
-    fallbackToNativeOrInput();
+    // 4. If navigator.mediaDevices is not available at all
+    if (isMobile) {
+      fallbackToNativeOrInput();
+    } else {
+      showCameraErrorModal("আপনার ব্রাউজারে ওয়েবক্যাম লাইভ ক্যামেরা সাপোর্ট নেই। দয়া করে Chrome বা Edge ব্রাউজার ব্যবহার করুন অথবা গ্যালারি/ফাইল বাটন ব্যবহার করুন।");
+    }
   }
 
   function stopCameraStream() {
@@ -382,6 +427,7 @@ const SmartScanner = (function () {
 
   function closeCamera() {
     stopCameraStream();
+    hideCameraErrorModal();
     if (cameraModal) {
       cameraModal.classList.add('hidden');
     }
@@ -447,13 +493,14 @@ const SmartScanner = (function () {
         return;
       }
     }
-    if (cameraOptions && cameraOptions.targetInput) {
+    
+    // ONLY on mobile may we fallback to targetInput. On desktop/laptop web, NEVER open file picker!
+    if (isMobile && cameraOptions && cameraOptions.targetInput) {
       cameraOptions.targetInput.click();
       return;
     }
-    if (window.showToast) {
-      showToast("ক্যামেরা ওপেন করা যায়নি। গ্যালারি থেকে ছবি নির্বাচন করুন।", "info");
-    }
+
+    showCameraErrorModal("ক্যামেরা চালু করা যায়নি। ফাইল বা গ্যালারি থেকে ছবি আপলোড করুন।");
   }
 
   // ==================== INTERACTION HANDLERS ====================
@@ -1136,6 +1183,7 @@ const SmartScanner = (function () {
     close,
     openCamera,
     closeCamera,
+    retryCamera,
     snapPhoto,
     flipCamera,
     fallbackToGallery,

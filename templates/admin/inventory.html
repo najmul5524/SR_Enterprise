@@ -349,7 +349,12 @@
         }
       });
     } else {
-      document.getElementById('prodCameraInput').click();
+      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || ('ontouchstart' in window && navigator.maxTouchPoints > 1);
+      if (isMobile) {
+        document.getElementById('prodCameraInput').click();
+      } else if (window.showToast) {
+        showToast("ক্যামেরা লোড হতে সমস্যা হয়েছে। পেজ রিফ্রেশ দিন।", "error");
+      }
     }
   }
 
