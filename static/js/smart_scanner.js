@@ -1200,6 +1200,9 @@ const SmartScanner = (function () {
   };
 })();
 
+// `const` at top-level does NOT create a window property; expose explicitly so `window.SmartScanner` checks work
+window.SmartScanner = SmartScanner;
+
 // Auto-check for native camera captures when app window is focused / resumed
 if (typeof window !== 'undefined') {
   window.addEventListener('focus', () => {
