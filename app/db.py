@@ -29,7 +29,10 @@ class DatabaseManager:
                 self.auto_restore_if_needed()
             except Exception as e:
                 print(f"[FIREBASE BOOT ERROR] {e}")
-        self._seed_default_data_if_empty()
+        try:
+            self._seed_default_data_if_empty()
+        except Exception as e:
+            print(f"[SEED DATA ERROR] {e}")
 
     def is_firebase_active(self) -> bool:
         return _fb_is_active()
@@ -321,14 +324,14 @@ class DatabaseManager:
                 ]
 
                 cur.executemany("""
-                INSERT INTO products (id, sku, name_bn, name, category, unit, buy_price, sell_price, stock, alert_qty, qr_code, image_url, description, created_at, updated_at)
+                INSERT OR IGNORE INTO products (id, sku, name_bn, name, category, unit, buy_price, sell_price, stock, alert_qty, qr_code, image_url, description, created_at, updated_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, [(p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8], p[9], p[10], p[11], p[12], now_str, now_str) for p in initial_products])
 
                 # Seed sample Farmers
                 f1_id = "FARMER-101"
                 cur.execute("""
-                INSERT INTO farmers (id, name, phone, pin, shed_name, address, shed_capacity, image_url, total_due, total_batches, notes, status, created_at)
+                INSERT OR IGNORE INTO farmers (id, name, phone, pin, shed_name, address, shed_capacity, image_url, total_due, total_batches, notes, status, created_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, (
                     f1_id,
@@ -348,7 +351,7 @@ class DatabaseManager:
 
                 f2_id = "FARMER-102"
                 cur.execute("""
-                INSERT INTO farmers (id, name, phone, pin, shed_name, address, shed_capacity, image_url, total_due, total_batches, notes, status, created_at)
+                INSERT OR IGNORE INTO farmers (id, name, phone, pin, shed_name, address, shed_capacity, image_url, total_due, total_batches, notes, status, created_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, (
                     f2_id,
@@ -369,7 +372,7 @@ class DatabaseManager:
                 # Seed sample ongoing batch for Farmer 1
                 b1_id = "BATCH-2026-01"
                 cur.execute("""
-                INSERT INTO batches (
+                INSERT OR IGNORE INTO batches (
                     id, batch_no, farmer_id, farmer_name, bird_type, chick_qty, chick_unit_cost, total_chick_cost,
                     start_date, harvest_date, status, total_feed_bags, total_feed_cost, total_med_cost, total_other_cost,
                     total_investment, total_birds_sold, total_weight_kg, avg_rate_per_kg, total_sale_amount,
@@ -400,33 +403,33 @@ class DatabaseManager:
 
                 # Seed batch logs for this batch
                 cur.execute("""
-                INSERT INTO batch_logs (id, batch_id, farmer_id, log_type, log_date, item_id, item_name, qty, unit, unit_price, total_amount, note, created_at)
+                INSERT OR IGNORE INTO batch_logs (id, batch_id, farmer_id, log_type, log_date, item_id, item_name, qty, unit, unit_price, total_amount, note, created_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, ("LOG-01", b1_id, f1_id, "chick", "2026-10-05", "P016", "ব্রয়লার বাচ্চা (Cobb 500)", 1200, "পিস", 55, 66000, "১ম দিন: বাচ্চা ডেলিভারি ও শেডে উঠানো", now_str))
 
                 cur.execute("""
-                INSERT INTO batch_logs (id, batch_id, farmer_id, log_type, log_date, item_id, item_name, qty, unit, unit_price, total_amount, note, created_at)
+                INSERT OR IGNORE INTO batch_logs (id, batch_id, farmer_id, log_type, log_date, item_id, item_name, qty, unit, unit_price, total_amount, note, created_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, ("LOG-02", b1_id, f1_id, "feed", "2026-10-05", "P001", "নুরিশ ব্রয়লার স্টার্টার", 6, "বস্তা", 3550, 21300, "বাচ্চা আসার দিনে ১ম কিস্তির স্টার্টার ফিড", now_str))
 
                 cur.execute("""
-                INSERT INTO batch_logs (id, batch_id, farmer_id, log_type, log_date, item_id, item_name, qty, unit, unit_price, total_amount, note, created_at)
+                INSERT OR IGNORE INTO batch_logs (id, batch_id, farmer_id, log_type, log_date, item_id, item_name, qty, unit, unit_price, total_amount, note, created_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, ("LOG-03", b1_id, f1_id, "medicine", "2026-10-06", "P012", "রেনা-ডব্লিউএস ১০০ গ্রাম", 4, "প্যাকেট", 170, 680, "বাচ্চার স্ট্রেস কাটাতে ভিটামিন কোর্স", now_str))
 
                 cur.execute("""
-                INSERT INTO batch_logs (id, batch_id, farmer_id, log_type, log_date, item_id, item_name, qty, unit, unit_price, total_amount, note, created_at)
+                INSERT OR IGNORE INTO batch_logs (id, batch_id, farmer_id, log_type, log_date, item_id, item_name, qty, unit, unit_price, total_amount, note, created_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, ("LOG-04", b1_id, f1_id, "feed", "2026-10-15", "P002", "সিপি ব্রয়লার গ্রোয়ার", 16, "বস্তা", 3450, 55200, "গ্রোয়ার ফিড ডেলিভারি (চালান #INV-1002)", now_str))
 
                 cur.execute("""
-                INSERT INTO batch_logs (id, batch_id, farmer_id, log_type, log_date, item_id, item_name, qty, unit, unit_price, total_amount, note, created_at)
+                INSERT OR IGNORE INTO batch_logs (id, batch_id, farmer_id, log_type, log_date, item_id, item_name, qty, unit, unit_price, total_amount, note, created_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, ("LOG-05", b1_id, f1_id, "mortality", "2026-10-18", None, "মুরগী মৃত্যু হিসাব", 28, "পিস", 0, 0, "২১ দিন পর্যন্ত মোট মর্টালিটি ২৮ টি", now_str))
 
                 # Seed sample payment
                 cur.execute("""
-                INSERT INTO payments (id, receipt_no, farmer_id, farmer_name, batch_id, amount, payment_method, transaction_ref, payment_date, note, created_at)
+                INSERT OR IGNORE INTO payments (id, receipt_no, farmer_id, farmer_name, batch_id, amount, payment_method, transaction_ref, payment_date, note, created_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, ("PAY-01", "REC-8801", f1_id, "মোঃ রফিকুল ইসলাম", b1_id, 25000, "bKash", "TRX9923841", "2026-10-20", "পূর্বের বকেয়া ও চলতি ব্যাচের অগ্রিম বাবদ বিকাশ পেমেন্ট", now_str))
 
