@@ -89,6 +89,69 @@
     </div>
   </div>
 
+  <!-- Firebase Cloud Firestore Persistence Card -->
+  <div class="bg-white p-6 rounded-3xl border border-orange-100 shadow-sm space-y-4">
+    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-orange-50">
+      <div class="flex items-center gap-3">
+        <div class="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center text-2xl border border-amber-200">
+          🔥
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h2 class="text-sm font-black text-slate-900">Google Firebase ক্লাউড ব্যাকআপ ও অটো-রিস্টোর</h2>
+            {% if is_firebase %}
+            <span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800">
+              ✅ ক্লাউডে সক্রিয় (Active)
+            </span>
+            {% else %}
+            <span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-100 text-amber-800">
+              ⚠️ লোকাল মোড (Inactive)
+            </span>
+            {% endif %}
+          </div>
+          <p class="text-xs text-slate-500 font-medium">Render-এ নতুন কোড ডেপ্লয় হলেও কোনো ডাটা মুছে যাবে না; সার্ভার চালুর সাথে সাথেই অটো-রিস্টোর হবে।</p>
+        </div>
+      </div>
+    </div>
+
+    {% if is_firebase %}
+    <div class="p-3 bg-emerald-50 rounded-2xl border border-emerald-200 text-xs text-emerald-900 space-y-1">
+      <div class="font-bold flex items-center gap-1.5">
+        <span>⚡</span>
+        <span>Google Cloud Firestore সংযুক্ত আছে:</span>
+      </div>
+      <p class="text-[11px] text-emerald-800 font-medium">
+        প্রতিটি চালান, পেমেন্ট, খামারি, পণ্য ও খরচের হিসাব রিয়েল-টাইমে ক্লাউডে সেভ হচ্ছে। সার্ভার রিস্টার্ট বা রি-ডেপ্লয় হলে সার্ভার ১০০% অটোমেটিক রিস্টোর করে নিবে।
+      </p>
+    </div>
+    {% else %}
+    <div class="p-3 bg-amber-50 rounded-2xl border border-amber-200 text-xs text-amber-900 space-y-1">
+      <div class="font-bold flex items-center gap-1.5">
+        <span>ℹ️</span>
+        <span>Render-এ ক্লাউড পারসিস্টেন্স চালু করার নিয়ম:</span>
+      </div>
+      <p class="text-[11px] text-amber-800 font-medium">
+        Render Dashboard ➔ Environment-এ যান এবং <code class="font-mono bg-white px-1.5 py-0.5 rounded text-amber-900 font-bold">FIREBASE_CREDENTIALS_BASE64</code> অথবা <code class="font-mono bg-white px-1.5 py-0.5 rounded text-amber-900 font-bold">FIREBASE_CREDENTIALS</code> ভ্যারিয়েবলে আপনার Firebase Service Account Key পেস্ট করে সেভ করুন।
+      </p>
+    </div>
+    {% endif %}
+
+    <div class="flex flex-col sm:flex-row items-center gap-2 pt-1">
+      <form action="/admin/settings/firebase-backup" method="POST" class="w-full sm:w-auto">
+        <button type="submit" {% if not is_firebase %}disabled{% endif %} class="w-full sm:w-auto px-4 py-2.5 rounded-xl text-xs font-black shadow-sm transition flex items-center justify-center gap-1.5 {% if is_firebase %}bg-stone-800 hover:bg-stone-900 text-white touch-press{% else %}bg-stone-200 text-stone-400 cursor-not-allowed{% endif %}">
+          <span>☁️</span>
+          <span>এখনই ম্যানুয়াল ব্যাকআপ নিন</span>
+        </button>
+      </form>
+      <form action="/admin/settings/firebase-restore" method="POST" onsubmit="return confirm('আপনি কি নিশ্চিত Firebase ক্লাউড থেকে সমস্ত ডাটা রিস্টোর করতে চান?');" class="w-full sm:w-auto">
+        <button type="submit" {% if not is_firebase %}disabled{% endif %} class="w-full sm:w-auto px-4 py-2.5 rounded-xl text-xs font-black shadow-sm transition flex items-center justify-center gap-1.5 {% if is_firebase %}bg-amber-600 hover:bg-amber-700 text-white touch-press{% else %}bg-stone-200 text-stone-400 cursor-not-allowed{% endif %}">
+          <span>🔄</span>
+          <span>ক্লাউড থেকে রিস্টোর করুন</span>
+        </button>
+      </form>
+    </div>
+  </div>
+
   <!-- Store Information Form -->
   <div class="bg-white p-6 rounded-3xl border border-orange-100 shadow-sm">
     <h2 class="text-sm font-black text-slate-900 pb-3 border-b border-orange-50 mb-4">প্রতিষ্ঠানের মৌলিক তথ্য ও মেমো সেটিংস</h2>

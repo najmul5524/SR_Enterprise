@@ -1,4 +1,5 @@
 import os
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.responses import RedirectResponse, FileResponse, PlainTextResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -6,15 +7,31 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.auth import get_current_user
+from app.db import db
 from app.routes.auth_routes import router as auth_router
 from app.routes.admin_routes import router as admin_router
 from app.routes.farmer_routes import router as farmer_router
 from app.routes.api_routes import router as api_router
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Auto-check & auto-restore data from Firebase if deployed on Render fresh container
+    try:
+        if db.is_firebase_active():
+            print("[STARTUP] Firebase Firestore is active. Verifying cloud persistence...")
+            status = db.auto_restore_if_needed()
+            print(f"[STARTUP] Firebase sync status: {status}")
+        else:
+            print("[STARTUP] Running in SQLite local mode (Firebase credentials not supplied).")
+    except Exception as e:
+        print(f"[STARTUP] Firebase boot sync error: {e}")
+    yield
+
 app = FastAPI(
     title=settings.APP_NAME,
     description="পৌল্ট্রি ও গরুর খাদ্য, ঔষধ ডিলারশিপ এবং খামারি হিসাব ব্যবস্থাপনা",
-    version="2.0.0"
+    version="2.0.0",
+    lifespan=lifespan
 )
 
 # Enable CORS

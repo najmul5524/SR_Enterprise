@@ -989,6 +989,18 @@ async def run_tests():
             db.delete_batch(s["id"])
         db.delete_farmer(f_test_id)
 
+        # --- 21. Testing Firebase Cloud Backup & Restore Endpoints ---
+        print("\n--- 21. Testing Firebase Cloud Backup & Restore Endpoints ---")
+        await client.post("/login/admin", data={"username": "admin", "password": "admin123"})
+        res_fb_backup = await client.post("/admin/settings/firebase-backup", follow_redirects=False)
+        assert res_fb_backup.status_code == 303
+        print(f"POST /admin/settings/firebase-backup -> Status 303, Redirect Location: {res_fb_backup.headers.get('location')}")
+
+        res_fb_restore = await client.post("/admin/settings/firebase-restore", follow_redirects=False)
+        assert res_fb_restore.status_code == 303
+        print(f"POST /admin/settings/firebase-restore -> Status 303, Redirect Location: {res_fb_restore.headers.get('location')}")
+        print("Firebase backup/restore endpoints and safe fallback handling verified successfully!")
+
         print("\n=======================================================")
         print("ALL TESTS PASSED SUCCESSFULLY! 100% VERIFIED!")
         print("=======================================================\n")

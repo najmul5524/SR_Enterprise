@@ -883,6 +883,28 @@ async def change_admin_password(
 
     return RedirectResponse(url="/admin/settings?pwd_msg=অ্যাডমিন+পাসওয়ার্ড+সফলভাবে+পরিবর্তন+করা+হয়েছে!", status_code=303)
 
+@router.post("/settings/firebase-backup")
+async def trigger_firebase_backup():
+    if not db.is_firebase_active():
+        return RedirectResponse(url="/admin/settings?pwd_error=Firebase+সংযুক্ত+নেই!+Render-এ+FIREBASE_CREDENTIALS_BASE64+অথবা+FIREBASE_CREDENTIALS+সেট+করুন।", status_code=303)
+    res = db.backup_all_to_firebase()
+    if res.get("status") == "success":
+        return RedirectResponse(url="/admin/settings?msg=Firebase+ক্লাউডে+সমস্ত+ডাটা+সফলভাবে+ম্যানুয়ালি+ব্যাকআপ+করা+হয়েছে!", status_code=303)
+    else:
+        err = res.get("message", "ক্লাউড ব্যাকআপে সমস্যা হয়েছে")
+        return RedirectResponse(url=f"/admin/settings?pwd_error=ব্যাকআপ+ব্যর্থ:+{err}", status_code=303)
+
+@router.post("/settings/firebase-restore")
+async def trigger_firebase_restore():
+    if not db.is_firebase_active():
+        return RedirectResponse(url="/admin/settings?pwd_error=Firebase+সংযুক্ত+নেই!+Render-এ+FIREBASE_CREDENTIALS_BASE64+অথবা+FIREBASE_CREDENTIALS+সেট+করুন।", status_code=303)
+    res = db.restore_all_from_firebase()
+    if res.get("status") == "success":
+        return RedirectResponse(url="/admin/settings?msg=Firebase+ক্লাউড+থেকে+সমস্ত+ডাটা+সফলভাবে+রিস্টোর+করা+হয়েছে!", status_code=303)
+    else:
+        err = res.get("message", "ক্লাউড রিস্টোরে সমস্যা হয়েছে")
+        return RedirectResponse(url=f"/admin/settings?pwd_error=রিস্টোর+ব্যর্থ:+{err}", status_code=303)
+
 
 # ==================== EXPENSES (বিবিধ ও অন্যান্য খরচ) ====================
 @router.get("/expenses", response_class=HTMLResponse)

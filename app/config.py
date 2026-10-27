@@ -23,6 +23,11 @@ class Settings:
     CLOUDINARY_API_KEY: str = os.getenv("CLOUDINARY_API_KEY", "").strip()
     CLOUDINARY_API_SECRET: str = os.getenv("CLOUDINARY_API_SECRET", "").strip()
     CLOUDINARY_FOLDER: str = os.getenv("CLOUDINARY_FOLDER", "sr_enterprise").strip()
+
+    # Firebase Cloud Firestore (Persistent Cloud Database & Auto-Restore)
+    FIREBASE_CREDENTIALS: str = os.getenv("FIREBASE_CREDENTIALS", "").strip()
+    FIREBASE_CREDENTIALS_BASE64: str = os.getenv("FIREBASE_CREDENTIALS_BASE64", "").strip()
+    FIREBASE_CREDENTIALS_PATH: str = os.getenv("FIREBASE_CREDENTIALS_PATH", "").strip()
     
     def __init__(self):
         # Auto-parse CLOUDINARY_URL if provided

@@ -6,19 +6,48 @@ from pathlib import Path
 from datetime import datetime
 from typing import List, Dict, Any, Optional
 from app.config import settings
+from app.firebase_sync import (
+    is_firebase_active as _fb_is_active,
+    sync_document as _fb_sync_doc,
+    delete_document as _fb_del_doc,
+    backup_all_to_firebase as _fb_backup_all,
+    restore_all_from_firebase as _fb_restore_all,
+    auto_restore_if_needed as _fb_auto_restore,
+)
 
 class DatabaseManager:
     """
     Unified Database Manager for SR Enterprise.
-    Uses high-speed, zero-dependency SQLite database engine.
+    Uses high-speed, zero-dependency SQLite database engine with
+    Google Cloud Firestore real-time sync and auto-restore persistence.
     """
     def __init__(self):
         self.sqlite_path = str(settings.SQLITE_PATH)
         self._init_sqlite_schema()
+        if self.is_firebase_active():
+            try:
+                self.auto_restore_if_needed()
+            except Exception as e:
+                print(f"[FIREBASE BOOT ERROR] {e}")
         self._seed_default_data_if_empty()
 
     def is_firebase_active(self) -> bool:
-        return False
+        return _fb_is_active()
+
+    def sync_document(self, collection: str, doc_id: str, data: Dict[str, Any]) -> bool:
+        return _fb_sync_doc(collection, doc_id, data)
+
+    def delete_document(self, collection: str, doc_id: str) -> bool:
+        return _fb_del_doc(collection, doc_id)
+
+    def backup_all_to_firebase(self) -> Dict[str, Any]:
+        return _fb_backup_all(self)
+
+    def restore_all_from_firebase(self) -> Dict[str, Any]:
+        return _fb_restore_all(self)
+
+    def auto_restore_if_needed(self) -> Dict[str, Any]:
+        return _fb_auto_restore(self)
 
     def _get_connection(self):
         conn = sqlite3.connect(self.sqlite_path, timeout=30.0)
@@ -534,13 +563,9 @@ class DatabaseManager:
 
         # If Firebase is active, sync product to Firestore
         if self.is_firebase_active():
-            try:
-                doc_ref = _firestore_client.collection("products").document(product_id)
-                doc_data = dict(data)
-                doc_data.update({"id": product_id, "sku": sku, "qr_code": qr_code, "updated_at": now_str})
-                doc_ref.set(doc_data, merge=True)
-            except Exception as e:
-                print(f"[FIRESTORE SYNC ERROR] {e}")
+            doc_data = dict(data)
+            doc_data.update({"id": product_id, "sku": sku, "qr_code": qr_code, "updated_at": now_str})
+            self.sync_document("products", product_id, doc_data)
 
         return product_id
 
@@ -550,6 +575,11 @@ class DatabaseManager:
             cur.execute("UPDATE products SET stock = MAX(0.0, stock + ?), updated_at = ? WHERE id = ? OR sku = ? OR qr_code = ?",
                         (delta_qty, datetime.now().strftime("%Y-%m-%d %H:%M:%S"), product_id, product_id, product_id))
             conn.commit()
+            if self.is_firebase_active():
+                cur.execute("SELECT * FROM products WHERE id = ? OR sku = ? OR qr_code = ?", (product_id, product_id, product_id))
+                row = cur.fetchone()
+                if row:
+                    self.sync_document("products", row["id"], dict(row))
 
     def delete_product(self, product_id: str):
         with self._get_connection() as conn:
@@ -557,10 +587,7 @@ class DatabaseManager:
             cur.execute("DELETE FROM products WHERE id = ?", (product_id,))
             conn.commit()
         if self.is_firebase_active():
-            try:
-                _firestore_client.collection("products").document(product_id).delete()
-            except Exception as e:
-                print(f"[FIRESTORE DELETE ERROR] {e}")
+            self.delete_document("products", product_id)
 
     # ==================== FARMERS ====================
     def get_farmers(self, search: Optional[str] = None) -> List[Dict[str, Any]]:
@@ -636,10 +663,14 @@ class DatabaseManager:
             conn.commit()
 
         if self.is_firebase_active():
-            try:
-                _firestore_client.collection("farmers").document(farmer_id).set(data, merge=True)
-            except Exception as e:
-                print(f"[FIRESTORE FARMER SYNC ERROR] {e}")
+            f_data = dict(data)
+            f_data["id"] = farmer_id
+            self.sync_document("farmers", farmer_id, f_data)
+            with self._get_connection() as conn:
+                cur = conn.cursor()
+                cur.execute("SELECT * FROM batches WHERE farmer_id = ?", (farmer_id,))
+                for b in cur.fetchall():
+                    self.sync_document("batches", b["id"], dict(b))
 
         return farmer_id
 
@@ -653,10 +684,7 @@ class DatabaseManager:
             conn.commit()
 
         if self.is_firebase_active():
-            try:
-                _firestore_client.collection("farmers").document(farmer_id).delete()
-            except Exception as e:
-                print(f"[FIRESTORE FARMER DELETE ERROR] {e}")
+            self.delete_document("farmers", farmer_id)
         return True
 
     def update_farmer_due(self, farmer_id: str, delta_amount: float):
@@ -664,6 +692,11 @@ class DatabaseManager:
             cur = conn.cursor()
             cur.execute("UPDATE farmers SET total_due = total_due + ? WHERE id = ?", (delta_amount, farmer_id))
             conn.commit()
+            if self.is_firebase_active():
+                cur.execute("SELECT * FROM farmers WHERE id = ?", (farmer_id,))
+                row = cur.fetchone()
+                if row:
+                    self.sync_document("farmers", farmer_id, dict(row))
 
     # ==================== BATCHES (SHED LIFE-CYCLE) ====================
     def get_batches(self, status: Optional[str] = None, farmer_id: Optional[str] = None) -> List[Dict[str, Any]]:
@@ -796,6 +829,22 @@ class DatabaseManager:
 
             conn.commit()
 
+        if self.is_firebase_active():
+            with self._get_connection() as conn:
+                cur = conn.cursor()
+                cur.execute("SELECT * FROM batches WHERE id = ?", (batch_id,))
+                b_row = cur.fetchone()
+                if b_row:
+                    self.sync_document("batches", batch_id, dict(b_row))
+                cur.execute("SELECT * FROM batch_logs WHERE batch_id = ?", (batch_id,))
+                for bl in cur.fetchall():
+                    self.sync_document("batch_logs", bl["id"], dict(bl))
+                if data.get("farmer_id"):
+                    cur.execute("SELECT * FROM farmers WHERE id = ?", (data["farmer_id"],))
+                    f_row = cur.fetchone()
+                    if f_row:
+                        self.sync_document("farmers", data["farmer_id"], dict(f_row))
+
         return batch_id
 
     def update_batch(self, batch_id: str, data: Dict[str, Any]) -> bool:
@@ -849,7 +898,24 @@ class DatabaseManager:
                 """, (chick_qty, chick_unit_cost, new_chick_cost, batch_id))
 
             conn.commit()
-            return True
+
+        if self.is_firebase_active():
+            with self._get_connection() as conn:
+                cur = conn.cursor()
+                cur.execute("SELECT * FROM batches WHERE id = ?", (batch_id,))
+                b_row = cur.fetchone()
+                if b_row:
+                    self.sync_document("batches", batch_id, dict(b_row))
+                cur.execute("SELECT * FROM batch_logs WHERE batch_id = ? AND log_type = 'chick'", (batch_id,))
+                for bl in cur.fetchall():
+                    self.sync_document("batch_logs", bl["id"], dict(bl))
+                if old_batch.get("farmer_id"):
+                    cur.execute("SELECT * FROM farmers WHERE id = ?", (old_batch["farmer_id"],))
+                    f_row = cur.fetchone()
+                    if f_row:
+                        self.sync_document("farmers", old_batch["farmer_id"], dict(f_row))
+
+        return True
 
     def delete_batch(self, batch_id: str) -> bool:
         with self._get_connection() as conn:
@@ -872,7 +938,18 @@ class DatabaseManager:
             cur.execute("DELETE FROM batch_logs WHERE batch_id = ?", (batch_id,))
             cur.execute("DELETE FROM batches WHERE id = ?", (batch_id,))
             conn.commit()
-            return True
+
+        if self.is_firebase_active():
+            self.delete_document("batches", batch_id)
+            if farmer_id:
+                with self._get_connection() as conn:
+                    cur = conn.cursor()
+                    cur.execute("SELECT * FROM farmers WHERE id = ?", (farmer_id,))
+                    f_row = cur.fetchone()
+                    if f_row:
+                        self.sync_document("farmers", farmer_id, dict(f_row))
+
+        return True
 
     def get_batch_logs(self, batch_id: str) -> List[Dict[str, Any]]:
         with self._get_connection() as conn:
@@ -943,6 +1020,28 @@ class DatabaseManager:
                 cur.execute("UPDATE farmers SET total_due = total_due + ? WHERE id = ?", (total_amount, data.get("farmer_id", "")))
 
             conn.commit()
+
+        if self.is_firebase_active():
+            with self._get_connection() as conn:
+                cur = conn.cursor()
+                cur.execute("SELECT * FROM batch_logs WHERE id = ?", (log_id,))
+                l_row = cur.fetchone()
+                if l_row:
+                    self.sync_document("batch_logs", log_id, dict(l_row))
+                cur.execute("SELECT * FROM batches WHERE id = ?", (batch_id,))
+                b_row = cur.fetchone()
+                if b_row:
+                    self.sync_document("batches", batch_id, dict(b_row))
+                if item_id:
+                    cur.execute("SELECT * FROM products WHERE id = ? OR sku = ?", (item_id, item_id))
+                    p_row = cur.fetchone()
+                    if p_row:
+                        self.sync_document("products", p_row["id"], dict(p_row))
+                if data.get("farmer_id"):
+                    cur.execute("SELECT * FROM farmers WHERE id = ?", (data["farmer_id"],))
+                    f_row = cur.fetchone()
+                    if f_row:
+                        self.sync_document("farmers", data["farmer_id"], dict(f_row))
 
         return log_id
 
@@ -1020,7 +1119,23 @@ class DatabaseManager:
 
             conn.commit()
 
-            return {
+        if self.is_firebase_active():
+            with self._get_connection() as conn:
+                cur = conn.cursor()
+                cur.execute("SELECT * FROM batches WHERE id = ?", (batch_id,))
+                b_row = cur.fetchone()
+                if b_row:
+                    self.sync_document("batches", batch_id, dict(b_row))
+                cur.execute("SELECT * FROM batch_logs WHERE batch_id = ? AND log_type = 'harvest'", (batch_id,))
+                for hl in cur.fetchall():
+                    self.sync_document("batch_logs", hl["id"], dict(hl))
+                if farmer_id:
+                    cur.execute("SELECT * FROM farmers WHERE id = ?", (farmer_id,))
+                    f_row = cur.fetchone()
+                    if f_row:
+                        self.sync_document("farmers", farmer_id, dict(f_row))
+
+        return {
                 "batch_id": batch_id,
                 "total_sale_amount": total_sale_amount,
                 "total_investment": total_inv,
@@ -1172,10 +1287,16 @@ class DatabaseManager:
             conn.commit()
 
         if self.is_firebase_active():
-            try:
-                _firestore_client.collection("invoices").document(invoice_id).set(data, merge=True)
-            except Exception as e:
-                print(f"[FIRESTORE INVOICE SYNC ERROR] {e}")
+            inv_data = dict(data)
+            inv_data["id"] = invoice_id
+            self.sync_document("invoices", invoice_id, inv_data)
+            if data.get("farmer_id"):
+                with self._get_connection() as conn:
+                    cur = conn.cursor()
+                    cur.execute("SELECT * FROM farmers WHERE id = ?", (data["farmer_id"],))
+                    f_row = cur.fetchone()
+                    if f_row:
+                        self.sync_document("farmers", data["farmer_id"], dict(f_row))
 
         return invoice_id
 
@@ -1228,10 +1349,17 @@ class DatabaseManager:
             conn.commit()
 
         if self.is_firebase_active():
-            try:
-                _firestore_client.collection("payments").document(payment_id).set(data, merge=True)
-            except Exception as e:
-                print(f"[FIRESTORE PAYMENT SYNC ERROR] {e}")
+            p_data = dict(data)
+            p_data["id"] = payment_id
+            p_data["receipt_no"] = receipt_no
+            self.sync_document("payments", payment_id, p_data)
+            if farmer_id:
+                with self._get_connection() as conn:
+                    cur = conn.cursor()
+                    cur.execute("SELECT * FROM farmers WHERE id = ?", (farmer_id,))
+                    f_row = cur.fetchone()
+                    if f_row:
+                        self.sync_document("farmers", farmer_id, dict(f_row))
 
         return payment_id
 
@@ -1288,10 +1416,17 @@ class DatabaseManager:
             conn.commit()
 
         if self.is_firebase_active():
-            try:
-                _firestore_client.collection("payments").document(payment_id).set(data, merge=True)
-            except Exception as e:
-                print(f"[FIRESTORE PAYMENT UPDATE ERROR] {e}")
+            with self._get_connection() as conn:
+                cur = conn.cursor()
+                cur.execute("SELECT * FROM payments WHERE id = ?", (payment_id,))
+                p_row = cur.fetchone()
+                if p_row:
+                    self.sync_document("payments", payment_id, dict(p_row))
+                if farmer_id:
+                    cur.execute("SELECT * FROM farmers WHERE id = ?", (farmer_id,))
+                    f_row = cur.fetchone()
+                    if f_row:
+                        self.sync_document("farmers", farmer_id, dict(f_row))
         return True
 
     def delete_payment(self, payment_id: str) -> bool:
@@ -1314,10 +1449,14 @@ class DatabaseManager:
             conn.commit()
 
         if self.is_firebase_active():
-            try:
-                _firestore_client.collection("payments").document(payment_id).delete()
-            except Exception as e:
-                print(f"[FIRESTORE PAYMENT DELETE ERROR] {e}")
+            self.delete_document("payments", payment_id)
+            if farmer_id:
+                with self._get_connection() as conn:
+                    cur = conn.cursor()
+                    cur.execute("SELECT * FROM farmers WHERE id = ?", (farmer_id,))
+                    f_row = cur.fetchone()
+                    if f_row:
+                        self.sync_document("farmers", farmer_id, dict(f_row))
         return True
 
     def update_invoice(self, invoice_id: str, data: Dict[str, Any]) -> bool:
@@ -1365,10 +1504,17 @@ class DatabaseManager:
             conn.commit()
 
         if self.is_firebase_active():
-            try:
-                _firestore_client.collection("invoices").document(invoice_id).set(data, merge=True)
-            except Exception as e:
-                print(f"[FIRESTORE INVOICE UPDATE ERROR] {e}")
+            with self._get_connection() as conn:
+                cur = conn.cursor()
+                cur.execute("SELECT * FROM invoices WHERE id = ?", (invoice_id,))
+                inv_row = cur.fetchone()
+                if inv_row:
+                    self.sync_document("invoices", invoice_id, dict(inv_row))
+                if farmer_id:
+                    cur.execute("SELECT * FROM farmers WHERE id = ?", (farmer_id,))
+                    f_row = cur.fetchone()
+                    if f_row:
+                        self.sync_document("farmers", farmer_id, dict(f_row))
         return True
 
     def delete_invoice(self, invoice_id: str) -> bool:
@@ -1424,10 +1570,15 @@ class DatabaseManager:
             conn.commit()
 
         if self.is_firebase_active():
-            try:
-                _firestore_client.collection("invoices").document(invoice_id).delete()
-            except Exception as e:
-                print(f"[FIRESTORE INVOICE DELETE ERROR] {e}")
+            self.delete_document("invoices", invoice_id)
+            if farmer_id:
+                with self._get_connection() as conn:
+                    cur = conn.cursor()
+                    cur.execute("SELECT * FROM farmers WHERE id = ?", (farmer_id,))
+                    f_row = cur.fetchone()
+                    if f_row:
+                        self.sync_document("farmers", farmer_id, dict(f_row))
+        return True
         return True
 
     def get_batch_log_by_id(self, log_id: str) -> Optional[Dict[str, Any]]:
