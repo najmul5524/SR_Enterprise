@@ -388,7 +388,11 @@
   function recropProductImage() {
     const fileInput = document.getElementById('prodImageFile');
     const previewImg = document.getElementById('prodPreviewImg');
-    const src = lastProductImageSrc || (fileInput && fileInput.files && fileInput.files[0]) || (previewImg && previewImg.src ? previewImg.src : null);
+    const src = lastProductImageSrc || (previewImg && previewImg.src ? previewImg.src : null) || (fileInput && fileInput.files && fileInput.files[0] ? fileInput.files[0] : null);
+    if (!src) {
+      if (window.showToast) showToast("পুনরায় ক্রপ করার মতো কোনো ছবি নেই", "info");
+      return;
+    }
     if (src && window.SmartScanner) {
       SmartScanner.open(src, {
         targetInput: fileInput,

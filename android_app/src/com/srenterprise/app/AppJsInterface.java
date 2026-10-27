@@ -24,4 +24,11 @@ public class AppJsInterface {
             activity.triggerPrint(docName);
         }
     }
+
+    @JavascriptInterface
+    public void openCamera() {
+        if (activity != null) {
+            activity.openCameraFromJs();
+        }
+    }
 }

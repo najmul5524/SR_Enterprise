@@ -127,12 +127,12 @@ const SmartScanner = (function () {
       <!-- Top Bar -->
       <div class="bg-slate-900/90 border-b border-slate-800 px-4 py-3 flex items-center justify-between z-10">
         <div class="flex items-center gap-2">
-          <div class="w-8 h-8 rounded-xl bg-orangeBrand-500/20 text-orangeBrand-400 flex items-center justify-center text-lg border border-orangeBrand-500/30">
+          <div class="w-8 h-8 rounded-xl bg-orangeBrand-500/20 text-orangeBrand-500 flex items-center justify-center text-lg border border-orangeBrand-500/30">
             📸
           </div>
           <div>
             <h3 class="text-sm font-black text-white leading-none">স্মার্ট স্ক্যান ও ক্রপ (Smart Scanner)</h3>
-            <p id="scannerSubtitle" class="text-[10px] text-slate-400 mt-0.5">৪ কোণা টেনে ছবি সোজা করুন (CamScanner-এর মতো)</p>
+            <p id="scannerSubtitle" class="text-[10px] text-slate-300 mt-0.5">৪ কোণা টেনে ছবি সোজা করুন (CamScanner-এর মতো)</p>
           </div>
         </div>
 
@@ -160,7 +160,7 @@ const SmartScanner = (function () {
           <div id="scannerLoupe" class="hidden absolute pointer-events-none w-24 h-24 rounded-full border-2 border-white shadow-2xl bg-black overflow-hidden z-30">
             <canvas id="loupeCanvas" width="96" height="96"></canvas>
             <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <div class="w-2.5 h-2.5 rounded-full border border-orangeBrand-500 bg-orangeBrand-400/50"></div>
+              <div class="w-2.5 h-2.5 rounded-full border border-orangeBrand-500 bg-orangeBrand-500/50"></div>
             </div>
           </div>
         </div>
@@ -177,7 +177,7 @@ const SmartScanner = (function () {
         
         <!-- Filter Tabs (Visible only in Filter / Preview Step) -->
         <div id="scannerFilterTabs" class="hidden flex items-center justify-center gap-2 overflow-x-auto pb-1">
-          <button type="button" onclick="SmartScanner.applyFilter('magic')" data-filter="magic" class="scanner-filter-btn px-3 py-1.5 rounded-xl text-xs font-black transition flex items-center gap-1.5 border border-orangeBrand-500 bg-orangeBrand-500/20 text-orangeBrand-300">
+          <button type="button" onclick="SmartScanner.applyFilter('magic')" data-filter="magic" class="scanner-filter-btn px-3 py-1.5 rounded-xl text-xs font-black transition flex items-center gap-1.5 border border-orangeBrand-500 bg-orangeBrand-500/20 text-orangeBrand-500">
             <span>🪄</span> <span>ম্যাজিক কালার (স্মার্ট স্ক্যান)</span>
           </button>
           <button type="button" onclick="SmartScanner.applyFilter('bw')" data-filter="bw" class="scanner-filter-btn px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 border border-slate-700 bg-slate-800 text-slate-300">
@@ -196,22 +196,24 @@ const SmartScanner = (function () {
           
           <div class="flex items-center gap-1.5">
             <!-- Back button (in filter step) -->
-            <button type="button" id="scannerBackBtn" onclick="SmartScanner.backToCrop()" class="hidden px-3 py-2 sm:px-3.5 sm:py-2.5 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-300 transition flex items-center gap-1">
+            <button type="button" id="scannerBackBtn" onclick="SmartScanner.backToCrop()" class="hidden px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 transition flex items-center gap-1 border border-slate-700">
               <span>↩️</span> <span class="hidden sm:inline">কোণা পরিবর্তন (Re-Crop)</span><span class="sm:hidden">কোণা</span>
             </button>
             <!-- Cancel / Close button -->
-            <button type="button" onclick="SmartScanner.close()" class="px-3 py-2 sm:px-3.5 sm:py-2.5 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition flex items-center gap-1">
+            <button type="button" onclick="SmartScanner.close()" class="px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition flex items-center gap-1 border border-slate-700">
               <span>✕</span> <span>বাতিল</span>
             </button>
           </div>
 
           <!-- Primary Actions -->
           <div class="flex items-center gap-2 ml-auto">
-            <button type="button" id="scannerCropBtn" onclick="SmartScanner.processPerspectiveCrop()" class="px-3.5 py-2 sm:px-4 sm:py-2.5 bg-slate-800 hover:bg-slate-700 text-orangeBrand-300 font-bold border border-orangeBrand-500/40 rounded-xl text-xs shadow-sm transition flex items-center justify-center gap-1.5 touch-press">
+            <!-- Distinct, vibrant Filter & Preview Button -->
+            <button type="button" id="scannerCropBtn" onclick="SmartScanner.processPerspectiveCrop()" class="px-4 py-2 sm:px-5 sm:py-2.5 bg-gradient-to-r from-amber-500 via-orange-500 to-orangeBrand-600 hover:opacity-95 text-white font-black rounded-xl text-xs shadow-lg shadow-orange-500/25 border border-orange-400/40 transition flex items-center justify-center gap-1.5 touch-press">
               <span>🪄</span> <span>ফিল্টার ও প্রিভিউ</span>
             </button>
 
-            <button type="button" id="scannerApplyBtn" onclick="SmartScanner.finishAndApply()" class="px-4 py-2 sm:px-6 sm:py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:opacity-95 text-white font-black rounded-xl text-xs shadow-lg transition flex items-center justify-center gap-1.5 touch-press">
+            <!-- Complete / Apply Button -->
+            <button type="button" id="scannerApplyBtn" onclick="SmartScanner.finishAndApply()" class="px-4 py-2 sm:px-6 sm:py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:opacity-95 text-white font-black rounded-xl text-xs shadow-lg shadow-emerald-600/25 transition flex items-center justify-center gap-1.5 touch-press">
               <span>✅</span> <span>সম্পন্ন করুন (Apply)</span>
             </button>
           </div>
@@ -237,40 +239,52 @@ const SmartScanner = (function () {
   }
 
   // ==================== LIVE CAMERA LOGIC ====================
+  function setCameraOptions(options) {
+    cameraOptions = options;
+  }
+
+  function onNativeCameraResult(dataUrl) {
+    if (!dataUrl) return;
+    const opts = cameraOptions || {};
+    open(dataUrl, opts);
+  }
+
   async function openCamera(options = {}) {
     cameraOptions = options;
     init();
 
-    // Check if navigator.mediaDevices is supported
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      fallbackToNativeOrInput();
+    // 1. If running inside Android native app, trigger native camera directly!
+    if (window.SRNativeApp && typeof window.SRNativeApp.openCamera === 'function') {
+      window.SRNativeApp.openCamera();
       return;
     }
 
-    cameraModal = document.getElementById('smartScannerCameraModal');
-    videoEl = document.getElementById('smartScannerVideo');
-    cameraModal.classList.remove('hidden');
+    // 2. If navigator.mediaDevices is supported (e.g. mobile Chrome / Safari)
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      cameraModal = document.getElementById('smartScannerCameraModal');
+      videoEl = document.getElementById('smartScannerVideo');
+      cameraModal.classList.remove('hidden');
 
-    try {
-      stopCameraStream();
+      try {
+        stopCameraStream();
 
-      const constraints = {
-        video: {
-          facingMode: { ideal: currentFacingMode },
-          width: { ideal: 1920 },
-          height: { ideal: 1080 }
-        },
-        audio: false
-      };
+        const constraints = {
+          video: { facingMode: { ideal: currentFacingMode } },
+          audio: false
+        };
 
-      cameraStream = await navigator.mediaDevices.getUserMedia(constraints);
-      videoEl.srcObject = cameraStream;
-      await videoEl.play();
-    } catch (err) {
-      console.warn("[SmartScanner] getUserMedia failed, falling back:", err);
-      closeCamera();
-      fallbackToNativeOrInput();
+        cameraStream = await navigator.mediaDevices.getUserMedia(constraints);
+        videoEl.srcObject = cameraStream;
+        await videoEl.play();
+        return;
+      } catch (err) {
+        console.warn("[SmartScanner] getUserMedia failed, falling back:", err);
+        closeCamera();
+      }
     }
+
+    // 3. Fallback to file input
+    fallbackToNativeOrInput();
   }
 
   function stopCameraStream() {
@@ -367,9 +381,11 @@ const SmartScanner = (function () {
       const rect = canvas.getBoundingClientRect();
       const clientX = e.touches ? e.touches[0].clientX : e.clientX;
       const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      const rW = rect.width || canvas.width || 1;
+      const rH = rect.height || canvas.height || 1;
       return {
-        x: (clientX - rect.left) * (canvas.width / rect.width),
-        y: (clientY - rect.top) * (canvas.height / rect.height),
+        x: (clientX - rect.left) * (canvas.width / rW),
+        y: (clientY - rect.top) * (canvas.height / rH),
         screenX: clientX,
         screenY: clientY
       };
@@ -391,8 +407,10 @@ const SmartScanner = (function () {
         }
       }
 
-      // Check within reasonable touch slop
-      if (minDistance <= TOUCH_SLOP * (canvas.width / canvas.clientWidth)) {
+      const clientW = canvas.clientWidth || canvas.width || 1;
+      const scaleFactor = canvas.width / clientW;
+
+      if (minDistance <= TOUCH_SLOP * scaleFactor) {
         activeCorner = closestIdx;
         dragOffset.x = corners[closestIdx].x - pos.x;
         dragOffset.y = corners[closestIdx].y - pos.y;
@@ -490,11 +508,14 @@ const SmartScanner = (function () {
 
     const img = new Image();
 
-    // Only set crossOrigin for remote HTTP/HTTPS URLs (NEVER for data: or blob: URIs)
-    const isRemote = (typeof source === 'string' && (source.startsWith('http://') || source.startsWith('https://'))) ||
-                     (source instanceof HTMLImageElement && (source.src.startsWith('http://') || source.src.startsWith('https://')));
-    if (isRemote) {
-      img.crossOrigin = 'anonymous';
+    // Only set crossOrigin for remote absolute URLs on a DIFFERENT host (never for same-origin, data:, or blob:)
+    if (typeof source === 'string' && (source.startsWith('http://') || source.startsWith('https://'))) {
+      try {
+        const urlObj = new URL(source);
+        if (urlObj.hostname !== window.location.hostname) {
+          img.crossOrigin = 'anonymous';
+        }
+      } catch (e) {}
     }
 
     const onImgReady = function () {
@@ -505,18 +526,22 @@ const SmartScanner = (function () {
     img.onload = onImgReady;
     img.onerror = function (e) {
       console.error("[SmartScanner] Image load failed:", e);
-      // If failed with crossOrigin, retry without crossOrigin
+      // If failed with crossOrigin, retry with fresh image without crossOrigin
       if (img.crossOrigin) {
-        img.crossOrigin = null;
-        if (typeof source === 'string') {
-          img.src = source;
-          return;
-        }
+        const retryImg = new Image();
+        retryImg.onload = function () {
+          currentImage = retryImg;
+          renderImageToCanvas();
+        };
+        retryImg.onerror = function () {
+          if (window.showToast) showToast("ছবি লোড করতে সমস্যা হয়েছে", "error");
+        };
+        retryImg.src = (typeof source === 'string') ? source : (source.src || '');
+        return;
       }
       if (window.showToast) {
         showToast("ছবি লোড করতে সমস্যা হয়েছে", "error");
       }
-      close();
     };
 
     if (source instanceof File || source instanceof Blob) {
@@ -539,18 +564,22 @@ const SmartScanner = (function () {
   function renderImageToCanvas() {
     if (!currentImage) return;
 
+    const nw = currentImage.naturalWidth || currentImage.width || 800;
+    const nh = currentImage.naturalHeight || currentImage.height || 600;
+    if (nw === 0 || nh === 0) return;
+
     // Determine dimensions considering rotation
     const isRotated = (originalRotation % 180 !== 0);
-    const nw = isRotated ? currentImage.height : currentImage.width;
-    const nh = isRotated ? currentImage.width : currentImage.height;
+    const dw = isRotated ? nh : nw;
+    const dh = isRotated ? nw : nh;
 
     // Scale to max screen bounds
     const maxW = Math.min(window.innerWidth - 32, 900);
     const maxH = Math.min(window.innerHeight * 0.68, 800);
-    const scale = Math.min(maxW / nw, maxH / nh, 1);
+    const scale = Math.min(maxW / dw, maxH / dh, 1);
 
-    canvas.width = Math.round(nw * scale);
-    canvas.height = Math.round(nh * scale);
+    canvas.width = Math.round(dw * scale);
+    canvas.height = Math.round(dh * scale);
 
     ctx.save();
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -783,7 +812,7 @@ const SmartScanner = (function () {
     // Update active tab styles
     document.querySelectorAll('.scanner-filter-btn').forEach(btn => {
       if (btn.dataset.filter === filterName) {
-        btn.className = "scanner-filter-btn px-3 py-1.5 rounded-xl text-xs font-black transition flex items-center gap-1.5 border border-orangeBrand-500 bg-orangeBrand-500/20 text-orangeBrand-300";
+        btn.className = "scanner-filter-btn px-3 py-1.5 rounded-xl text-xs font-black transition flex items-center gap-1.5 border border-orangeBrand-500 bg-orangeBrand-500/20 text-orangeBrand-500";
       } else {
         btn.className = "scanner-filter-btn px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 border border-slate-700 bg-slate-800 text-slate-300";
       }
@@ -1018,6 +1047,8 @@ const SmartScanner = (function () {
     snapPhoto,
     flipCamera,
     fallbackToGallery,
+    setCameraOptions,
+    onNativeCameraResult,
     rotate90,
     resetCornersToFull,
     processPerspectiveCrop,

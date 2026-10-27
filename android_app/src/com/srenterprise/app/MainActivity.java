@@ -23,6 +23,7 @@ public class MainActivity extends Activity implements View.OnClickListener, Runn
     public static final String APP_URL = "https://sr-enterprise.onrender.com/";
     public static final int REQUEST_CAMERA_PERMISSION = 1001;
     public static final int FILE_CHOOSER_REQUEST_CODE = 2001;
+    public static final int NATIVE_CAMERA_REQUEST_CODE = 3001;
 
     public WebView mWebView;
     public ProgressBar mProgressBar;
@@ -111,8 +112,61 @@ public class MainActivity extends Activity implements View.OnClickListener, Runn
         mWebView.setWebChromeClient(new AppWebChromeClient(this));
     }
 
+    public void openCameraFromJs() {
+        runOnUiThread(new CameraLaunchRunner(this));
+    }
+
+    public void launchNativeCamera() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+                requestPermissions(new String[]{Manifest.permission.CAMERA}, REQUEST_CAMERA_PERMISSION);
+                return;
+            }
+        }
+        Intent takePictureIntent = new Intent(android.provider.MediaStore.ACTION_IMAGE_CAPTURE);
+        try {
+            android.content.ContentValues values = new android.content.ContentValues();
+            values.put(android.provider.MediaStore.Images.Media.TITLE, "SRE_DirectCam_" + System.currentTimeMillis());
+            values.put(android.provider.MediaStore.Images.Media.MIME_TYPE, "image/jpeg");
+            mCameraCaptureUri = getContentResolver().insert(
+                android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values
+            );
+            takePictureIntent.putExtra(android.provider.MediaStore.EXTRA_OUTPUT, mCameraCaptureUri);
+            takePictureIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+            startActivityForResult(takePictureIntent, NATIVE_CAMERA_REQUEST_CODE);
+        } catch (Exception e) {
+            Toast.makeText(this, "ক্যামেরা ওপেন করা যায়নি", Toast.LENGTH_SHORT).show();
+        }
+    }
+
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        if (requestCode == NATIVE_CAMERA_REQUEST_CODE) {
+            if (resultCode == RESULT_OK && mCameraCaptureUri != null) {
+                try {
+                    java.io.InputStream is = getContentResolver().openInputStream(mCameraCaptureUri);
+                    android.graphics.Bitmap bmp = android.graphics.BitmapFactory.decodeStream(is);
+                    if (bmp != null) {
+                        java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+                        bmp.compress(android.graphics.Bitmap.CompressFormat.JPEG, 92, baos);
+                        byte[] bytes = baos.toByteArray();
+                        String base64 = android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP);
+                        final String js = "if (window.SmartScanner && window.SmartScanner.onNativeCameraResult) { window.SmartScanner.onNativeCameraResult('data:image/jpeg;base64," + base64 + "'); }";
+                        runOnUiThread(new JsEvalRunner(this, js));
+                    }
+                } catch (Exception e) {
+                    Toast.makeText(this, "ছবি প্রসেস করা যায়নি", Toast.LENGTH_SHORT).show();
+                }
+            } else {
+                if (mCameraCaptureUri != null && "content".equalsIgnoreCase(mCameraCaptureUri.getScheme())) {
+                    try {
+                        getContentResolver().delete(mCameraCaptureUri, null, null);
+                    } catch (Exception ignored) {}
+                }
+            }
+            mCameraCaptureUri = null;
+            return;
+        }
         if (requestCode == FILE_CHOOSER_REQUEST_CODE) {
             if (mFilePathCallback != null) {
                 Uri[] results = null;
