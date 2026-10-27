@@ -65,17 +65,50 @@ def get_firestore_client():
             except Exception as e:
                 print(f"[FIREBASE] Error reading FIREBASE_CREDENTIALS_PATH: {e}")
 
-    # Option 4: Known file names in project root
+    # Option 4: Render Secret Files directory (/etc/secrets)
     if not cred:
-        for fname in ["firebase_credentials.json", "firebase-credentials.json", "serviceAccountKey.json"]:
-            p = settings.BASE_DIR / fname
-            if p.is_file():
-                try:
-                    cred = credentials.Certificate(str(p))
-                    print(f"[FIREBASE] Loaded credentials from local file {fname}")
-                    break
-                except Exception as e:
-                    print(f"[FIREBASE] Error loading local file {fname}: {e}")
+        render_secrets_dir = Path("/etc/secrets")
+        if render_secrets_dir.is_dir():
+            for f in render_secrets_dir.iterdir():
+                if f.is_file() and f.suffix.lower() == ".json":
+                    try:
+                        with open(f, "r", encoding="utf-8") as jf:
+                            data = json.load(jf)
+                            if data.get("type") == "service_account" or "project_id" in data:
+                                cred = credentials.Certificate(str(f))
+                                print(f"[FIREBASE] Successfully loaded credentials from Render Secret File: {f}")
+                                break
+                    except Exception as e:
+                        print(f"[FIREBASE] Error inspecting Render secret file {f}: {e}")
+
+    # Option 5: Known file names in project root or current directory
+    if not cred:
+        search_dirs = [settings.BASE_DIR, Path("."), Path("./data")]
+        search_names = [
+            "firebase_credentials.json",
+            "firebase-credentials.json",
+            "serviceAccountKey.json",
+            "service_account.json",
+            "firebase.json",
+            "credentials.json"
+        ]
+        for sdir in search_dirs:
+            if not sdir.is_dir():
+                continue
+            for fname in search_names:
+                p = sdir / fname
+                if p.is_file():
+                    try:
+                        with open(p, "r", encoding="utf-8") as jf:
+                            data = json.load(jf)
+                            if data.get("type") == "service_account" or "project_id" in data:
+                                cred = credentials.Certificate(str(p))
+                                print(f"[FIREBASE] Successfully loaded credentials from local file: {p}")
+                                break
+                    except Exception as e:
+                        print(f"[FIREBASE] Error loading file {p}: {e}")
+            if cred:
+                break
 
     if cred:
         try:
