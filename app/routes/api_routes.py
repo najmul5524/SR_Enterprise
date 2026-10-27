@@ -58,10 +58,10 @@ async def search_inventory(q: str = Query("")):
     if term:
         results = [
             p for p in products
-            if term in p.get("name_bn", "").lower()
-            or term in p.get("name", "").lower()
-            or term in p.get("sku", "").lower()
-            or term in p.get("category", "").lower()
+            if term in (p.get("name_bn") or "").lower()
+            or term in (p.get("name") or "").lower()
+            or term in (p.get("sku") or "").lower()
+            or term in (p.get("category") or "").lower()
         ]
     else:
         results = products[:20]
@@ -74,10 +74,10 @@ async def search_farmers(q: str = Query("")):
     if term:
         results = [
             f for f in farmers
-            if term in f.get("name", "").lower()
-            or term in f.get("phone", "").lower()
-            or term in f.get("shed_name", "").lower()
-            or term in f.get("address", "").lower()
+            if term in (f.get("name") or "").lower()
+            or term in (f.get("phone") or "").lower()
+            or term in (f.get("shed_name") or "").lower()
+            or term in (f.get("address") or "").lower()
         ]
     else:
         results = farmers[:20]

@@ -274,31 +274,95 @@ const SmartScanner = (function () {
       return;
     }
 
-    // 2. If navigator.mediaDevices is supported (e.g. mobile Chrome / Safari)
+    // 2. Check secure context in Web browsers
+    if (!window.isSecureContext && window.location.protocol === 'http:' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+      if (window.showToast) {
+        showToast("ব্রাউজারে ক্যামেরা ব্যবহারের জন্য HTTPS অথবা localhost প্রয়োজন।", "warning");
+      }
+      fallbackToNativeOrInput();
+      return;
+    }
+
+    // 3. If navigator.mediaDevices is supported (Desktop Web, Laptop, Mobile Chrome/Safari)
     if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
       cameraModal = document.getElementById('smartScannerCameraModal');
       videoEl = document.getElementById('smartScannerVideo');
       cameraModal.classList.remove('hidden');
 
-      try {
-        stopCameraStream();
+      let stream = null;
+      let lastErr = null;
 
-        const constraints = {
+      stopCameraStream();
+
+      // Attempt A: Preferred facingMode (ideal on mobile phones with rear camera)
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: { ideal: currentFacingMode } },
           audio: false
-        };
+        });
+      } catch (errA) {
+        lastErr = errA;
+      }
 
-        cameraStream = await navigator.mediaDevices.getUserMedia(constraints);
+      // Attempt B: Basic video constraint (perfect for laptop webcams, desktop USB cameras)
+      if (!stream) {
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: true,
+            audio: false
+          });
+        } catch (errB) {
+          lastErr = errB;
+        }
+      }
+
+      // Attempt C: Enumerate devices and select first video device
+      if (!stream && navigator.mediaDevices.enumerateDevices) {
+        try {
+          const devices = await navigator.mediaDevices.enumerateDevices();
+          const videoDevs = devices.filter(d => d.kind === 'videoinput');
+          if (videoDevs.length > 0) {
+            stream = await navigator.mediaDevices.getUserMedia({
+              video: { deviceId: { exact: videoDevs[0].deviceId } },
+              audio: false
+            });
+          }
+        } catch (errC) {
+          lastErr = errC;
+        }
+      }
+
+      if (stream) {
+        cameraStream = stream;
         videoEl.srcObject = cameraStream;
-        await videoEl.play();
+        videoEl.muted = true;
+        videoEl.setAttribute('playsinline', '');
+        try {
+          await videoEl.play();
+          return;
+        } catch (playErr) {
+          console.warn("[SmartScanner] video.play() failed:", playErr);
+        }
+      }
+
+      // If we reach here, camera stream failed
+      console.warn("[SmartScanner] getUserMedia failed:", lastErr);
+      closeCamera();
+
+      if (lastErr && (lastErr.name === 'NotAllowedError' || lastErr.name === 'PermissionDeniedError')) {
+        if (window.showToast) {
+          showToast("ব্রাউজারে ক্যামেরা ব্যবহারের অনুমতি (Permission) দিন।", "error");
+        }
         return;
-      } catch (err) {
-        console.warn("[SmartScanner] getUserMedia failed, falling back:", err);
-        closeCamera();
+      }
+      if (lastErr && lastErr.name === 'NotFoundError') {
+        if (window.showToast) {
+          showToast("কোনো ক্যামেরা খুঁজে পাওয়া যায়নি। ফাইল বা গ্যালারি থেকে ছবি দিন।", "info");
+        }
       }
     }
 
-    // 3. Fallback to file input
+    // 4. Fallback to native or file input
     fallbackToNativeOrInput();
   }
 
@@ -372,7 +436,9 @@ const SmartScanner = (function () {
   }
 
   function fallbackToNativeOrInput() {
-    if (cameraOptions && cameraOptions.cameraInputId) {
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || ('ontouchstart' in window && navigator.maxTouchPoints > 1);
+
+    if (isMobile && cameraOptions && cameraOptions.cameraInputId) {
       const cEl = (typeof cameraOptions.cameraInputId === 'string')
         ? document.getElementById(cameraOptions.cameraInputId)
         : cameraOptions.cameraInputId;

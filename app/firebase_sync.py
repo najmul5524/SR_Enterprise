@@ -287,13 +287,127 @@ def restore_all_from_firebase(db_manager) -> Dict[str, Any]:
                     if not row_data.get(primary_key):
                         row_data[primary_key] = doc.id
 
+                    # Robust defaults to satisfy SQLite NOT NULL constraints
+                    if table == "invoices":
+                        if not row_data.get("invoice_no") or not str(row_data.get("invoice_no")).strip():
+                            alt = data.get("invoice_no") or data.get("invoice_number") or data.get("inv_no") or data.get("memo_no") or data.get("memo_number")
+                            if alt and str(alt).strip():
+                                row_data["invoice_no"] = str(alt).strip()
+                            else:
+                                clean_id = str(doc.id).strip()
+                                row_data["invoice_no"] = clean_id if clean_id.startswith("SR-") else f"SR-INV-{clean_id[:8].upper()}"
+                        if not row_data.get("farmer_id"):
+                            row_data["farmer_id"] = str(data.get("farmer_id") or "UNKNOWN")
+                        if not row_data.get("farmer_name"):
+                            row_data["farmer_name"] = str(data.get("farmer_name") or "সাধারণ ক্রেতা")
+                        if not row_data.get("items_json"):
+                            items_val = data.get("items") or data.get("items_json") or []
+                            row_data["items_json"] = json.dumps(items_val, ensure_ascii=False) if isinstance(items_val, (list, dict)) else str(items_val)
+                        if not row_data.get("invoice_date"):
+                            row_data["invoice_date"] = str(data.get("invoice_date") or (data.get("created_at") or "")[:10] or datetime.now().strftime("%Y-%m-%d"))
+
+                    elif table == "payments":
+                        if not row_data.get("receipt_no") or not str(row_data.get("receipt_no")).strip():
+                            alt = data.get("receipt_no") or data.get("receipt_number") or data.get("voucher_no")
+                            if alt and str(alt).strip():
+                                row_data["receipt_no"] = str(alt).strip()
+                            else:
+                                clean_id = str(doc.id).strip()
+                                row_data["receipt_no"] = clean_id if clean_id.startswith("SR-") else f"SR-REC-{clean_id[:8].upper()}"
+                        if not row_data.get("farmer_id"):
+                            row_data["farmer_id"] = str(data.get("farmer_id") or "UNKNOWN")
+                        if not row_data.get("farmer_name"):
+                            row_data["farmer_name"] = str(data.get("farmer_name") or "সাধারণ ক্রেতা")
+                        if not row_data.get("payment_date"):
+                            row_data["payment_date"] = str(data.get("payment_date") or (data.get("created_at") or "")[:10] or datetime.now().strftime("%Y-%m-%d"))
+
+                    elif table == "batches":
+                        if not row_data.get("batch_no") or not str(row_data.get("batch_no")).strip():
+                            row_data["batch_no"] = str(data.get("batch_no") or f"BATCH-{doc.id[:6].upper()}")
+                        if not row_data.get("farmer_id"):
+                            row_data["farmer_id"] = str(data.get("farmer_id") or "UNKNOWN")
+                        if not row_data.get("farmer_name"):
+                            row_data["farmer_name"] = str(data.get("farmer_name") or "খামারি")
+                        if not row_data.get("bird_type"):
+                            row_data["bird_type"] = str(data.get("bird_type") or "ব্রয়লার")
+                        if not row_data.get("start_date"):
+                            row_data["start_date"] = str(data.get("start_date") or datetime.now().strftime("%Y-%m-%d"))
+
+                    elif table == "batch_logs":
+                        if not row_data.get("batch_id"):
+                            row_data["batch_id"] = str(data.get("batch_id") or "UNKNOWN")
+                        if not row_data.get("farmer_id"):
+                            row_data["farmer_id"] = str(data.get("farmer_id") or "UNKNOWN")
+                        if not row_data.get("log_date"):
+                            row_data["log_date"] = str(data.get("log_date") or datetime.now().strftime("%Y-%m-%d"))
+                        if not row_data.get("log_type"):
+                            row_data["log_type"] = str(data.get("log_type") or "other")
+                        if not row_data.get("item_name"):
+                            row_data["item_name"] = str(data.get("item_name") or "লগ এন্ট্রি")
+
+                    elif table == "products":
+                        if not row_data.get("name") or not str(row_data.get("name")).strip():
+                            row_data["name"] = str(data.get("name") or data.get("name_bn") or "পণ্য")
+                        if not row_data.get("category"):
+                            row_data["category"] = str(data.get("category") or "পোল্ট্রি ফিড")
+                        if not row_data.get("unit"):
+                            row_data["unit"] = str(data.get("unit") or "বস্তা")
+
+                    elif table == "farmers":
+                        if not row_data.get("name") or not str(row_data.get("name")).strip():
+                            row_data["name"] = str(data.get("name") or "খামারি")
+                        if not row_data.get("phone"):
+                            row_data["phone"] = str(data.get("phone") or "01700000000")
+                        if not row_data.get("pin"):
+                            row_data["pin"] = str(data.get("pin") or "1234")
+
+                    elif table == "expenses":
+                        if not row_data.get("category"):
+                            row_data["category"] = str(data.get("category") or "অন্যান্য")
+                        if not row_data.get("expense_date"):
+                            row_data["expense_date"] = str(data.get("expense_date") or datetime.now().strftime("%Y-%m-%d"))
+
+                    elif table == "feed_requests":
+                        if not row_data.get("farmer_id"):
+                            row_data["farmer_id"] = str(data.get("farmer_id") or "UNKNOWN")
+                        if not row_data.get("farmer_name"):
+                            row_data["farmer_name"] = str(data.get("farmer_name") or "খামারি")
+                        if not row_data.get("items_requested"):
+                            row_data["items_requested"] = str(data.get("items_requested") or data.get("product_name") or "ফিড অনুরোধ")
+                        if not row_data.get("request_date"):
+                            row_data["request_date"] = str(data.get("request_date") or datetime.now().strftime("%Y-%m-%d"))
+
+                    elif table == "notifications":
+                        if not row_data.get("recipient_role"):
+                            row_data["recipient_role"] = str(data.get("recipient_role") or "admin")
+                        if not row_data.get("title"):
+                            row_data["title"] = str(data.get("title") or "বিজ্ঞপ্তি")
+                        if not row_data.get("message"):
+                            row_data["message"] = str(data.get("message") or "")
+                        if not row_data.get("type"):
+                            row_data["type"] = str(data.get("type") or "info")
+
+                    # Coerce null numeric columns to 0
+                    numeric_cols = {
+                        "subtotal", "discount", "net_total", "paid_amount", "due_amount",
+                        "amount", "buy_price", "sell_price", "stock", "quantity",
+                        "alert_qty", "chick_count", "current_count", "mortality_count",
+                        "feed_used_kg", "avg_body_weight_g", "fcr"
+                    }
+                    for c in col_names:
+                        if c in numeric_cols and row_data.get(c) is None:
+                            row_data[c] = 0
+
                     placeholders = ", ".join(["?"] * len(col_names))
                     columns_str = ", ".join(col_names)
                     values = [row_data[c] for c in col_names]
 
                     sql = f"INSERT OR REPLACE INTO {table} ({columns_str}) VALUES ({placeholders})"
-                    cur.execute(sql, values)
-                    restored_in_table += 1
+                    try:
+                        cur.execute(sql, values)
+                        restored_in_table += 1
+                    except Exception as row_err:
+                        print(f"[FIREBASE RESTORE WARNING] Skipped doc [{table}/{doc.id}] due to error: {row_err}")
 
                 summary[table] = restored_in_table
                 total_restored += restored_in_table

@@ -221,8 +221,8 @@
           </button>
         </div>
 
-        <input type="file" id="editInvoiceReceiptInput" name="receipt_file" accept="image/*" class="hidden" onchange="handleEditInvoiceReceiptChange(this)">
-        <input type="file" id="editInvoiceCameraInput" accept="image/*;capture=camera" capture="environment" class="hidden" onchange="handleEditInvoiceReceiptChange(this)">
+        <input type="file" id="editInvoiceReceiptInput" name="receipt_file" accept="image/*" class="hidden">
+        <input type="file" id="editInvoiceCameraInput" accept="image/*;capture=camera" capture="environment" class="hidden">
 
         <div class="grid grid-cols-2 gap-2 mb-2">
           <button type="button" onclick="openEditInvoiceCamera()" 
@@ -247,10 +247,7 @@
             </div>
           </div>
           <div class="flex items-center gap-1.5 flex-shrink-0">
-            <button type="button" onclick="recropEditInvoiceReceipt()" class="px-2.5 py-1.5 text-xs font-bold text-orangeBrand-700 bg-white hover:bg-orangeBrand-100 border border-orangeBrand-200 rounded-xl transition shadow-xs flex items-center gap-1">
-              <span>✂️</span> <span>ক্রপ</span>
-            </button>
-            <button type="button" onclick="clearEditInvoiceReceipt()" class="p-1.5 text-slate-400 hover:text-crimson-600 rounded-lg transition" title="মুছে ফেলুন">
+            <button type="button" onclick="clearEditInvoiceReceipt()" class="p-1.5 text-slate-400 hover:text-crimson-600 rounded-lg transition font-black text-xs" title="মুছে ফেলুন">
               ✕
             </button>
           </div>
@@ -306,61 +303,62 @@
     }
   }
 
+  function initEditInvoiceScanner() {
+    const fileInput = document.getElementById('editInvoiceReceiptInput');
+    const camInput = document.getElementById('editInvoiceCameraInput');
+
+    const handlePick = (input) => {
+      if (input._ignoreChangeUntil && Date.now() < input._ignoreChangeUntil) {
+        return;
+      }
+      if (input._scannerApplied) {
+        input._scannerApplied = false;
+        return;
+      }
+      if (input.files && input.files[0]) {
+        lastEditInvoicePhotoSrc = input.files[0];
+        if (window.SmartScanner) {
+          SmartScanner.open(input.files[0], {
+            targetInput: fileInput,
+            previewElement: 'editInvoicePreviewImg',
+            onComplete: (procFile, url) => {
+              lastEditInvoicePhotoSrc = url;
+              const nameEl = document.getElementById('editInvoicePreviewName');
+              if (nameEl) nameEl.textContent = procFile.name || 'স্ক্যানকৃত মেমো';
+              document.getElementById('editInvoicePreviewCard').classList.remove('hidden');
+            }
+          });
+        }
+      }
+    };
+
+    if (fileInput) fileInput.addEventListener('change', () => handlePick(fileInput));
+    if (camInput) camInput.addEventListener('change', () => handlePick(camInput));
+  }
+
   function handleEditInvoiceReceiptChange(inputEl) {
-    if (inputEl._ignoreChangeUntil && Date.now() < inputEl._ignoreChangeUntil) {
-      return;
-    }
-    if (inputEl._scannerApplied) {
-      inputEl._scannerApplied = false;
-      return;
-    }
-    if (inputEl.files && inputEl.files[0]) {
-      const file = inputEl.files[0];
-      lastEditInvoicePhotoSrc = file;
+    if (inputEl && inputEl.files && inputEl.files[0]) {
+      const fileInput = document.getElementById('editInvoiceReceiptInput');
       if (window.SmartScanner) {
-        SmartScanner.open(file, {
-          targetInput: document.getElementById('editInvoiceReceiptInput'),
+        SmartScanner.open(inputEl.files[0], {
+          targetInput: fileInput,
           previewElement: 'editInvoicePreviewImg',
           onComplete: (procFile, url) => {
             lastEditInvoicePhotoSrc = url;
-            document.getElementById('editInvoicePreviewName').textContent = procFile.name || 'স্ক্যানকৃত মেমো';
+            const nameEl = document.getElementById('editInvoicePreviewName');
+            if (nameEl) nameEl.textContent = procFile.name || 'স্ক্যানকৃত মেমো';
             document.getElementById('editInvoicePreviewCard').classList.remove('hidden');
           }
         });
-      } else {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-          document.getElementById('editInvoicePreviewImg').src = e.target.result;
-          document.getElementById('editInvoicePreviewCard').classList.remove('hidden');
-        };
-        reader.readAsDataURL(file);
       }
     }
   }
 
-  function recropEditInvoiceReceipt() {
-    const previewImg = document.getElementById('editInvoicePreviewImg');
-    const input = document.getElementById('editInvoiceReceiptInput');
-    let src = lastEditInvoicePhotoSrc;
-    if (!src && input && input.files && input.files[0]) {
-      src = input.files[0];
-    }
-    if (!src && previewImg) {
-      const raw = previewImg.getAttribute('src');
-      if (raw && raw.trim() !== '' && raw !== window.location.href) {
-        const full = previewImg.src;
-        if (full && (full.startsWith('data:image') || full.startsWith('blob:') || full.includes('/static/uploads/') || full.includes('cloudinary') || /\.(jpe?g|png|webp)/i.test(full))) {
-          src = full;
-        }
-      }
-    }
-    if (!src) {
-      if (window.showToast) showToast("পুনরায় ক্রপ করার মতো কোনো মেমোর ছবি নেই", "info");
-      return;
-    }
-    if (src && window.SmartScanner) {
-      SmartScanner.open(src, {
-        targetInput: input,
+  function cropExistingMemoImg() {
+    const curImg = document.getElementById('currentMemoImg');
+    if (curImg && curImg.src && window.SmartScanner) {
+      SmartScanner.open(curImg.src, {
+        targetInput: document.getElementById('editInvoiceReceiptInput'),
         previewElement: 'editInvoicePreviewImg',
         onComplete: (procFile, url) => {
           lastEditInvoicePhotoSrc = url;
@@ -369,10 +367,6 @@
       });
     }
   }
-
-  function cropExistingMemoImg() {
-    const curImg = document.getElementById('currentMemoImg');
-    if (curImg && curImg.src && window.SmartScanner) {
       SmartScanner.open(curImg.src, {
         targetInput: document.getElementById('editInvoiceReceiptInput'),
         previewElement: 'editInvoicePreviewImg',
@@ -419,6 +413,8 @@
     clearEditInvoiceReceipt();
     document.getElementById('editInvoiceModal').classList.add('hidden');
   }
+
+  document.addEventListener('DOMContentLoaded', initEditInvoiceScanner);
 </script>
 
 <!-- MEMO IMAGE LIGHTBOX MODAL -->
