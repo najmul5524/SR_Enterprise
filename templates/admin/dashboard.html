@@ -224,6 +224,10 @@
           <div class="text-right">
             <div class="font-black text-slate-900 text-sm">৳ {{ "{:,.0f}".format(inv.net_total) }}</div>
             <span class="text-[11px] font-black text-crimson-600 hover:underline">মেমো দেখুন ➔</span>
+            <div class="mt-1.5 flex items-center justify-end gap-1.5" onclick="event.stopPropagation();">
+              <a href="/admin/invoices?edit={{ inv.id }}" onclick="event.stopPropagation();" class="px-2 py-1 bg-orangeBrand-50 hover:bg-orangeBrand-100 text-orangeBrand-800 rounded-lg font-black text-[11px] transition" title="সম্পাদনা">✏️ এডিট</a>
+              <a href="/admin/invoice/delete/{{ inv.id }}?redirect_to=/admin" onclick="event.stopPropagation(); return confirm('চালানটি মুছে ফেললে স্টক ফেরত যাবে এবং খামারি ও শেডের বাকি স্বয়ংক্রিয়ভাবে ঠিক হবে। নিশ্চিত?')" class="px-2 py-1 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg font-black text-[11px] transition" title="মুছে ফেলুন">🗑️ ডিলিট</a>
+            </div>
           </div>
         </div>
         {% endfor %}
@@ -423,6 +427,8 @@
                   <a href="/admin/invoice/{{ inv.id }}/print" class="px-2.5 py-1 bg-slate-900 hover:bg-black text-white rounded-lg font-bold text-[11px] transition">
                     🖨️ মেমো দেখুন
                   </a>
+                  <a href="/admin/invoices?edit={{ inv.id }}" class="ml-1 px-2 py-1 bg-orangeBrand-50 hover:bg-orangeBrand-100 text-orangeBrand-800 rounded-lg font-black text-[11px] transition" title="সম্পাদনা">✏️</a>
+                  <a href="/admin/invoice/delete/{{ inv.id }}?redirect_to=/admin" onclick="return confirm('চালানটি মুছে ফেললে স্টক ফেরত যাবে এবং খামারি ও শেডের বাকি স্বয়ংক্রিয়ভাবে ঠিক হবে। নিশ্চিত?')" class="ml-1 px-2 py-1 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg font-black text-[11px] transition" title="মুছে ফেলুন">🗑️</a>
                 </td>
               </tr>
               {% else %}

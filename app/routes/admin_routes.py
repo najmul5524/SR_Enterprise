@@ -657,6 +657,7 @@ async def update_invoice_route(
     paid_amount: float = Form(0),
     note: Optional[str] = Form(""),
     redirect_to: Optional[str] = Form(None),
+    items_json: Optional[str] = Form(None),
     receipt_file: Optional[UploadFile] = File(None)
 ):
     inv = db.get_invoice_by_id(invoice_id)
@@ -671,6 +672,25 @@ async def update_invoice_route(
             "paid_amount": paid_amount,
             "note": note or ""
         }
+        # Edited line items -> full stock / shed / farmer-due re-reconcile
+        if items_json:
+            try:
+                parsed = json.loads(items_json)
+                if isinstance(parsed, list) and parsed:
+                    clean = []
+                    for it in parsed:
+                        qty = float(it.get("qty", 0) or 0)
+                        price = float(it.get("price", 0) or 0)
+                        if qty <= 0:
+                            continue
+                        it["qty"] = qty
+                        it["price"] = price
+                        it["total"] = qty * price
+                        clean.append(it)
+                    if clean:
+                        update_data["items"] = clean
+            except Exception:
+                pass
         if receipt_file and receipt_file.filename:
             content = await receipt_file.read()
             if content:

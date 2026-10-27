@@ -1476,7 +1476,139 @@ class DatabaseManager:
                         self.sync_document("farmers", farmer_id, dict(f_row))
         return True
 
+    # ---------- Invoice edit/delete helpers (full accounting reconcile) ----------
+    NON_FARMER_IDS = ("WALK_IN", "RETAIL", "COUNTER_SALE", "GENERAL_CUSTOMER", "none", "None", "")
+
+    def _revert_invoice_effects(self, cur, invoice: Dict[str, Any]) -> Dict[str, Any]:
+        """Undo stock deduction and shed (batch) cost postings made by an invoice.
+        Returns ids touched so callers can sync them to Firebase."""
+        touched = {"product_ids": set(), "deleted_log_ids": []}
+        batch_id = invoice.get("batch_id")
+        invoice_no = invoice.get("invoice_no")
+        now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        try:
+            items = json.loads(invoice.get("items_json") or "[]")
+        except Exception:
+            items = []
+        for it in items:
+            prod_id = it.get("product_id") or it.get("id")
+            qty = float(it.get("qty", 0) or 0)
+            if prod_id and qty > 0:
+                cur.execute("UPDATE products SET stock = stock + ?, updated_at = ? WHERE id = ? OR sku = ?",
+                            (qty, now_str, prod_id, prod_id))
+                cur.execute("SELECT id FROM products WHERE id = ? OR sku = ?", (prod_id, prod_id))
+                prow = cur.fetchone()
+                if prow:
+                    touched["product_ids"].add(prow[0])
+
+        if batch_id and invoice_no:
+            cur.execute("SELECT * FROM batch_logs WHERE batch_id = ? AND note LIKE ?", (batch_id, f"%{invoice_no}%"))
+            for rlog in cur.fetchall():
+                log_item = dict(rlog)
+                lamount = float(log_item.get("total_amount", 0) or 0)
+                lqty = float(log_item.get("qty", 0) or 0)
+                ltype = log_item.get("log_type")
+                if ltype == "feed":
+                    cur.execute("UPDATE batches SET total_feed_bags = total_feed_bags - ?, total_feed_cost = total_feed_cost - ?, total_investment = total_investment - ? WHERE id = ?",
+                                (lqty, lamount, lamount, batch_id))
+                elif ltype == "medicine":
+                    cur.execute("UPDATE batches SET total_med_cost = total_med_cost - ?, total_investment = total_investment - ? WHERE id = ?",
+                                (lamount, lamount, batch_id))
+                else:
+                    cur.execute("UPDATE batches SET total_other_cost = total_other_cost - ?, total_investment = total_investment - ? WHERE id = ?",
+                                (lamount, lamount, batch_id))
+                touched["deleted_log_ids"].append(log_item.get("id"))
+            cur.execute("DELETE FROM batch_logs WHERE batch_id = ? AND note LIKE ?", (batch_id, f"%{invoice_no}%"))
+        return touched
+
+    def _apply_invoice_effects(self, cur, invoice_no: str, farmer_id: str, batch_id: Optional[str],
+                               items: List[Dict[str, Any]], invoice_date: str) -> set:
+        """Deduct stock and post shed costs for the given items. Returns touched product ids."""
+        now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        product_ids = set()
+        for it in items:
+            prod_id = it.get("product_id") or it.get("id")
+            qty = float(it.get("qty", 1) or 0)
+            unit_price = float(it.get("price", 0) or 0)
+            total_line = float(it.get("total", qty * unit_price))
+            name = it.get("name") or it.get("name_bn") or "মালামাল"
+            category = it.get("category", "")
+
+            if prod_id:
+                cur.execute("UPDATE products SET stock = MAX(0.0, stock - ?), updated_at = ? WHERE id = ? OR sku = ?",
+                            (qty, now_str, prod_id, prod_id))
+                cur.execute("SELECT id, category FROM products WHERE id = ? OR sku = ?", (prod_id, prod_id))
+                prow = cur.fetchone()
+                if prow:
+                    product_ids.add(prow[0])
+                    if not category and prow[1]:
+                        category = prow[1]
+
+            if batch_id:
+                cat_lower = (category or "").lower()
+                if any(w in cat_lower for w in ["খাদ্য", "feed", "ফিড"]):
+                    log_type = "feed"
+                    cur.execute("UPDATE batches SET total_feed_bags = total_feed_bags + ?, total_feed_cost = total_feed_cost + ?, total_investment = total_investment + ? WHERE id = ?",
+                                (qty, total_line, total_line, batch_id))
+                elif any(w in cat_lower for w in ["ঔষধ", "ভ্যাকসিন", "medicine", "med", "টনিক", "স্যালাইন"]):
+                    log_type = "medicine"
+                    cur.execute("UPDATE batches SET total_med_cost = total_med_cost + ?, total_investment = total_investment + ? WHERE id = ?",
+                                (total_line, total_line, batch_id))
+                else:
+                    log_type = "other"
+                    cur.execute("UPDATE batches SET total_other_cost = total_other_cost + ?, total_investment = total_investment + ? WHERE id = ?",
+                                (total_line, total_line, batch_id))
+
+                cur.execute("""
+                INSERT INTO batch_logs (id, batch_id, farmer_id, log_type, log_date, item_id, item_name, qty, unit, unit_price, total_amount, note, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    f"LOG-{uuid.uuid4().hex[:8].upper()}", batch_id, farmer_id, log_type,
+                    invoice_date, prod_id, name, qty, it.get("unit", "বস্তা"), unit_price, total_line,
+                    f"চালান #{invoice_no}", now_str
+                ))
+        return product_ids
+
+    def _sync_invoice_related(self, invoice_id: Optional[str], farmer_id: Optional[str], batch_id: Optional[str],
+                              product_ids, deleted_log_ids=None, deleted_invoice: bool = False):
+        """Push invoice + every dependent record (farmer due, shed, shed logs, stock) to Firebase."""
+        if not self.is_firebase_active():
+            return
+        if deleted_invoice and invoice_id:
+            self.delete_document("invoices", invoice_id)
+        for lid in (deleted_log_ids or []):
+            if lid:
+                self.delete_document("batch_logs", lid)
+        with self._get_connection() as conn:
+            cur = conn.cursor()
+            if invoice_id and not deleted_invoice:
+                cur.execute("SELECT * FROM invoices WHERE id = ?", (invoice_id,))
+                r = cur.fetchone()
+                if r:
+                    self.sync_document("invoices", invoice_id, dict(r))
+            if farmer_id and farmer_id not in self.NON_FARMER_IDS:
+                cur.execute("SELECT * FROM farmers WHERE id = ?", (farmer_id,))
+                r = cur.fetchone()
+                if r:
+                    self.sync_document("farmers", farmer_id, dict(r))
+            if batch_id:
+                cur.execute("SELECT * FROM batches WHERE id = ?", (batch_id,))
+                r = cur.fetchone()
+                if r:
+                    self.sync_document("batches", batch_id, dict(r))
+                cur.execute("SELECT * FROM batch_logs WHERE batch_id = ?", (batch_id,))
+                for bl in cur.fetchall():
+                    self.sync_document("batch_logs", bl["id"], dict(bl))
+            for pid in (product_ids or []):
+                cur.execute("SELECT * FROM products WHERE id = ?", (pid,))
+                r = cur.fetchone()
+                if r:
+                    self.sync_document("products", pid, dict(r))
+
     def update_invoice(self, invoice_id: str, data: Dict[str, Any]) -> bool:
+        """Edit an invoice. When `items` is supplied, stock, shed costs, farmer due
+        and shed logs are fully re-reconciled; otherwise only header fields change."""
         with self._get_connection() as conn:
             cur = conn.cursor()
             cur.execute("SELECT * FROM invoices WHERE id = ?", (invoice_id,))
@@ -1485,56 +1617,78 @@ class DatabaseManager:
                 return False
             old_inv = dict(row)
             farmer_id = old_inv.get("farmer_id")
-            old_due = float(old_inv.get("due_amount", 0))
+            batch_id = old_inv.get("batch_id")
+            old_due = float(old_inv.get("due_amount", 0) or 0)
+            invoice_no = old_inv.get("invoice_no")
 
-            subtotal = float(data.get("subtotal", old_inv.get("subtotal", 0)))
+            items_changed = data.get("items") is not None
+            new_items = data.get("items") if items_changed else None
+            touched = {"product_ids": set(), "deleted_log_ids": []}
+
+            if items_changed:
+                touched = self._revert_invoice_effects(cur, old_inv)
+                subtotal = sum(
+                    float(it.get("total", float(it.get("qty", 0) or 0) * float(it.get("price", 0) or 0)))
+                    for it in new_items
+                )
+            else:
+                subtotal = float(data.get("subtotal", old_inv.get("subtotal", 0)))
+
             discount = float(data.get("discount", old_inv.get("discount", 0)))
-            net_total = float(data.get("net_total", subtotal - discount))
-            paid_amount = float(data.get("paid_amount", old_inv.get("paid_amount", 0)))
+            net_total = max(0.0, subtotal - discount)
+            if "paid_amount" in data:
+                paid_amount = float(data.get("paid_amount", 0))
+            else:
+                paid_amount = float(old_inv.get("paid_amount", 0) or 0)
+
+            payment_type = data.get("payment_type")
+            if payment_type == "cash":
+                paid_amount = net_total
+            elif payment_type == "credit":
+                paid_amount = 0.0
+            elif payment_type == "partial":
+                paid_amount = min(net_total, max(0.0, paid_amount))
+            else:
+                paid_amount = min(net_total, max(0.0, paid_amount))
+                if paid_amount >= net_total and net_total > 0:
+                    payment_type = "cash"
+                elif paid_amount <= 0:
+                    payment_type = "credit"
+                else:
+                    payment_type = "partial"
+
             new_due = max(0.0, net_total - paid_amount)
             delta_due = new_due - old_due
 
+            invoice_date = data.get("invoice_date", old_inv.get("invoice_date"))
             receipt_image_url = data.get("receipt_image_url", old_inv.get("receipt_image_url", ""))
+            items_json = json.dumps(new_items, ensure_ascii=False) if items_changed else old_inv.get("items_json")
+
             cur.execute("""
             UPDATE invoices SET
-                invoice_date = ?,
-                payment_type = ?,
-                discount = ?,
-                net_total = ?,
-                paid_amount = ?,
-                due_amount = ?,
-                note = ?,
-                receipt_image_url = ?
+                invoice_date = ?, payment_type = ?, subtotal = ?, discount = ?, net_total = ?,
+                paid_amount = ?, due_amount = ?, note = ?, receipt_image_url = ?, items_json = ?
             WHERE id = ?
             """, (
-                data.get("invoice_date", old_inv.get("invoice_date")),
-                data.get("payment_type", old_inv.get("payment_type", "credit")),
-                discount, net_total, paid_amount, new_due,
-                data.get("note", old_inv.get("note", "")),
-                receipt_image_url,
-                invoice_id
+                invoice_date, payment_type, subtotal, discount, net_total, paid_amount, new_due,
+                data.get("note", old_inv.get("note", "")), receipt_image_url, items_json, invoice_id
             ))
 
-            if delta_due != 0 and farmer_id:
-                cur.execute("UPDATE farmers SET total_due = total_due + ? WHERE id = ?", (delta_due, farmer_id))
+            if items_changed:
+                touched["product_ids"] |= self._apply_invoice_effects(
+                    cur, invoice_no, farmer_id, batch_id, new_items, invoice_date
+                )
+
+            if delta_due != 0 and farmer_id and farmer_id not in self.NON_FARMER_IDS:
+                cur.execute("UPDATE farmers SET total_due = MAX(0.0, total_due + ?) WHERE id = ?", (delta_due, farmer_id))
 
             conn.commit()
 
-        if self.is_firebase_active():
-            with self._get_connection() as conn:
-                cur = conn.cursor()
-                cur.execute("SELECT * FROM invoices WHERE id = ?", (invoice_id,))
-                inv_row = cur.fetchone()
-                if inv_row:
-                    self.sync_document("invoices", invoice_id, dict(inv_row))
-                if farmer_id:
-                    cur.execute("SELECT * FROM farmers WHERE id = ?", (farmer_id,))
-                    f_row = cur.fetchone()
-                    if f_row:
-                        self.sync_document("farmers", farmer_id, dict(f_row))
+        self._sync_invoice_related(invoice_id, farmer_id, batch_id, touched["product_ids"], touched["deleted_log_ids"])
         return True
 
     def delete_invoice(self, invoice_id: str) -> bool:
+        """Delete an invoice and automatically restore stock, reverse shed costs/logs and reduce farmer due."""
         with self._get_connection() as conn:
             cur = conn.cursor()
             cur.execute("SELECT * FROM invoices WHERE id = ?", (invoice_id,))
@@ -1543,59 +1697,20 @@ class DatabaseManager:
                 return False
             invoice = dict(row)
             farmer_id = invoice.get("farmer_id")
-            due_amount = float(invoice.get("due_amount", 0))
+            due_amount = float(invoice.get("due_amount", 0) or 0)
             batch_id = invoice.get("batch_id")
-            invoice_no = invoice.get("invoice_no")
 
-            # Restore product inventory stock
-            try:
-                items = json.loads(invoice.get("items_json", "[]"))
-                now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                for it in items:
-                    prod_id = it.get("product_id") or it.get("id")
-                    qty = float(it.get("qty", 0))
-                    if prod_id and qty > 0:
-                        cur.execute("UPDATE products SET stock = stock + ?, updated_at = ? WHERE id = ? OR sku = ?",
-                                    (qty, now_str, prod_id, prod_id))
-            except Exception as e:
-                print(f"Error restoring stock during invoice delete: {e}")
+            touched = self._revert_invoice_effects(cur, invoice)
 
-            # Reconcile batch logs if invoice was tied to a batch
-            if batch_id and invoice_no:
-                cur.execute("SELECT * FROM batch_logs WHERE batch_id = ? AND note LIKE ?", (batch_id, f"%{invoice_no}%"))
-                for rlog in cur.fetchall():
-                    log_item = dict(rlog)
-                    lamount = float(log_item.get("total_amount", 0))
-                    lqty = float(log_item.get("qty", 0))
-                    ltype = log_item.get("log_type")
-                    if ltype == "feed":
-                        cur.execute("UPDATE batches SET total_feed_bags = total_feed_bags - ?, total_feed_cost = total_feed_cost - ?, total_investment = total_investment - ? WHERE id = ?",
-                                    (lqty, lamount, lamount, batch_id))
-                    elif ltype == "medicine":
-                        cur.execute("UPDATE batches SET total_med_cost = total_med_cost - ?, total_investment = total_investment - ? WHERE id = ?",
-                                    (lamount, lamount, batch_id))
-                    else:
-                        cur.execute("UPDATE batches SET total_other_cost = total_other_cost - ?, total_investment = total_investment - ? WHERE id = ?",
-                                    (lamount, lamount, batch_id))
-                cur.execute("DELETE FROM batch_logs WHERE batch_id = ? AND note LIKE ?", (batch_id, f"%{invoice_no}%"))
-
-            # Deduct due amount from farmer balance (never negative)
-            if farmer_id and due_amount > 0:
+            if farmer_id and farmer_id not in self.NON_FARMER_IDS and due_amount > 0:
                 cur.execute("UPDATE farmers SET total_due = MAX(0.0, total_due - ?) WHERE id = ?", (due_amount, farmer_id))
 
+            cur.execute("DELETE FROM notifications WHERE type = 'new_invoice' AND ref_id = ?", (invoice_id,))
             cur.execute("DELETE FROM invoices WHERE id = ?", (invoice_id,))
             conn.commit()
 
-        if self.is_firebase_active():
-            self.delete_document("invoices", invoice_id)
-            if farmer_id:
-                with self._get_connection() as conn:
-                    cur = conn.cursor()
-                    cur.execute("SELECT * FROM farmers WHERE id = ?", (farmer_id,))
-                    f_row = cur.fetchone()
-                    if f_row:
-                        self.sync_document("farmers", farmer_id, dict(f_row))
-        return True
+        self._sync_invoice_related(invoice_id, farmer_id, batch_id, touched["product_ids"],
+                                   touched["deleted_log_ids"], deleted_invoice=True)
         return True
 
     def get_batch_log_by_id(self, log_id: str) -> Optional[Dict[str, Any]]:

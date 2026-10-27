@@ -163,19 +163,30 @@
 
 <!-- EDIT INVOICE MODAL -->
 <div id="editInvoiceModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-  <div class="bg-white w-full max-w-md rounded-3xl shadow-2xl border border-orange-100 overflow-hidden max-h-[90vh] flex flex-col">
+  <div class="bg-white w-full max-w-lg rounded-3xl shadow-2xl border border-orange-100 overflow-hidden max-h-[90vh] flex flex-col">
     
     <div class="p-5 bg-gradient-to-r from-maroon-900 via-crimson-700 to-orangeBrand-600 text-white flex items-center justify-between">
       <h3 class="font-black text-base">চালান তথ্য সম্পাদনা (Edit Invoice)</h3>
       <button onclick="closeEditInvoiceModal()" class="text-white/80 hover:text-white text-xl">✕</button>
     </div>
 
-    <form action="/admin/invoice/update" method="POST" enctype="multipart/form-data" class="p-5 space-y-4 overflow-y-auto">
+    <form action="/admin/invoice/update" method="POST" enctype="multipart/form-data" onsubmit="return prepareEditInvoiceSubmit()" class="p-5 space-y-4 overflow-y-auto">
       <input type="hidden" id="editInvId" name="invoice_id">
 
       <div>
         <label class="block text-xs font-black text-slate-700 mb-1">চালান নম্বর</label>
         <input type="text" id="editInvNo" readonly class="w-full px-3.5 py-2.5 bg-stone-50 border rounded-2xl text-xs font-mono font-bold text-slate-600">
+      </div>
+
+      <div>
+        <label class="block text-xs font-black text-slate-700 mb-1">মালামালের তালিকা (পরিমাণ ও দর সংশোধন করুন)</label>
+        <input type="hidden" id="editInvItemsJson" name="items_json">
+        <div id="editInvItemsBox" class="space-y-2"></div>
+        <div class="mt-2 flex items-center justify-between p-2.5 bg-stone-50 border rounded-2xl text-xs font-black">
+          <span class="text-slate-600">সাবটোটাল (ডিসকাউন্টের আগে)</span>
+          <span id="editInvSubtotalText" class="text-slate-900">৳ 0</span>
+        </div>
+        <p class="text-[10px] text-slate-400 mt-1">💡 সেভ করলে স্টক, শেডের খরচ ও খামারির বাকি স্বয়ংক্রিয়ভাবে হিসাব হয়ে যাবে।</p>
       </div>
 
       <div class="grid grid-cols-2 gap-3">
@@ -395,8 +406,70 @@
     lastEditInvoicePhotoSrc = null;
   }
 
+  let editInvItems = [];
+
+  function renderEditInvItems() {
+    const box = document.getElementById('editInvItemsBox');
+    if (!box) return;
+    box.innerHTML = '';
+    editInvItems.forEach((it, idx) => {
+      const row = document.createElement('div');
+      row.className = 'flex items-center gap-1.5 p-2 bg-white border border-stone-200 rounded-2xl';
+      const nm = (it.name_bn || it.name || 'মালামাল');
+      row.innerHTML =
+        '<div class="flex-1 min-w-0"><div class="text-[11px] font-black text-slate-800 truncate"></div>' +
+        '<div class="text-[10px] text-slate-400"></div></div>' +
+        '<input type="number" step="any" min="0" class="w-16 px-2 py-1.5 border rounded-xl text-xs font-black text-center" title="পরিমাণ">' +
+        '<input type="number" step="any" min="0" class="w-20 px-2 py-1.5 border rounded-xl text-xs font-black text-center" title="দর">' +
+        '<div class="w-16 text-right text-[11px] font-black text-slate-900"></div>' +
+        '<button type="button" class="p-1 text-rose-600 hover:bg-rose-50 rounded-lg text-xs font-black" title="বাদ দিন">✕</button>';
+      const kids = row.children;
+      kids[0].children[0].textContent = nm;
+      kids[0].children[1].textContent = it.unit || '';
+      const qtyEl = kids[1], priceEl = kids[2], totEl = kids[3], delBtn = kids[4];
+      qtyEl.value = it.qty;
+      priceEl.value = it.price;
+      totEl.textContent = '৳' + Math.round((Number(it.qty) || 0) * (Number(it.price) || 0)).toLocaleString();
+      const upd = () => {
+        it.qty = parseFloat(qtyEl.value) || 0;
+        it.price = parseFloat(priceEl.value) || 0;
+        totEl.textContent = '৳' + Math.round(it.qty * it.price).toLocaleString();
+        updateEditInvSubtotal();
+      };
+      qtyEl.addEventListener('input', upd);
+      priceEl.addEventListener('input', upd);
+      delBtn.addEventListener('click', () => {
+        editInvItems.splice(idx, 1);
+        renderEditInvItems();
+      });
+      box.appendChild(row);
+    });
+    updateEditInvSubtotal();
+  }
+
+  function updateEditInvSubtotal() {
+    const sub = editInvItems.reduce((a, it) => a + (Number(it.qty) || 0) * (Number(it.price) || 0), 0);
+    const el = document.getElementById('editInvSubtotalText');
+    if (el) el.textContent = '৳ ' + Math.round(sub).toLocaleString();
+  }
+
+  function prepareEditInvoiceSubmit() {
+    const valid = editInvItems.filter(it => (Number(it.qty) || 0) > 0);
+    if (editInvItems.length > 0 && valid.length === 0) {
+      alert('কমপক্ষে একটি মালামালের পরিমাণ ০ এর বেশি হতে হবে। চালান পুরোপুরি বাতিল করতে ডিলিট (🗑️) ব্যবহার করুন।');
+      return false;
+    }
+    document.getElementById('editInvItemsJson').value = valid.length ? JSON.stringify(valid) : '';
+    return true;
+  }
+
   function openEditInvoiceModal(inv) {
     clearEditInvoiceReceipt();
+    editInvItems = (inv.items || []).map(it => Object.assign({}, it, {
+      qty: Number(it.qty) || 0,
+      price: Number(it.price) || 0
+    }));
+    renderEditInvItems();
     if (inv.receipt_image_url) {
       document.getElementById('currentMemoImg').src = inv.receipt_image_url;
       document.getElementById('currentMemoImgWrap').classList.remove('hidden');
@@ -420,6 +493,15 @@
   }
 
   document.addEventListener('DOMContentLoaded', initEditInvoiceScanner);
+
+  const ALL_INVOICES_DATA = {{ invoices | tojson | safe }};
+  document.addEventListener('DOMContentLoaded', () => {
+    const editId = new URLSearchParams(window.location.search).get('edit');
+    if (editId) {
+      const found = ALL_INVOICES_DATA.find(i => i.id === editId);
+      if (found) openEditInvoiceModal(found);
+    }
+  });
 </script>
 
 <!-- MEMO IMAGE LIGHTBOX MODAL -->
