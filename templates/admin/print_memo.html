@@ -162,9 +162,6 @@
         {% else %}
         <p><span class="text-slate-500 font-medium">ক্রেতা / কাস্টমার:</span> <strong class="text-slate-900 text-sm font-black">{{ invoice.farmer_name }}</strong></p>
         <p><span class="text-slate-500 font-medium">ধরন:</span> <span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold text-[11px]">খুচরা / কাউন্টার বিক্রয়</span></p>
-        {% if invoice.note %}
-        <p><span class="text-slate-500 font-medium">নোট:</span> {{ invoice.note }}</p>
-        {% endif %}
         {% endif %}
       </div>
       <div class="text-right space-y-1">
@@ -177,6 +174,13 @@
         </p>
       </div>
     </div>
+
+    {% if invoice.note %}
+    <div class="my-2 p-2.5 bg-amber-50 border border-amber-300 rounded-xl text-xs flex items-center gap-2">
+      <span class="font-black text-amber-900 flex-shrink-0">📝 চালানের নোট / মন্তব্য:</span>
+      <span class="text-slate-800 font-bold">{{ invoice.note }}</span>
+    </div>
+    {% endif %}
 
     <!-- Items Table (Solid, Unbreakable Table with Explicit Borders) -->
     <div class="overflow-x-auto">

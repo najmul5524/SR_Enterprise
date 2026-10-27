@@ -313,6 +313,10 @@
   let lastPaymentsVoucherSrc = null;
 
   function handlePaymentsVoucherChange(inputEl) {
+    if (inputEl._scannerApplied) {
+      inputEl._scannerApplied = false;
+      return;
+    }
     if (inputEl.files && inputEl.files[0]) {
       const file = inputEl.files[0];
       lastPaymentsVoucherSrc = file;
@@ -339,10 +343,11 @@
 
   function recropPaymentsVoucher() {
     const previewImg = document.getElementById('paymentsVoucherPreviewImg');
-    const src = lastPaymentsVoucherSrc || (previewImg ? previewImg.src : null);
+    const input = document.getElementById('paymentsVoucherInput');
+    const src = lastPaymentsVoucherSrc || (input && input.files && input.files[0]) || (previewImg ? previewImg.src : null);
     if (src && window.SmartScanner) {
       SmartScanner.open(src, {
-        targetInput: document.getElementById('paymentsVoucherInput'),
+        targetInput: input,
         previewElement: 'paymentsVoucherPreviewImg',
         onComplete: (procFile, url) => {
           lastPaymentsVoucherSrc = url;

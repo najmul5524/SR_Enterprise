@@ -529,6 +529,10 @@
   let lastFarmerDetailImageSrc = null;
 
   function handleFarmerVoucherChange(inputEl) {
+    if (inputEl._scannerApplied) {
+      inputEl._scannerApplied = false;
+      return;
+    }
     if (inputEl.files && inputEl.files[0]) {
       const file = inputEl.files[0];
       lastFarmerVoucherSrc = file;
@@ -555,10 +559,11 @@
 
   function recropFarmerVoucher() {
     const previewImg = document.getElementById('farmerVoucherPreviewImg');
-    const src = lastFarmerVoucherSrc || (previewImg ? previewImg.src : null);
+    const input = document.getElementById('farmerVoucherInput');
+    const src = lastFarmerVoucherSrc || (input && input.files && input.files[0]) || (previewImg ? previewImg.src : null);
     if (src && window.SmartScanner) {
       SmartScanner.open(src, {
-        targetInput: document.getElementById('farmerVoucherInput'),
+        targetInput: input,
         previewElement: 'farmerVoucherPreviewImg',
         onComplete: (procFile, url) => {
           lastFarmerVoucherSrc = url;
@@ -581,6 +586,10 @@
   }
 
   function handleFarmerDetailImageChange(inputEl) {
+    if (inputEl._scannerApplied) {
+      inputEl._scannerApplied = false;
+      return;
+    }
     if (inputEl.files && inputEl.files[0]) {
       const file = inputEl.files[0];
       lastFarmerDetailImageSrc = file;
@@ -607,10 +616,11 @@
 
   function recropFarmerDetailImage() {
     const previewImg = document.getElementById('farmerDetailImagePreviewImg');
-    const src = lastFarmerDetailImageSrc || (previewImg ? previewImg.src : null);
+    const input = document.getElementById('farmerDetailImageInput');
+    const src = lastFarmerDetailImageSrc || (input && input.files && input.files[0]) || (previewImg ? previewImg.src : null);
     if (src && window.SmartScanner) {
       SmartScanner.open(src, {
-        targetInput: document.getElementById('farmerDetailImageInput'),
+        targetInput: input,
         previewElement: 'farmerDetailImagePreviewImg',
         onComplete: (procFile, url) => {
           lastFarmerDetailImageSrc = url;

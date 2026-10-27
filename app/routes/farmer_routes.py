@@ -100,7 +100,8 @@ async def farmer_ledger(request: Request):
             "amount": inv["net_total"],
             "ref_id": inv["id"],
             "receipt_image_url": inv.get("receipt_image_url"),
-            "items": inv.get("items", [])
+            "items": inv.get("items", []),
+            "note": inv.get("note")
         })
     for p in payments:
         shed_info = f" • শেড: {p.get('batch_no')}" if p.get("batch_no") else ""

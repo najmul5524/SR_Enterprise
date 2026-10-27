@@ -45,7 +45,7 @@
 <div class="space-y-4 max-w-2xl mx-auto">
 
   <!-- Header -->
-  <div class="bg-white p-5 rounded-3xl border border-orange-100 shadow-sm flex items-center justify-between">
+  <div class="bg-white p-5 rounded-3xl border-2 border-orangeBrand-300 shadow-md flex items-center justify-between">
     <div>
       <div class="flex items-center gap-2.5">
         <span class="text-2xl">📒</span>
@@ -62,8 +62,8 @@
   </div>
 
   <!-- Unified Chronological Statement -->
-  <div class="bg-white rounded-3xl border border-orange-100 shadow-sm overflow-hidden">
-    <div class="p-4 border-b border-orange-50 flex items-center justify-between bg-orangeBrand-50/20">
+  <div class="bg-white rounded-3xl border-2 border-slate-200 shadow-md overflow-hidden">
+    <div class="p-4 border-b border-orange-100 flex items-center justify-between bg-orangeBrand-50/30">
       <span class="text-xs font-black text-slate-800">সকল চালান ও জমার ইতিহাস</span>
       <button onclick="window.print()" class="text-xs font-bold text-slate-700 hover:text-crimson-600 border border-slate-200 px-3 py-1 rounded-xl touch-press">
         🖨️ প্রিন্ট
@@ -84,6 +84,11 @@
               <span class="text-[10px] text-slate-400 font-mono font-medium">{{ entry.date }}</span>
             </div>
             <div class="text-xs text-slate-500 mt-0.5 font-medium">{{ entry.details }}</div>
+            {% if entry.note %}
+            <div class="mt-1 text-[11px] text-amber-900 bg-amber-50 px-2 py-0.5 rounded-lg border border-amber-200 inline-flex items-center gap-1 font-medium">
+              <span>📝</span> <span><strong class="font-bold">নোট:</strong> {{ entry.note }}</span>
+            </div>
+            {% endif %}
           </div>
         </div>
 

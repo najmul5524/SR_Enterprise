@@ -795,6 +795,10 @@
   let lastReceiptPhotoSrc = null;
 
   function handleReceiptFileChange(inputEl) {
+    if (inputEl._scannerApplied) {
+      inputEl._scannerApplied = false;
+      return;
+    }
     if (inputEl.files && inputEl.files[0]) {
       const file = inputEl.files[0];
       lastReceiptPhotoSrc = file;
@@ -822,10 +826,11 @@
 
   function recropReceiptFile() {
     const previewImg = document.getElementById('receiptPreviewImg');
-    const src = lastReceiptPhotoSrc || (previewImg ? previewImg.src : null);
+    const input = document.getElementById('dispatchReceiptInput');
+    const src = lastReceiptPhotoSrc || (input && input.files && input.files[0]) || (previewImg && previewImg.src ? previewImg.src : null);
     if (src && window.SmartScanner) {
       SmartScanner.open(src, {
-        targetInput: document.getElementById('dispatchReceiptInput'),
+        targetInput: input,
         previewElement: 'receiptPreviewImg',
         onComplete: (procFile, url) => {
           lastReceiptPhotoSrc = url;

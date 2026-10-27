@@ -344,6 +344,10 @@
     const camInput = document.getElementById('prodCameraInput');
 
     const handlePick = (input) => {
+      if (input._scannerApplied) {
+        input._scannerApplied = false;
+        return;
+      }
       if (input.files && input.files[0]) {
         lastProductImageSrc = input.files[0];
         SmartScanner.open(input.files[0], {
@@ -362,11 +366,12 @@
   }
 
   function recropProductImage() {
+    const fileInput = document.getElementById('prodImageFile');
     const previewImg = document.getElementById('prodPreviewImg');
-    const src = lastProductImageSrc || (previewImg ? previewImg.src : null);
-    if (src) {
+    const src = lastProductImageSrc || (fileInput && fileInput.files && fileInput.files[0]) || (previewImg && previewImg.src ? previewImg.src : null);
+    if (src && window.SmartScanner) {
       SmartScanner.open(src, {
-        targetInput: document.getElementById('prodImageFile'),
+        targetInput: fileInput,
         previewElement: 'prodPreviewImg',
         onComplete: (file, url) => {
           lastProductImageSrc = url;

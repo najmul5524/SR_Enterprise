@@ -346,6 +346,10 @@
   let lastFarmerPhotoSrc = { add: null, edit: null };
 
   function handleFarmerImageChange(inputEl, mode) {
+    if (inputEl._scannerApplied) {
+      inputEl._scannerApplied = false;
+      return;
+    }
     if (inputEl.files && inputEl.files[0]) {
       const file = inputEl.files[0];
       lastFarmerPhotoSrc[mode] = file;
@@ -378,8 +382,8 @@
   function recropFarmerImage(mode) {
     const previewImgId = mode === 'add' ? 'addFarmerPreviewImg' : 'editFarmerPreviewImg';
     const previewImg = document.getElementById(previewImgId);
-    const src = lastFarmerPhotoSrc[mode] || (previewImg ? previewImg.src : null);
     const targetInput = document.getElementById(mode === 'add' ? 'addFarmerImageInput' : 'editFarmerImageInput');
+    const src = lastFarmerPhotoSrc[mode] || (targetInput && targetInput.files && targetInput.files[0]) || (previewImg ? previewImg.src : null);
     const previewCardId = mode === 'add' ? 'addFarmerPreviewCard' : 'editFarmerPreviewCard';
 
     if (src && window.SmartScanner) {

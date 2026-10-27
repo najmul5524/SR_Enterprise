@@ -673,6 +673,10 @@
   let lastBatchVoucherSrc = null;
 
   function handleBatchVoucherChange(inputEl) {
+    if (inputEl._scannerApplied) {
+      inputEl._scannerApplied = false;
+      return;
+    }
     if (inputEl.files && inputEl.files[0]) {
       const file = inputEl.files[0];
       lastBatchVoucherSrc = file;
@@ -699,10 +703,11 @@
 
   function recropBatchVoucher() {
     const previewImg = document.getElementById('batchVoucherPreviewImg');
-    const src = lastBatchVoucherSrc || (previewImg ? previewImg.src : null);
+    const input = document.getElementById('batchVoucherInput');
+    const src = lastBatchVoucherSrc || (input && input.files && input.files[0]) || (previewImg ? previewImg.src : null);
     if (src && window.SmartScanner) {
       SmartScanner.open(src, {
-        targetInput: document.getElementById('batchVoucherInput'),
+        targetInput: input,
         previewElement: 'batchVoucherPreviewImg',
         onComplete: (procFile, url) => {
           lastBatchVoucherSrc = url;

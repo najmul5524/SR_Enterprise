@@ -45,7 +45,7 @@
 <div class="space-y-4 max-w-2xl mx-auto">
 
   <!-- Farmer Welcome Header Card (Maroon-Crimson-Orange App Card) -->
-  <div class="bg-gradient-to-br from-maroon-950 via-maroon-800 to-orangeBrand-600 text-white p-6 rounded-3xl shadow-xl shadow-crimson-900/15 relative overflow-hidden">
+  <div class="bg-gradient-to-br from-maroon-950 via-maroon-800 to-orangeBrand-600 text-white p-6 rounded-3xl shadow-xl shadow-crimson-900/15 relative overflow-hidden border-2 border-orangeBrand-400/50">
     <div class="relative z-10">
       <div class="flex items-center gap-3.5">
         <div class="w-14 h-14 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center p-1.5 shadow-inner flex-shrink-0">
@@ -61,7 +61,7 @@
       </div>
 
       <!-- Outstanding Due Notice Card -->
-      <div class="mt-5 p-4 bg-white/10 backdrop-blur-md rounded-2xl border border-white/15 flex items-center justify-between">
+      <div class="mt-5 p-4 bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 flex items-center justify-between">
         <div>
           <div class="text-[11px] text-orangeBrand-200 font-bold uppercase tracking-wider">আমার বর্তমান বকেয়া (দেনা)</div>
           <div class="text-2xl sm:text-3xl font-black text-amberBrand-300 mt-0.5">
@@ -77,7 +77,7 @@
 
   <!-- Quick Shortcut Action Grid for Mobile -->
   <div class="grid grid-cols-2 gap-3">
-    <a href="/farmer/request-feed" class="p-4 bg-white rounded-3xl border border-orange-100 shadow-sm hover:border-orangeBrand-300 transition flex items-center gap-3 touch-press">
+    <a href="/farmer/request-feed" class="p-4 bg-white rounded-3xl border-2 border-orangeBrand-200 hover:border-orangeBrand-400 shadow-sm transition flex items-center gap-3 touch-press">
       <div class="w-11 h-11 rounded-2xl bg-gradient-to-tr from-crimson-600 to-orangeBrand-500 text-white flex items-center justify-center text-xl shadow-sm flex-shrink-0">
         ➕
       </div>
@@ -87,7 +87,7 @@
       </div>
     </a>
 
-    <a href="/farmer/ledger" class="p-4 bg-white rounded-3xl border border-orange-100 shadow-sm hover:border-orangeBrand-300 transition flex items-center gap-3 touch-press">
+    <a href="/farmer/ledger" class="p-4 bg-white rounded-3xl border-2 border-crimson-200 hover:border-crimson-400 shadow-sm transition flex items-center gap-3 touch-press">
       <div class="w-11 h-11 rounded-2xl bg-gradient-to-tr from-maroon-900 to-crimson-700 text-white flex items-center justify-center text-xl shadow-sm flex-shrink-0">
         📒
       </div>
@@ -100,7 +100,7 @@
 
   <!-- Direct GitHub APK Download Card (Zero Render Bandwidth) -->
   {% if not is_mobile_app %}
-  <div class="bg-gradient-to-r from-orangeBrand-50 to-amber-50 p-4 rounded-3xl border border-orangeBrand-200 flex items-center justify-between gap-3 shadow-sm">
+  <div class="bg-gradient-to-r from-orangeBrand-50 via-amber-50 to-orangeBrand-50 p-4 rounded-3xl border-2 border-amber-300 flex items-center justify-between gap-3 shadow-sm">
     <div class="flex items-center gap-3">
       <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-maroon-800 to-crimson-600 text-white flex items-center justify-center text-xl flex-shrink-0 shadow-sm">
         📱
@@ -121,7 +121,7 @@
 
   <!-- MULTIPLE SHEDS / ACTIVE SHED STATUS -->
   {% if batches and batches|length > 0 %}
-  <div class="bg-white rounded-3xl border border-orangeBrand-200 shadow-sm p-5 space-y-4">
+  <div class="bg-white rounded-3xl border-2 border-orangeBrand-300 shadow-md p-5 space-y-4">
     
     <!-- Shed Switcher / Multi-Shed Selector -->
     {% if batches|length > 1 %}
@@ -148,7 +148,7 @@
     {% endif %}
 
     {% if selected_batch %}
-    <div class="flex items-center justify-between pb-3 border-b border-orange-50">
+    <div class="flex items-center justify-between pb-3 border-b border-orange-100">
       <div class="flex items-center gap-2.5">
         <span class="text-2xl">🐣</span>
         <div>
@@ -175,19 +175,19 @@
 
     <!-- Shed Metrics Grid (Warm Tinted Boxes) -->
     <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs">
-      <div class="p-3 bg-stone-50 rounded-2xl border border-slate-100">
+      <div class="p-3 bg-stone-50 rounded-2xl border border-slate-200">
         <span class="text-[10px] text-slate-400 font-bold uppercase">বাচ্চা সংখ্যা</span>
         <div class="text-sm font-black text-slate-900 mt-0.5">{{ selected_batch.chick_qty }} টি</div>
       </div>
-      <div class="p-3 bg-stone-50 rounded-2xl border border-slate-100">
+      <div class="p-3 bg-stone-50 rounded-2xl border border-slate-200">
         <span class="text-[10px] text-slate-400 font-bold uppercase">খাদ্য খাওয়া</span>
         <div class="text-sm font-black text-orangeBrand-700 mt-0.5">{{ selected_batch.total_feed_bags }} বস্তা</div>
       </div>
-      <div class="p-3 bg-stone-50 rounded-2xl border border-slate-100">
+      <div class="p-3 bg-stone-50 rounded-2xl border border-slate-200">
         <span class="text-[10px] text-slate-400 font-bold uppercase">মর্টালিটি</span>
         <div class="text-sm font-black text-rose-600 mt-0.5">{{ selected_batch.mortality_count }} টি</div>
       </div>
-      <div class="p-3 bg-orangeBrand-50 rounded-2xl border border-orangeBrand-200">
+      <div class="p-3 bg-orangeBrand-50 rounded-2xl border border-orangeBrand-300">
         <span class="text-[10px] text-orangeBrand-900 font-bold uppercase">শেডে মোট খরচ</span>
         <div class="text-sm font-black text-maroon-900 mt-0.5">৳ {{ "{:,.0f}".format(selected_batch.total_investment) }}</div>
       </div>
@@ -200,7 +200,7 @@
       <h3 class="text-xs font-black text-slate-700 mb-2">শেডে সর্বশেষ মালামাল ডেলিভারি ও কার্যক্রম:</h3>
       <div class="space-y-1.5 text-xs">
         {% for log in recent_logs %}
-        <div class="flex items-center justify-between p-2.5 rounded-2xl bg-stone-50 border border-slate-100">
+        <div class="flex items-center justify-between p-2.5 rounded-2xl bg-stone-50 border border-slate-200">
           <div>
             <div class="font-bold text-slate-800">{{ log.item_name }}</div>
             <div class="text-[10px] text-slate-400 font-medium">{{ log.log_date }} • {{ log.qty }} {{ log.unit }}</div>
@@ -220,7 +220,7 @@
 
   </div>
   {% else %}
-  <div class="p-6 bg-white rounded-3xl border border-orange-100 text-center text-slate-500 space-y-2">
+  <div class="p-6 bg-white rounded-3xl border-2 border-orangeBrand-200 text-center text-slate-500 space-y-2 shadow-sm">
     <p class="text-3xl">🐣</p>
     <p class="text-sm font-bold text-slate-800">বর্তমানে আপনার কোন সক্রিয় শেড চলমান নেই</p>
     <p class="text-xs text-slate-400">নতুন শেডে বাচ্চা ও খাদ্য নেওয়ার জন্য SR Enterprise এর সাথে যোগাযোগ করুন।</p>
@@ -229,8 +229,8 @@
 
   <!-- RECENT INVOICES & MEMO PHOTOS SECTION -->
   {% if recent_invoices %}
-  <div class="bg-white rounded-3xl border border-orangeBrand-200 shadow-sm p-5 space-y-3">
-    <div class="flex items-center justify-between pb-2 border-b border-orange-50">
+  <div class="bg-white rounded-3xl border-2 border-crimson-200/90 shadow-md p-5 space-y-3">
+    <div class="flex items-center justify-between pb-2 border-b border-orange-100">
       <div class="flex items-center gap-2">
         <span class="text-xl">📜</span>
         <div>
@@ -243,21 +243,26 @@
       </a>
     </div>
 
-    <div class="space-y-2">
+    <div class="space-y-2.5">
       {% for inv in recent_invoices %}
-      <div class="p-3 bg-stone-50 hover:bg-orangeBrand-50/40 rounded-2xl border border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 transition">
+      <div class="p-3.5 bg-stone-50 hover:bg-orangeBrand-50/40 rounded-2xl border border-slate-200 hover:border-orangeBrand-300 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 transition">
         <div>
           <div class="flex items-center gap-2">
             <span class="font-mono font-black text-xs text-slate-900">{{ inv.invoice_no }}</span>
             <span class="text-[10px] text-slate-400 font-medium">{{ inv.invoice_date }}</span>
           </div>
-          <div class="text-xs text-slate-600 mt-0.5 font-medium truncate max-w-sm">
+          <div class="text-xs text-slate-600 mt-1 font-medium truncate max-w-sm">
             {% for item in inv.get('items', []) %}
               <span class="inline-block bg-white px-1.5 py-0.5 rounded text-[10px] mr-1 border border-slate-200 text-slate-700 font-bold">
                 {{ item.name_bn or item.name }} ({{ item.qty }} {{ item.unit }})
               </span>
             {% endfor %}
           </div>
+          {% if inv.note %}
+          <div class="mt-1.5 text-[11px] text-amber-900 bg-amber-50 px-2.5 py-1 rounded-xl border border-amber-200 inline-flex items-center gap-1.5 font-medium">
+            <span>📝</span> <span><strong class="font-bold">চালানের নোট:</strong> {{ inv.note }}</span>
+          </div>
+          {% endif %}
         </div>
 
         <div class="flex items-center justify-between sm:justify-end gap-3 flex-shrink-0">
@@ -288,11 +293,11 @@
   {% endif %}
 
   <!-- Farmer QR Card for In-Store Scanning -->
-  <div class="bg-white p-5 rounded-3xl border border-orange-100 shadow-sm flex items-center justify-between gap-4">
+  <div class="bg-white p-5 rounded-3xl border-2 border-indigo-200 shadow-md flex items-center justify-between gap-4">
     <div>
       <h3 class="font-black text-slate-900 text-sm">আমার খামারি ডিজিটাল আইডি কার্ড</h3>
       <p class="text-xs text-slate-500 mt-0.5 font-medium">দোকানে মালামাল নেওয়ার সময় এই কিউআর স্ক্যান করান</p>
-      <span class="inline-block mt-2 font-mono text-[11px] bg-orangeBrand-50 border border-orangeBrand-200 px-2 py-0.5 rounded-lg text-orangeBrand-800 font-bold">{{ farmer.id }}</span>
+      <span class="inline-block mt-2 font-mono text-[11px] bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-lg text-indigo-900 font-bold">{{ farmer.id }}</span>
     </div>
     <div class="p-2 bg-stone-50 rounded-2xl border border-slate-200 flex-shrink-0">
       <img src="{{ farmer_qr }}" alt="My QR" class="w-20 h-20">
@@ -300,7 +305,7 @@
   </div>
 
   <!-- Dealer Contact Info -->
-  <div class="bg-stone-50 p-4 rounded-3xl border border-slate-200 text-center text-xs text-slate-600">
+  <div class="bg-stone-50 p-4 rounded-3xl border-2 border-slate-300 shadow-sm text-center text-xs text-slate-600">
     <p class="font-black text-slate-900">{{ shop.shop_name or "SR Enterprise" }}</p>
     <p class="mt-0.5 font-medium">প্রয়োজনে যোগাযোগ: <strong class="text-crimson-700">{{ shop.phone or "01700-000000" }}</strong></p>
   </div>

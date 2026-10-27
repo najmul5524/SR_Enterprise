@@ -289,6 +289,10 @@
   let lastEditInvoicePhotoSrc = null;
 
   function handleEditInvoiceReceiptChange(inputEl) {
+    if (inputEl._scannerApplied) {
+      inputEl._scannerApplied = false;
+      return;
+    }
     if (inputEl.files && inputEl.files[0]) {
       const file = inputEl.files[0];
       lastEditInvoicePhotoSrc = file;
@@ -315,10 +319,11 @@
 
   function recropEditInvoiceReceipt() {
     const previewImg = document.getElementById('editInvoicePreviewImg');
-    const src = lastEditInvoicePhotoSrc || (previewImg ? previewImg.src : null);
+    const input = document.getElementById('editInvoiceReceiptInput');
+    const src = lastEditInvoicePhotoSrc || (input && input.files && input.files[0]) || (previewImg ? previewImg.src : null);
     if (src && window.SmartScanner) {
       SmartScanner.open(src, {
-        targetInput: document.getElementById('editInvoiceReceiptInput'),
+        targetInput: input,
         previewElement: 'editInvoicePreviewImg',
         onComplete: (procFile, url) => {
           lastEditInvoicePhotoSrc = url;

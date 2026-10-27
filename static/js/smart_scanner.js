@@ -110,24 +110,26 @@ const SmartScanner = (function () {
         </div>
 
         <!-- Main Action Buttons -->
-        <div class="flex items-center justify-between gap-3">
+        <div class="flex items-center justify-between gap-2">
           
-          <!-- Back button (in filter step) or Cancel -->
-          <button type="button" id="scannerBackBtn" onclick="SmartScanner.backToCrop()" class="hidden px-4 py-2.5 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-300 transition flex items-center gap-1">
-            <span>↩️</span> <span>কোণা পরিবর্তন (Re-Crop)</span>
-          </button>
-
-          <div class="text-[11px] text-slate-400 hidden sm:block">
-            💡 ৪ কোণা ড্র্যাগ করে আঁকাবাঁকা ছবিও নিখুঁত সোজা করা যায়।
+          <div class="flex items-center gap-1.5">
+            <!-- Back button (in filter step) -->
+            <button type="button" id="scannerBackBtn" onclick="SmartScanner.backToCrop()" class="hidden px-3 py-2 sm:px-3.5 sm:py-2.5 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-300 transition flex items-center gap-1">
+              <span>↩️</span> <span class="hidden sm:inline">কোণা পরিবর্তন (Re-Crop)</span><span class="sm:hidden">কোণা</span>
+            </button>
+            <!-- Cancel / Close button -->
+            <button type="button" onclick="SmartScanner.close()" class="px-3 py-2 sm:px-3.5 sm:py-2.5 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition flex items-center gap-1">
+              <span>✕</span> <span>বাতিল</span>
+            </button>
           </div>
 
-          <!-- Primary Proceed Button -->
-          <div class="flex items-center gap-2 ml-auto w-full sm:w-auto">
-            <button type="button" id="scannerCropBtn" onclick="SmartScanner.processPerspectiveCrop()" class="w-full sm:w-auto px-6 py-2.5 bg-gradient-to-r from-orangeBrand-600 to-crimson-600 hover:opacity-95 text-white font-black rounded-xl text-xs shadow-lg transition flex items-center justify-center gap-2 touch-press">
-              <span>✂️</span> <span>ক্রপ ও সোজা করুন ➔</span>
+          <!-- Primary Actions -->
+          <div class="flex items-center gap-2 ml-auto">
+            <button type="button" id="scannerCropBtn" onclick="SmartScanner.processPerspectiveCrop()" class="px-3.5 py-2 sm:px-4 sm:py-2.5 bg-slate-800 hover:bg-slate-700 text-orangeBrand-300 font-bold border border-orangeBrand-500/40 rounded-xl text-xs shadow-sm transition flex items-center justify-center gap-1.5 touch-press">
+              <span>🪄</span> <span>ফিল্টার ও প্রিভিউ</span>
             </button>
 
-            <button type="button" id="scannerApplyBtn" onclick="SmartScanner.finishAndApply()" class="hidden w-full sm:w-auto px-6 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:opacity-95 text-white font-black rounded-xl text-xs shadow-lg transition flex items-center justify-center gap-2 touch-press">
+            <button type="button" id="scannerApplyBtn" onclick="SmartScanner.finishAndApply()" class="px-4 py-2 sm:px-6 sm:py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:opacity-95 text-white font-black rounded-xl text-xs shadow-lg transition flex items-center justify-center gap-1.5 touch-press">
               <span>✅</span> <span>সম্পন্ন করুন (Apply)</span>
             </button>
           </div>
@@ -247,6 +249,10 @@ const SmartScanner = (function () {
 
   function open(source, options = {}) {
     init();
+    if (!source) {
+      console.warn("[SmartScanner] No source provided to SmartScanner.open");
+      return;
+    }
     targetFileInput = options.targetInput || null;
     onCompleteCallback = options.onComplete || null;
     previewElement = options.previewElement || null;
@@ -257,18 +263,29 @@ const SmartScanner = (function () {
     document.getElementById('cropViewContainer').classList.remove('hidden');
     document.getElementById('filterViewContainer').classList.add('hidden');
     document.getElementById('scannerCropBtn').classList.remove('hidden');
-    document.getElementById('scannerApplyBtn').classList.add('hidden');
+    document.getElementById('scannerApplyBtn').classList.remove('hidden');
     document.getElementById('scannerBackBtn').classList.add('hidden');
     document.getElementById('scannerFilterTabs').classList.add('hidden');
     document.getElementById('scannerRotateBtn').classList.remove('hidden');
     document.getElementById('scannerResetBtn').classList.remove('hidden');
     document.getElementById('scannerSubtitle').innerText = "৪ কোণা টেনে ছবি সোজা করুন (CamScanner-এর মতো)";
 
+    // Show modal immediately
+    modal.classList.remove('hidden');
+
     const img = new Image();
-    img.onload = function () {
+    img.crossOrigin = 'anonymous';
+
+    const onImgReady = function () {
       currentImage = img;
       renderImageToCanvas();
-      modal.classList.remove('hidden');
+    };
+
+    img.onload = onImgReady;
+    img.onerror = function (e) {
+      console.error("[SmartScanner] Image load failed:", e);
+      // If error occurs, inform and close
+      close();
     };
 
     if (source instanceof File || source instanceof Blob) {
@@ -277,6 +294,14 @@ const SmartScanner = (function () {
       reader.readAsDataURL(source);
     } else if (typeof source === 'string') {
       img.src = source;
+      if (img.complete && img.naturalWidth > 0) {
+        onImgReady();
+      }
+    } else if (source instanceof HTMLImageElement) {
+      img.src = source.src;
+      if (img.complete && img.naturalWidth > 0) {
+        onImgReady();
+      }
     }
   }
 
@@ -510,7 +535,7 @@ const SmartScanner = (function () {
     document.getElementById('cropViewContainer').classList.remove('hidden');
     document.getElementById('filterViewContainer').classList.add('hidden');
     document.getElementById('scannerCropBtn').classList.remove('hidden');
-    document.getElementById('scannerApplyBtn').classList.add('hidden');
+    document.getElementById('scannerApplyBtn').classList.remove('hidden');
     document.getElementById('scannerBackBtn').classList.add('hidden');
     document.getElementById('scannerFilterTabs').classList.add('hidden');
     document.getElementById('scannerRotateBtn').classList.remove('hidden');
@@ -594,6 +619,9 @@ const SmartScanner = (function () {
 
   // ==================== FINISH & EXPORT ====================
   function finishAndApply() {
+    if (currentStep === 'crop') {
+      processPerspectiveCrop();
+    }
     if (!previewCanvas) return;
 
     previewCanvas.toBlob(blob => {
@@ -601,14 +629,15 @@ const SmartScanner = (function () {
 
       const fileName = `scan_${Date.now()}.jpg`;
       const processedFile = new File([blob], fileName, { type: 'image/jpeg' });
+      const objectUrl = URL.createObjectURL(blob);
 
       // 1. Populate the target form <input type="file"> via DataTransfer
       if (targetFileInput) {
         try {
           const dt = new DataTransfer();
           dt.items.add(processedFile);
+          targetFileInput._scannerApplied = true;
           targetFileInput.files = dt.files;
-          targetFileInput.dispatchEvent(new Event('change', { bubbles: true }));
         } catch (e) {
           console.warn("[SmartScanner] DataTransfer not supported:", e);
         }
@@ -616,18 +645,17 @@ const SmartScanner = (function () {
 
       // 2. Update visual thumbnail preview if provided
       if (previewElement) {
-        const url = URL.createObjectURL(blob);
         if (typeof previewElement === 'string') {
           const el = document.getElementById(previewElement);
-          if (el) el.src = url;
-        } else if (previewElement.src !== undefined) {
-          previewElement.src = url;
+          if (el) el.src = objectUrl;
+        } else if (previewElement && previewElement.src !== undefined) {
+          previewElement.src = objectUrl;
         }
       }
 
       // 3. Trigger callback if any
       if (typeof onCompleteCallback === 'function') {
-        onCompleteCallback(processedFile, URL.createObjectURL(blob));
+        onCompleteCallback(processedFile, objectUrl);
       }
 
       if (window.showToast) {
