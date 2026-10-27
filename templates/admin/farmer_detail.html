@@ -353,10 +353,10 @@
         <label class="block text-xs font-black text-slate-700 mb-1">ভাউচার স্লিপের ছবি (ক্যামেরা / গ্যালারি)</label>
         
         <input type="file" id="farmerVoucherInput" name="voucher_file" accept="image/*" class="hidden" onchange="handleFarmerVoucherChange(this)">
-        <input type="file" id="farmerVoucherCameraInput" accept="image/*" capture="environment" class="hidden" onchange="handleFarmerVoucherChange(this)">
+        <input type="file" id="farmerVoucherCameraInput" accept="image/*;capture=camera" capture="environment" class="hidden" onchange="handleFarmerVoucherChange(this)">
 
         <div class="grid grid-cols-2 gap-2 mb-2">
-          <button type="button" onclick="document.getElementById('farmerVoucherCameraInput').click()" 
+          <button type="button" onclick="openFarmerVoucherCamera()" 
             class="py-2 px-3 bg-gradient-to-r from-orangeBrand-600 to-crimson-600 hover:opacity-95 text-white rounded-xl text-xs font-black shadow-sm flex items-center justify-center gap-1.5 transition touch-press">
             <span>📷</span> <span>ক্যামেরায় তুলুন</span>
           </button>
@@ -471,10 +471,10 @@
         <label class="block text-xs font-black text-slate-700 mb-1">নতুন ছবি পরিবর্তন (ক্যামেরা / গ্যালারি)</label>
 
         <input type="file" id="farmerDetailImageInput" name="image_file" accept="image/*" class="hidden" onchange="handleFarmerDetailImageChange(this)">
-        <input type="file" id="farmerDetailCameraInput" accept="image/*" capture="environment" class="hidden" onchange="handleFarmerDetailImageChange(this)">
+        <input type="file" id="farmerDetailCameraInput" accept="image/*;capture=camera" capture="environment" class="hidden" onchange="handleFarmerDetailImageChange(this)">
 
         <div class="grid grid-cols-2 gap-2 mb-2">
-          <button type="button" onclick="document.getElementById('farmerDetailCameraInput').click()" 
+          <button type="button" onclick="openFarmerDetailImageCamera()" 
             class="py-2 px-3 bg-gradient-to-r from-orangeBrand-600 to-crimson-600 hover:opacity-95 text-white rounded-xl text-xs font-black shadow-sm flex items-center justify-center gap-1.5 transition touch-press">
             <span>📷</span> <span>ক্যামেরায় তুলুন</span>
           </button>
@@ -527,6 +527,42 @@
 <script>
   let lastFarmerVoucherSrc = null;
   let lastFarmerDetailImageSrc = null;
+
+  function openFarmerVoucherCamera() {
+    if (window.SmartScanner && window.SmartScanner.openCamera) {
+      SmartScanner.openCamera({
+        targetInput: document.getElementById('farmerVoucherInput'),
+        cameraInputId: 'farmerVoucherCameraInput',
+        galleryInputId: 'farmerVoucherInput',
+        previewElement: 'farmerVoucherPreviewImg',
+        onComplete: (procFile, url) => {
+          lastFarmerVoucherSrc = url;
+          document.getElementById('farmerVoucherPreviewName').textContent = procFile.name || 'স্ক্যানকৃত ভাউচার';
+          document.getElementById('farmerVoucherPreviewCard').classList.remove('hidden');
+        }
+      });
+    } else {
+      document.getElementById('farmerVoucherCameraInput').click();
+    }
+  }
+
+  function openFarmerDetailImageCamera() {
+    if (window.SmartScanner && window.SmartScanner.openCamera) {
+      SmartScanner.openCamera({
+        targetInput: document.getElementById('farmerDetailImageInput'),
+        cameraInputId: 'farmerDetailCameraInput',
+        galleryInputId: 'farmerDetailImageInput',
+        previewElement: 'farmerDetailImagePreviewImg',
+        onComplete: (procFile, url) => {
+          lastFarmerDetailImageSrc = url;
+          document.getElementById('farmerDetailImagePreviewName').textContent = procFile.name || 'স্ক্যানকৃত ছবি';
+          document.getElementById('farmerDetailImagePreviewCard').classList.remove('hidden');
+        }
+      });
+    } else {
+      document.getElementById('farmerDetailCameraInput').click();
+    }
+  }
 
   function handleFarmerVoucherChange(inputEl) {
     if (inputEl._ignoreChangeUntil && Date.now() < inputEl._ignoreChangeUntil) {

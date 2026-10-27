@@ -171,10 +171,10 @@
         <label class="block text-xs font-black text-slate-700 mb-1">খামারির ছবি (ক্যামেরা / গ্যালারি)</label>
         
         <input type="file" id="addFarmerImageInput" name="image_file" accept="image/*" class="hidden" onchange="handleFarmerImageChange(this, 'add')">
-        <input type="file" id="addFarmerCameraInput" accept="image/*" capture="environment" class="hidden" onchange="handleFarmerImageChange(this, 'add')">
+        <input type="file" id="addFarmerCameraInput" accept="image/*;capture=camera" capture="environment" class="hidden" onchange="handleFarmerImageChange(this, 'add')">
 
         <div class="grid grid-cols-2 gap-2 mb-2">
-          <button type="button" onclick="document.getElementById('addFarmerCameraInput').click()" 
+          <button type="button" onclick="openFarmerCamera('add')" 
             class="py-2 px-3 bg-gradient-to-r from-orangeBrand-600 to-crimson-600 hover:opacity-95 text-white rounded-xl text-xs font-black shadow-sm flex items-center justify-center gap-1.5 transition touch-press">
             <span>📷</span> <span>ক্যামেরায় তুলুন</span>
           </button>
@@ -289,10 +289,10 @@
         <label class="block text-xs font-black text-slate-700 mb-1">নতুন ছবি পরিবর্তন (ক্যামেরা / গ্যালারি)</label>
 
         <input type="file" id="editFarmerImageInput" name="image_file" accept="image/*" class="hidden" onchange="handleFarmerImageChange(this, 'edit')">
-        <input type="file" id="editFarmerCameraInput" accept="image/*" capture="environment" class="hidden" onchange="handleFarmerImageChange(this, 'edit')">
+        <input type="file" id="editFarmerCameraInput" accept="image/*;capture=camera" capture="environment" class="hidden" onchange="handleFarmerImageChange(this, 'edit')">
 
         <div class="grid grid-cols-2 gap-2 mb-2">
-          <button type="button" onclick="document.getElementById('editFarmerCameraInput').click()" 
+          <button type="button" onclick="openFarmerCamera('edit')" 
             class="py-2 px-3 bg-gradient-to-r from-orangeBrand-600 to-crimson-600 hover:opacity-95 text-white rounded-xl text-xs font-black shadow-sm flex items-center justify-center gap-1.5 transition touch-press">
             <span>📷</span> <span>ক্যামেরায় তুলুন</span>
           </button>
@@ -344,6 +344,30 @@
 
 <script>
   let lastFarmerPhotoSrc = { add: null, edit: null };
+
+  function openFarmerCamera(mode) {
+    const targetInput = document.getElementById(mode === 'add' ? 'addFarmerImageInput' : 'editFarmerImageInput');
+    const cameraInputId = mode === 'add' ? 'addFarmerCameraInput' : 'editFarmerCameraInput';
+    const previewImgId = mode === 'add' ? 'addFarmerPreviewImg' : 'editFarmerPreviewImg';
+    const previewNameId = mode === 'add' ? 'addFarmerPreviewName' : 'editFarmerPreviewName';
+    const previewCardId = mode === 'add' ? 'addFarmerPreviewCard' : 'editFarmerPreviewCard';
+
+    if (window.SmartScanner && window.SmartScanner.openCamera) {
+      SmartScanner.openCamera({
+        targetInput: targetInput,
+        cameraInputId: cameraInputId,
+        galleryInputId: targetInput.id,
+        previewElement: previewImgId,
+        onComplete: (procFile, url) => {
+          lastFarmerPhotoSrc[mode] = url;
+          document.getElementById(previewNameId).textContent = procFile.name || 'স্ক্যানকৃত ছবি';
+          document.getElementById(previewCardId).classList.remove('hidden');
+        }
+      });
+    } else {
+      document.getElementById(cameraInputId).click();
+    }
+  }
 
   function handleFarmerImageChange(inputEl, mode) {
     if (inputEl._ignoreChangeUntil && Date.now() < inputEl._ignoreChangeUntil) {

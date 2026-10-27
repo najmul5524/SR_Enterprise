@@ -182,10 +182,10 @@
         <label class="block text-xs font-black text-slate-700 mb-1">ভাউচার স্লিপের ছবি (ক্যামেরা / গ্যালারি)</label>
         
         <input type="file" id="paymentsVoucherInput" name="voucher_file" accept="image/*" class="hidden" onchange="handlePaymentsVoucherChange(this)">
-        <input type="file" id="paymentsVoucherCameraInput" accept="image/*" capture="environment" class="hidden" onchange="handlePaymentsVoucherChange(this)">
+        <input type="file" id="paymentsVoucherCameraInput" accept="image/*;capture=camera" capture="environment" class="hidden" onchange="handlePaymentsVoucherChange(this)">
 
         <div class="grid grid-cols-2 gap-2 mb-2">
-          <button type="button" onclick="document.getElementById('paymentsVoucherCameraInput').click()" 
+          <button type="button" onclick="openPaymentsCamera()" 
             class="py-2 px-3 bg-gradient-to-r from-orangeBrand-600 to-crimson-600 hover:opacity-95 text-white rounded-xl text-xs font-black shadow-sm flex items-center justify-center gap-1.5 transition touch-press">
             <span>📷</span> <span>ক্যামেরায় তুলুন</span>
           </button>
@@ -311,6 +311,24 @@
 
 <script>
   let lastPaymentsVoucherSrc = null;
+
+  function openPaymentsCamera() {
+    if (window.SmartScanner && window.SmartScanner.openCamera) {
+      SmartScanner.openCamera({
+        targetInput: document.getElementById('paymentsVoucherInput'),
+        cameraInputId: 'paymentsVoucherCameraInput',
+        galleryInputId: 'paymentsVoucherInput',
+        previewElement: 'paymentsVoucherPreviewImg',
+        onComplete: (procFile, url) => {
+          lastPaymentsVoucherSrc = url;
+          document.getElementById('paymentsVoucherPreviewName').textContent = procFile.name || 'স্ক্যানকৃত ভাউচার';
+          document.getElementById('paymentsVoucherPreviewCard').classList.remove('hidden');
+        }
+      });
+    } else {
+      document.getElementById('paymentsVoucherCameraInput').click();
+    }
+  }
 
   function handlePaymentsVoucherChange(inputEl) {
     if (inputEl._ignoreChangeUntil && Date.now() < inputEl._ignoreChangeUntil) {

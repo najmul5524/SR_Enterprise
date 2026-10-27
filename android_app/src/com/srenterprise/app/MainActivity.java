@@ -30,6 +30,7 @@ public class MainActivity extends Activity implements View.OnClickListener, Runn
     public Button mBtnRetry;
 
     public ValueCallback<Uri[]> mFilePathCallback;
+    public Uri mCameraCaptureUri = null;
     private long backPressedTime = 0;
 
     @Override
@@ -39,6 +40,13 @@ public class MainActivity extends Activity implements View.OnClickListener, Runn
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             getWindow().setStatusBarColor(0xFF4C0519); // Maroon 950
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            try {
+                android.os.StrictMode.VmPolicy.Builder builder = new android.os.StrictMode.VmPolicy.Builder();
+                android.os.StrictMode.setVmPolicy(builder.build());
+            } catch (Exception e) {}
         }
 
         mWebView = (WebView) findViewById(R.id.webview);
@@ -108,18 +116,60 @@ public class MainActivity extends Activity implements View.OnClickListener, Runn
         if (requestCode == FILE_CHOOSER_REQUEST_CODE) {
             if (mFilePathCallback != null) {
                 Uri[] results = null;
-                if (resultCode == RESULT_OK && data != null) {
-                    String dataString = data.getDataString();
-                    if (dataString != null) {
-                        results = new Uri[]{Uri.parse(dataString)};
-                    } else if (data.getClipData() != null) {
-                        int count = data.getClipData().getItemCount();
-                        results = new Uri[count];
-                        for (int i = 0; i < count; i++) {
-                            results[i] = data.getClipData().getItemAt(i).getUri();
+                if (resultCode == RESULT_OK) {
+                    if (mCameraCaptureUri != null) {
+                        boolean hasData = false;
+                        if ("file".equalsIgnoreCase(mCameraCaptureUri.getScheme())) {
+                            java.io.File f = new java.io.File(mCameraCaptureUri.getPath());
+                            hasData = (f.exists() && f.length() > 0);
+                        } else if ("content".equalsIgnoreCase(mCameraCaptureUri.getScheme())) {
+                            try (android.database.Cursor cursor = getContentResolver().query(mCameraCaptureUri, new String[]{android.provider.OpenableColumns.SIZE}, null, null, null)) {
+                                if (cursor != null && cursor.moveToFirst()) {
+                                    int sizeIdx = cursor.getColumnIndex(android.provider.OpenableColumns.SIZE);
+                                    if (sizeIdx != -1 && cursor.getLong(sizeIdx) > 0) {
+                                        hasData = true;
+                                    }
+                                }
+                            } catch (Exception ignored) {
+                                hasData = true;
+                            }
+                        }
+                        if (hasData) {
+                            results = new Uri[]{mCameraCaptureUri};
                         }
                     }
+                    if (results == null && data != null) {
+                        String dataString = data.getDataString();
+                        if (dataString != null) {
+                            results = new Uri[]{Uri.parse(dataString)};
+                        } else if (data.getClipData() != null) {
+                            int count = data.getClipData().getItemCount();
+                            results = new Uri[count];
+                            for (int i = 0; i < count; i++) {
+                                results[i] = data.getClipData().getItemAt(i).getUri();
+                            }
+                        } else if (data.getExtras() != null && data.getExtras().get("data") != null) {
+                            android.graphics.Bitmap bmp = (android.graphics.Bitmap) data.getExtras().get("data");
+                            if (bmp != null) {
+                                try {
+                                    java.io.File f = new java.io.File(getExternalCacheDir(), "cam_thumb_" + System.currentTimeMillis() + ".jpg");
+                                    java.io.FileOutputStream fos = new java.io.FileOutputStream(f);
+                                    bmp.compress(android.graphics.Bitmap.CompressFormat.JPEG, 95, fos);
+                                    fos.flush();
+                                    fos.close();
+                                    results = new Uri[]{Uri.fromFile(f)};
+                                } catch (Exception e) {}
+                            }
+                        }
+                    }
+                } else {
+                    if (mCameraCaptureUri != null && "content".equalsIgnoreCase(mCameraCaptureUri.getScheme())) {
+                        try {
+                            getContentResolver().delete(mCameraCaptureUri, null, null);
+                        } catch (Exception ignored) {}
+                    }
                 }
+                mCameraCaptureUri = null;
                 mFilePathCallback.onReceiveValue(results);
                 mFilePathCallback = null;
             }

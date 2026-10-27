@@ -247,11 +247,11 @@
         <!-- Hidden Real Form Input -->
         <input type="file" id="prodImageFile" name="image_file" accept="image/*" class="hidden">
         <!-- Hidden Camera Input -->
-        <input type="file" id="prodCameraInput" accept="image/*" capture="environment" class="hidden">
+        <input type="file" id="prodCameraInput" accept="image/*;capture=camera" capture="environment" class="hidden">
 
         <!-- Dual Action Buttons: Camera & Gallery -->
         <div id="prodImageUploadButtons" class="grid grid-cols-2 gap-2">
-          <button type="button" onclick="document.getElementById('prodCameraInput').click()" 
+          <button type="button" onclick="openProductCamera()" 
             class="py-2.5 px-3 bg-gradient-to-r from-orangeBrand-600 to-crimson-600 hover:opacity-95 text-white rounded-2xl text-xs font-black shadow-sm flex items-center justify-center gap-1.5 transition touch-press">
             <span>📸</span> <span>ক্যামেরায় ছবি তুলুন</span>
           </button>
@@ -338,6 +338,23 @@
 
 <script>
   let lastProductImageSrc = null;
+
+  function openProductCamera() {
+    if (window.SmartScanner && window.SmartScanner.openCamera) {
+      SmartScanner.openCamera({
+        targetInput: document.getElementById('prodImageFile'),
+        cameraInputId: 'prodCameraInput',
+        galleryInputId: 'prodImageFile',
+        previewElement: 'prodPreviewImg',
+        onComplete: (file, url) => {
+          lastProductImageSrc = url;
+          document.getElementById('prodImagePreviewCard').classList.remove('hidden');
+        }
+      });
+    } else {
+      document.getElementById('prodCameraInput').click();
+    }
+  }
 
   function initProductImageScanner() {
     const fileInput = document.getElementById('prodImageFile');

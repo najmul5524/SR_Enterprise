@@ -248,6 +248,7 @@ public class MainActivity extends Activity implements View.OnClickListener, Runn
     public Button mBtnRetry;
 
     public ValueCallback<Uri[]> mFilePathCallback;
+    public Uri mCameraCaptureUri = null;
     private long backPressedTime = 0;
 
     @Override
@@ -257,6 +258,13 @@ public class MainActivity extends Activity implements View.OnClickListener, Runn
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             getWindow().setStatusBarColor(0xFF4C0519); // Maroon 950
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            try {
+                android.os.StrictMode.VmPolicy.Builder builder = new android.os.StrictMode.VmPolicy.Builder();
+                android.os.StrictMode.setVmPolicy(builder.build());
+            } catch (Exception e) {}
         }
 
         mWebView = (WebView) findViewById(R.id.webview);
@@ -326,18 +334,60 @@ public class MainActivity extends Activity implements View.OnClickListener, Runn
         if (requestCode == FILE_CHOOSER_REQUEST_CODE) {
             if (mFilePathCallback != null) {
                 Uri[] results = null;
-                if (resultCode == RESULT_OK && data != null) {
-                    String dataString = data.getDataString();
-                    if (dataString != null) {
-                        results = new Uri[]{Uri.parse(dataString)};
-                    } else if (data.getClipData() != null) {
-                        int count = data.getClipData().getItemCount();
-                        results = new Uri[count];
-                        for (int i = 0; i < count; i++) {
-                            results[i] = data.getClipData().getItemAt(i).getUri();
+                if (resultCode == RESULT_OK) {
+                    if (mCameraCaptureUri != null) {
+                        boolean hasData = false;
+                        if ("file".equalsIgnoreCase(mCameraCaptureUri.getScheme())) {
+                            java.io.File f = new java.io.File(mCameraCaptureUri.getPath());
+                            hasData = (f.exists() && f.length() > 0);
+                        } else if ("content".equalsIgnoreCase(mCameraCaptureUri.getScheme())) {
+                            try (android.database.Cursor cursor = getContentResolver().query(mCameraCaptureUri, new String[]{android.provider.OpenableColumns.SIZE}, null, null, null)) {
+                                if (cursor != null && cursor.moveToFirst()) {
+                                    int sizeIdx = cursor.getColumnIndex(android.provider.OpenableColumns.SIZE);
+                                    if (sizeIdx != -1 && cursor.getLong(sizeIdx) > 0) {
+                                        hasData = true;
+                                    }
+                                }
+                            } catch (Exception ignored) {
+                                hasData = true;
+                            }
+                        }
+                        if (hasData) {
+                            results = new Uri[]{mCameraCaptureUri};
                         }
                     }
+                    if (results == null && data != null) {
+                        String dataString = data.getDataString();
+                        if (dataString != null) {
+                            results = new Uri[]{Uri.parse(dataString)};
+                        } else if (data.getClipData() != null) {
+                            int count = data.getClipData().getItemCount();
+                            results = new Uri[count];
+                            for (int i = 0; i < count; i++) {
+                                results[i] = data.getClipData().getItemAt(i).getUri();
+                            }
+                        } else if (data.getExtras() != null && data.getExtras().get("data") != null) {
+                            android.graphics.Bitmap bmp = (android.graphics.Bitmap) data.getExtras().get("data");
+                            if (bmp != null) {
+                                try {
+                                    java.io.File f = new java.io.File(getExternalCacheDir(), "cam_thumb_" + System.currentTimeMillis() + ".jpg");
+                                    java.io.FileOutputStream fos = new java.io.FileOutputStream(f);
+                                    bmp.compress(android.graphics.Bitmap.CompressFormat.JPEG, 95, fos);
+                                    fos.flush();
+                                    fos.close();
+                                    results = new Uri[]{Uri.fromFile(f)};
+                                } catch (Exception e) {}
+                            }
+                        }
+                    }
+                } else {
+                    if (mCameraCaptureUri != null && "content".equalsIgnoreCase(mCameraCaptureUri.getScheme())) {
+                        try {
+                            getContentResolver().delete(mCameraCaptureUri, null, null);
+                        } catch (Exception ignored) {}
+                    }
                 }
+                mCameraCaptureUri = null;
                 mFilePathCallback.onReceiveValue(results);
                 mFilePathCallback = null;
             }
@@ -518,9 +568,56 @@ public class AppWebChromeClient extends WebChromeClient {
         }
         mActivity.mFilePathCallback = filePathCallback;
 
-        Intent intent = fileChooserParams.createIntent();
+        Intent takePictureIntent = new Intent(android.provider.MediaStore.ACTION_IMAGE_CAPTURE);
+        boolean isCapture = false;
+        if (fileChooserParams != null) {
+            if (fileChooserParams.isCaptureEnabled()) {
+                isCapture = true;
+            } else {
+                String[] acceptTypes = fileChooserParams.getAcceptTypes();
+                if (acceptTypes != null) {
+                    for (String t : acceptTypes) {
+                        if (t != null && (t.contains("capture") || t.contains("camera"))) {
+                            isCapture = true;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
         try {
-            mActivity.startActivityForResult(intent, MainActivity.FILE_CHOOSER_REQUEST_CODE);
+            android.content.ContentValues values = new android.content.ContentValues();
+            values.put(android.provider.MediaStore.Images.Media.TITLE, "SRE_Cam_" + System.currentTimeMillis());
+            values.put(android.provider.MediaStore.Images.Media.MIME_TYPE, "image/jpeg");
+            mActivity.mCameraCaptureUri = mActivity.getContentResolver().insert(
+                android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values
+            );
+            takePictureIntent.putExtra(android.provider.MediaStore.EXTRA_OUTPUT, mActivity.mCameraCaptureUri);
+            takePictureIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+        } catch (Exception e) {
+            try {
+                java.io.File photoFile = new java.io.File(mActivity.getExternalCacheDir(), "camera_" + System.currentTimeMillis() + ".jpg");
+                mActivity.mCameraCaptureUri = Uri.fromFile(photoFile);
+                takePictureIntent.putExtra(android.provider.MediaStore.EXTRA_OUTPUT, mActivity.mCameraCaptureUri);
+            } catch (Exception ex) {
+                mActivity.mCameraCaptureUri = null;
+            }
+        }
+
+        if (isCapture) {
+            try {
+                mActivity.startActivityForResult(takePictureIntent, MainActivity.FILE_CHOOSER_REQUEST_CODE);
+                return true;
+            } catch (Exception e) {}
+        }
+
+        Intent contentSelectionIntent = fileChooserParams.createIntent();
+        Intent chooserIntent = Intent.createChooser(contentSelectionIntent, "ছবি বা ফাইল নির্বাচন করুন");
+        chooserIntent.putExtra(Intent.EXTRA_INITIAL_INTENTS, new Intent[]{takePictureIntent});
+
+        try {
+            mActivity.startActivityForResult(chooserIntent, MainActivity.FILE_CHOOSER_REQUEST_CODE);
         } catch (Exception e) {
             mActivity.mFilePathCallback = null;
             Toast.makeText(mActivity, "ফাইল নির্বাচন করা যায়নি", Toast.LENGTH_SHORT).show();

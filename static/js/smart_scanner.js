@@ -17,7 +17,7 @@ const SmartScanner = (function () {
   let corners = [];
   let activeCorner = -1;
   let dragOffset = { x: 0, y: 0 };
-  let imageDisplayScale = 1; // display size / natural size
+  let imageDisplayScale = 1;
   let imageDisplayOffset = { x: 0, y: 0 };
 
   // Current state
@@ -34,12 +34,94 @@ const SmartScanner = (function () {
   const HANDLE_RADIUS = 16;
   const TOUCH_SLOP = 32;
 
+  // Live Camera state
+  let cameraModal = null;
+  let videoEl = null;
+  let cameraStream = null;
+  let currentFacingMode = 'environment';
+  let cameraOptions = null;
+  let _isFinishing = false;
+
   function init() {
     if (document.getElementById('smartScannerModal')) {
       return;
     }
 
     const modalHtml = `
+    <!-- 1. LIVE CAMERA MODAL -->
+    <div id="smartScannerCameraModal" class="fixed inset-0 z-[10000] hidden bg-black flex flex-col justify-between select-none">
+      
+      <!-- Top Bar -->
+      <div class="absolute top-0 inset-x-0 bg-gradient-to-b from-black/80 via-black/40 to-transparent p-4 flex items-center justify-between z-20">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-xl bg-orangeBrand-500/30 text-orangeBrand-400 flex items-center justify-center text-lg border border-orangeBrand-500/40">
+            📸
+          </div>
+          <div>
+            <h3 class="text-sm font-black text-white leading-none">লাইভ ক্যামেরা স্ক্যানার</h3>
+            <p class="text-[10px] text-slate-300 mt-0.5">পণ্য বা মেমো ফ্রেমে রাখুন ও ছবি তুলুন</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <button type="button" id="scannerCameraFlipBtn" onclick="SmartScanner.flipCamera()" class="p-2.5 rounded-full bg-slate-800/80 hover:bg-slate-700 text-white text-xs font-bold transition border border-slate-700/80 shadow-md" title="ক্যামেরা ঘোরান">
+            <span>🔄</span>
+          </button>
+          <button type="button" onclick="SmartScanner.closeCamera()" class="p-2.5 rounded-full bg-rose-950/80 hover:bg-rose-900 text-rose-300 text-xs font-black transition border border-rose-800/60 shadow-md" title="বন্ধ করুন">
+            ✕
+          </button>
+        </div>
+      </div>
+
+      <!-- Video Viewfinder -->
+      <div class="relative flex-1 w-full h-full flex items-center justify-center overflow-hidden bg-black">
+        <video id="smartScannerVideo" autoplay playsinline muted class="w-full h-full object-cover"></video>
+        
+        <!-- Viewfinder Guide Box -->
+        <div class="pointer-events-none absolute inset-6 sm:inset-12 border-2 border-dashed border-orangeBrand-400/80 rounded-3xl flex flex-col justify-between p-4 shadow-[0_0_0_9999px_rgba(0,0,0,0.45)]">
+          <div class="flex justify-between items-start">
+            <div class="w-7 h-7 border-t-4 border-l-4 border-orangeBrand-500 rounded-tl-xl shadow-sm"></div>
+            <div class="w-7 h-7 border-t-4 border-r-4 border-orangeBrand-500 rounded-tr-xl shadow-sm"></div>
+          </div>
+          <div class="text-center px-2">
+            <span class="inline-block px-3.5 py-1.5 bg-black/70 backdrop-blur-md text-orangeBrand-300 text-[11px] font-bold rounded-full border border-orangeBrand-500/40 shadow-lg">
+              💡 ছবি তোলার পর CamScanner-এর মতো ৪ কোণা সোজা করার অপশন পাবেন
+            </span>
+          </div>
+          <div class="flex justify-between items-end">
+            <div class="w-7 h-7 border-b-4 border-l-4 border-orangeBrand-500 rounded-bl-xl shadow-sm"></div>
+            <div class="w-7 h-7 border-b-4 border-r-4 border-orangeBrand-500 rounded-br-xl shadow-sm"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom Bar: Capture Controls -->
+      <div class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/95 via-black/70 to-transparent p-6 pb-8 flex items-center justify-around z-20">
+        <!-- Gallery Fallback Button -->
+        <button type="button" id="scannerCameraGalleryBtn" onclick="SmartScanner.fallbackToGallery()" class="flex flex-col items-center gap-1.5 text-slate-300 hover:text-white transition touch-press">
+          <div class="w-12 h-12 rounded-2xl bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700 flex items-center justify-center text-xl shadow-md">
+            📁
+          </div>
+          <span class="text-[11px] font-bold">গ্যালারি</span>
+        </button>
+
+        <!-- Main Shutter Button -->
+        <button type="button" id="scannerCameraSnapBtn" onclick="SmartScanner.snapPhoto()" class="w-20 h-20 rounded-full border-4 border-white p-1 shadow-2xl transition transform active:scale-90 flex items-center justify-center bg-transparent group touch-press">
+          <div class="w-full h-full rounded-full bg-gradient-to-tr from-orangeBrand-500 to-crimson-600 group-hover:opacity-95 shadow-lg flex items-center justify-center text-white text-3xl font-black">
+            📸
+          </div>
+        </button>
+
+        <!-- Cancel / Close -->
+        <button type="button" onclick="SmartScanner.closeCamera()" class="flex flex-col items-center gap-1.5 text-slate-400 hover:text-white transition touch-press">
+          <div class="w-12 h-12 rounded-2xl bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700 flex items-center justify-center text-base shadow-md">
+            ✕
+          </div>
+          <span class="text-[11px] font-bold">বাতিল</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- 2. 4-CORNER PERSPECTIVE CROP & FILTER MODAL -->
     <div id="smartScannerModal" class="fixed inset-0 z-[9999] hidden bg-slate-950/90 backdrop-blur-md flex flex-col justify-between select-none">
       
       <!-- Top Bar -->
@@ -144,6 +226,8 @@ const SmartScanner = (function () {
     document.body.insertAdjacentHTML('beforeend', modalHtml);
 
     modal = document.getElementById('smartScannerModal');
+    cameraModal = document.getElementById('smartScannerCameraModal');
+    videoEl = document.getElementById('smartScannerVideo');
     canvas = document.getElementById('scannerCanvas');
     ctx = canvas.getContext('2d');
     previewCanvas = document.getElementById('previewCanvas');
@@ -152,6 +236,132 @@ const SmartScanner = (function () {
     setupInteractionHandlers();
   }
 
+  // ==================== LIVE CAMERA LOGIC ====================
+  async function openCamera(options = {}) {
+    cameraOptions = options;
+    init();
+
+    // Check if navigator.mediaDevices is supported
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      fallbackToNativeOrInput();
+      return;
+    }
+
+    cameraModal = document.getElementById('smartScannerCameraModal');
+    videoEl = document.getElementById('smartScannerVideo');
+    cameraModal.classList.remove('hidden');
+
+    try {
+      stopCameraStream();
+
+      const constraints = {
+        video: {
+          facingMode: { ideal: currentFacingMode },
+          width: { ideal: 1920 },
+          height: { ideal: 1080 }
+        },
+        audio: false
+      };
+
+      cameraStream = await navigator.mediaDevices.getUserMedia(constraints);
+      videoEl.srcObject = cameraStream;
+      await videoEl.play();
+    } catch (err) {
+      console.warn("[SmartScanner] getUserMedia failed, falling back:", err);
+      closeCamera();
+      fallbackToNativeOrInput();
+    }
+  }
+
+  function stopCameraStream() {
+    if (cameraStream) {
+      try {
+        cameraStream.getTracks().forEach(track => track.stop());
+      } catch (e) {}
+      cameraStream = null;
+    }
+    if (videoEl) {
+      try {
+        videoEl.srcObject = null;
+      } catch (e) {}
+    }
+  }
+
+  function closeCamera() {
+    stopCameraStream();
+    if (cameraModal) {
+      cameraModal.classList.add('hidden');
+    }
+  }
+
+  function flipCamera() {
+    currentFacingMode = (currentFacingMode === 'environment') ? 'user' : 'environment';
+    openCamera(cameraOptions);
+  }
+
+  function snapPhoto() {
+    videoEl = document.getElementById('smartScannerVideo');
+    if (!videoEl || !cameraStream) {
+      fallbackToNativeOrInput();
+      return;
+    }
+
+    const vw = videoEl.videoWidth || 1280;
+    const vh = videoEl.videoHeight || 720;
+    const snapCanvas = document.createElement('canvas');
+    snapCanvas.width = vw;
+    snapCanvas.height = vh;
+    const sCtx = snapCanvas.getContext('2d');
+    sCtx.drawImage(videoEl, 0, 0, vw, vh);
+
+    const capturedDataUrl = snapCanvas.toDataURL('image/jpeg', 0.95);
+    const savedOptions = cameraOptions || {};
+
+    closeCamera();
+
+    // Seamlessly open 4-corner crop view with captured photo!
+    open(capturedDataUrl, savedOptions);
+  }
+
+  function fallbackToGallery() {
+    closeCamera();
+    if (cameraOptions) {
+      if (cameraOptions.galleryInputId) {
+        const gEl = (typeof cameraOptions.galleryInputId === 'string') 
+          ? document.getElementById(cameraOptions.galleryInputId) 
+          : cameraOptions.galleryInputId;
+        if (gEl) {
+          gEl.click();
+          return;
+        }
+      }
+      if (cameraOptions.targetInput) {
+        cameraOptions.targetInput.click();
+        return;
+      }
+    }
+  }
+
+  function fallbackToNativeOrInput() {
+    if (cameraOptions && cameraOptions.cameraInputId) {
+      const cEl = (typeof cameraOptions.cameraInputId === 'string')
+        ? document.getElementById(cameraOptions.cameraInputId)
+        : cameraOptions.cameraInputId;
+      if (cEl) {
+        cEl.click();
+        return;
+      }
+    }
+    if (cameraOptions && cameraOptions.targetInput) {
+      cameraOptions.targetInput.click();
+      return;
+    }
+    if (window.showToast) {
+      showToast("ক্যামেরা ওপেন করা যায়নি। গ্যালারি থেকে ছবি নির্বাচন করুন।", "info");
+    }
+  }
+
+  // ==================== INTERACTION HANDLERS ====================
   function setupInteractionHandlers() {
     const getPos = (e) => {
       const rect = canvas.getBoundingClientRect();
@@ -227,6 +437,7 @@ const SmartScanner = (function () {
   function showLoupe(screenX, screenY, corner) {
     const loupe = document.getElementById('scannerLoupe');
     const loupeCanvas = document.getElementById('loupeCanvas');
+    if (!loupe || !loupeCanvas) return;
     const loupeCtx = loupeCanvas.getContext('2d');
 
     loupe.style.left = `${screenX - 48}px`;
@@ -247,16 +458,16 @@ const SmartScanner = (function () {
     if (loupe) loupe.classList.add('hidden');
   }
 
+  // ==================== OPEN SMART SCANNER ====================
   function open(source, options = {}) {
-    if (_isFinishing) {
-      console.warn("[SmartScanner] open() blocked: previous scan is currently finishing.");
-      return;
-    }
+    _isFinishing = false; // Always allow user to open scanner
     init();
+
     if (!source) {
       console.warn("[SmartScanner] No source provided to SmartScanner.open");
       return;
     }
+
     targetFileInput = options.targetInput || null;
     onCompleteCallback = options.onComplete || null;
     previewElement = options.previewElement || null;
@@ -278,7 +489,13 @@ const SmartScanner = (function () {
     modal.classList.remove('hidden');
 
     const img = new Image();
-    img.crossOrigin = 'anonymous';
+
+    // Only set crossOrigin for remote HTTP/HTTPS URLs (NEVER for data: or blob: URIs)
+    const isRemote = (typeof source === 'string' && (source.startsWith('http://') || source.startsWith('https://'))) ||
+                     (source instanceof HTMLImageElement && (source.src.startsWith('http://') || source.src.startsWith('https://')));
+    if (isRemote) {
+      img.crossOrigin = 'anonymous';
+    }
 
     const onImgReady = function () {
       currentImage = img;
@@ -288,7 +505,17 @@ const SmartScanner = (function () {
     img.onload = onImgReady;
     img.onerror = function (e) {
       console.error("[SmartScanner] Image load failed:", e);
-      // If error occurs, inform and close
+      // If failed with crossOrigin, retry without crossOrigin
+      if (img.crossOrigin) {
+        img.crossOrigin = null;
+        if (typeof source === 'string') {
+          img.src = source;
+          return;
+        }
+      }
+      if (window.showToast) {
+        showToast("ছবি লোড করতে সমস্যা হয়েছে", "error");
+      }
       close();
     };
 
@@ -354,7 +581,7 @@ const SmartScanner = (function () {
     corners = [
       { x: 2, y: 2 },
       { x: canvas.width - 2, y: 2 },
-      { x: canvas.width - 2, canvasHeight: canvas.height - 2, y: canvas.height - 2 },
+      { x: canvas.width - 2, y: canvas.height - 2 },
       { x: 2, y: canvas.height - 2 }
     ];
     drawCropOverlay();
@@ -497,7 +724,7 @@ const SmartScanner = (function () {
     const sw = srcCanvas.width;
     const sh = srcCanvas.height;
 
-    // High-speed Bilinear Perspective Warping (runs in <20ms)
+    // High-speed Bilinear Perspective Warping
     for (let y = 0; y < targetH; y++) {
       const t = y / targetH;
       const invT = 1 - t;
@@ -621,8 +848,6 @@ const SmartScanner = (function () {
     previewCtx.putImageData(imgData, 0, 0);
   }
 
-  let _isFinishing = false;
-
   function dataURLtoFile(dataurl, filename) {
     const arr = dataurl.split(',');
     const mime = arr[0].match(/:(.*?);/)[1];
@@ -684,7 +909,7 @@ const SmartScanner = (function () {
       }
 
       if (window.showToast) {
-        showToast("স্মার্ট স্ক্যান ও ক্রপ সফল হয়েছে! ✅", "success");
+        showToast("স্মার্ট স্ক্যান ও ক্রপ সফল হয়েছে! ✅", "success");
       }
 
       close();
@@ -692,9 +917,7 @@ const SmartScanner = (function () {
       console.error("[SmartScanner] finishAndApply error:", err);
       close();
     } finally {
-      setTimeout(() => {
-        _isFinishing = false;
-      }, 1500);
+      _isFinishing = false;
     }
   }
 
@@ -705,6 +928,7 @@ const SmartScanner = (function () {
     hideLoupe();
     currentImage = null;
     warpedCanvas = null;
+    _isFinishing = false;
   }
 
   // Bind a file input and camera button pair automatically
@@ -717,7 +941,7 @@ const SmartScanner = (function () {
     if (!camInput) {
       camInput = document.createElement('input');
       camInput.type = 'file';
-      camInput.accept = 'image/*';
+      camInput.accept = 'image/*;capture=camera';
       camInput.capture = 'environment';
       camInput.id = `${fileInputId}_camera`;
       camInput.className = 'hidden';
@@ -744,7 +968,22 @@ const SmartScanner = (function () {
 
     if (cameraBtnId) {
       const cBtn = document.getElementById(cameraBtnId);
-      if (cBtn) cBtn.addEventListener('click', () => camInput.click());
+      if (cBtn) {
+        cBtn.addEventListener('click', () => {
+          openCamera({
+            targetInput: fileInput,
+            cameraInputId: camInput.id,
+            galleryInputId: fileInput.id,
+            previewElement: previewImgId,
+            onComplete: () => {
+              if (previewCardId) {
+                const card = document.getElementById(previewCardId);
+                if (card) card.classList.remove('hidden');
+              }
+            }
+          });
+        });
+      }
     }
 
     if (galleryBtnId) {
@@ -774,6 +1013,11 @@ const SmartScanner = (function () {
   return {
     open,
     close,
+    openCamera,
+    closeCamera,
+    snapPhoto,
+    flipCamera,
+    fallbackToGallery,
     rotate90,
     resetCornersToFull,
     processPerspectiveCrop,
@@ -786,7 +1030,6 @@ const SmartScanner = (function () {
 
 // Auto-initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
-  // Global shortcut to open smart scanner on any element with data-smart-scan
   document.querySelectorAll('input[type="file"][data-smart-scan]').forEach(input => {
     input.addEventListener('change', function () {
       if (this.files && this.files[0]) {

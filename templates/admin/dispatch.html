@@ -330,11 +330,11 @@
             <input type="file" id="dispatchReceiptInput" name="receipt_file" accept="image/*" class="hidden" onchange="handleReceiptFileChange(this)">
 
             <!-- Dedicated Camera Capture Input (capture="environment") -->
-            <input type="file" id="dispatchCameraInput" accept="image/*" capture="environment" class="hidden" onchange="handleReceiptFileChange(this)">
+            <input type="file" id="dispatchCameraInput" accept="image/*;capture=camera" capture="environment" class="hidden" onchange="handleReceiptFileChange(this)">
 
             <!-- Dual Action Buttons: Camera & Gallery -->
             <div id="receiptUploadButtons" class="grid grid-cols-2 gap-2">
-              <button type="button" onclick="document.getElementById('dispatchCameraInput').click()" 
+              <button type="button" onclick="openDispatchCamera()" 
                 class="py-2.5 px-3 bg-gradient-to-r from-orangeBrand-600 to-crimson-600 hover:opacity-95 text-white rounded-2xl text-xs font-black shadow-sm flex items-center justify-center gap-1.5 transition touch-press">
                 <span>📸</span> <span>সরাসরি ছবি তুলুন</span>
               </button>
@@ -793,6 +793,24 @@
 
   
   let lastReceiptPhotoSrc = null;
+
+  function openDispatchCamera() {
+    if (window.SmartScanner && window.SmartScanner.openCamera) {
+      SmartScanner.openCamera({
+        targetInput: document.getElementById('dispatchReceiptInput'),
+        cameraInputId: 'dispatchCameraInput',
+        galleryInputId: 'dispatchReceiptInput',
+        previewElement: 'receiptPreviewImg',
+        onComplete: (procFile, url) => {
+          lastReceiptPhotoSrc = url;
+          document.getElementById('receiptPreviewName').textContent = procFile.name || 'স্ক্যান করা মেমো';
+          document.getElementById('receiptPreviewCard').classList.remove('hidden');
+        }
+      });
+    } else {
+      document.getElementById('dispatchCameraInput').click();
+    }
+  }
 
   function handleReceiptFileChange(inputEl) {
     if (inputEl._ignoreChangeUntil && Date.now() < inputEl._ignoreChangeUntil) {

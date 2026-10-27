@@ -222,10 +222,10 @@
         </div>
 
         <input type="file" id="editInvoiceReceiptInput" name="receipt_file" accept="image/*" class="hidden" onchange="handleEditInvoiceReceiptChange(this)">
-        <input type="file" id="editInvoiceCameraInput" accept="image/*" capture="environment" class="hidden" onchange="handleEditInvoiceReceiptChange(this)">
+        <input type="file" id="editInvoiceCameraInput" accept="image/*;capture=camera" capture="environment" class="hidden" onchange="handleEditInvoiceReceiptChange(this)">
 
         <div class="grid grid-cols-2 gap-2 mb-2">
-          <button type="button" onclick="document.getElementById('editInvoiceCameraInput').click()" 
+          <button type="button" onclick="openEditInvoiceCamera()" 
             class="py-2 px-3 bg-gradient-to-r from-orangeBrand-600 to-crimson-600 hover:opacity-95 text-white rounded-xl text-xs font-black shadow-sm flex items-center justify-center gap-1.5 transition touch-press">
             <span>📷</span> <span>ক্যামেরায় তুলুন</span>
           </button>
@@ -287,6 +287,24 @@
   }
 
   let lastEditInvoicePhotoSrc = null;
+
+  function openEditInvoiceCamera() {
+    if (window.SmartScanner && window.SmartScanner.openCamera) {
+      SmartScanner.openCamera({
+        targetInput: document.getElementById('editInvoiceReceiptInput'),
+        cameraInputId: 'editInvoiceCameraInput',
+        galleryInputId: 'editInvoiceReceiptInput',
+        previewElement: 'editInvoicePreviewImg',
+        onComplete: (procFile, url) => {
+          lastEditInvoicePhotoSrc = url;
+          document.getElementById('editInvoicePreviewName').textContent = procFile.name || 'স্ক্যানকৃত মেমো';
+          document.getElementById('editInvoicePreviewCard').classList.remove('hidden');
+        }
+      });
+    } else {
+      document.getElementById('editInvoiceCameraInput').click();
+    }
+  }
 
   function handleEditInvoiceReceiptChange(inputEl) {
     if (inputEl._ignoreChangeUntil && Date.now() < inputEl._ignoreChangeUntil) {
