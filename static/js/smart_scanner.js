@@ -41,13 +41,11 @@ const SmartScanner = (function () {
   let currentFacingMode = 'environment';
   let cameraOptions = null;
   let _isFinishing = false;
+  let _handlersAttached = false;
 
   function init() {
-    if (document.getElementById('smartScannerModal')) {
-      return;
-    }
-
-    const modalHtml = `
+    if (!document.getElementById('smartScannerModal')) {
+      const modalHtml = `
     <!-- 1. LIVE CAMERA MODAL -->
     <div id="smartScannerCameraModal" class="fixed inset-0 z-[10000] hidden bg-black flex flex-col justify-between select-none">
       
@@ -225,17 +223,21 @@ const SmartScanner = (function () {
     </div>
     `;
 
-    document.body.insertAdjacentHTML('beforeend', modalHtml);
+      document.body.insertAdjacentHTML('beforeend', modalHtml);
+    }
 
     modal = document.getElementById('smartScannerModal');
     cameraModal = document.getElementById('smartScannerCameraModal');
     videoEl = document.getElementById('smartScannerVideo');
     canvas = document.getElementById('scannerCanvas');
-    ctx = canvas.getContext('2d');
+    if (canvas) ctx = canvas.getContext('2d');
     previewCanvas = document.getElementById('previewCanvas');
-    previewCtx = previewCanvas.getContext('2d');
+    if (previewCanvas) previewCtx = previewCanvas.getContext('2d');
 
-    setupInteractionHandlers();
+    if (!_handlersAttached && canvas) {
+      setupInteractionHandlers();
+      _handlersAttached = true;
+    }
   }
 
   // ==================== LIVE CAMERA LOGIC ====================
@@ -247,6 +249,19 @@ const SmartScanner = (function () {
     if (!dataUrl) return;
     const opts = cameraOptions || {};
     open(dataUrl, opts);
+  }
+
+  function checkNativePhoto() {
+    if (window.SRNativeApp && typeof window.SRNativeApp.getLastCapturedPhoto === 'function') {
+      try {
+        const photo = window.SRNativeApp.getLastCapturedPhoto();
+        if (photo && photo.startsWith('data:image')) {
+          onNativeCameraResult(photo);
+        }
+      } catch (e) {
+        console.warn("[SmartScanner] checkNativePhoto error:", e);
+      }
+    }
   }
 
   async function openCamera(options = {}) {
@@ -484,6 +499,17 @@ const SmartScanner = (function () {
     if (!source) {
       console.warn("[SmartScanner] No source provided to SmartScanner.open");
       return;
+    }
+    if (typeof source === 'string' && (source.trim() === '' || source === window.location.href)) {
+      console.warn("[SmartScanner] Empty or current page URL provided to SmartScanner.open");
+      return;
+    }
+    if (source instanceof HTMLImageElement) {
+      const raw = source.getAttribute('src');
+      if (!raw || raw.trim() === '' || raw === window.location.href) {
+        console.warn("[SmartScanner] HTMLImageElement has empty or current page src");
+        return;
+      }
     }
 
     targetFileInput = options.targetInput || null;
@@ -1049,6 +1075,7 @@ const SmartScanner = (function () {
     fallbackToGallery,
     setCameraOptions,
     onNativeCameraResult,
+    checkNativePhoto,
     rotate90,
     resetCornersToFull,
     processPerspectiveCrop,
@@ -1058,6 +1085,20 @@ const SmartScanner = (function () {
     bindUploader
   };
 })();
+
+// Auto-check for native camera captures when app window is focused / resumed
+if (typeof window !== 'undefined') {
+  window.addEventListener('focus', () => {
+    if (window.SmartScanner && typeof window.SmartScanner.checkNativePhoto === 'function') {
+      window.SmartScanner.checkNativePhoto();
+    }
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && window.SmartScanner && typeof window.SmartScanner.checkNativePhoto === 'function') {
+      window.SmartScanner.checkNativePhoto();
+    }
+  });
+}
 
 // Auto-initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {

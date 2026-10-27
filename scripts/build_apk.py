@@ -250,6 +250,7 @@ public class MainActivity extends Activity implements View.OnClickListener, Runn
 
     public ValueCallback<Uri[]> mFilePathCallback;
     public Uri mCameraCaptureUri = null;
+    public volatile String mLastCapturedBase64 = null;
     private long backPressedTime = 0;
 
     @Override
@@ -362,14 +363,81 @@ public class MainActivity extends Activity implements View.OnClickListener, Runn
         if (requestCode == NATIVE_CAMERA_REQUEST_CODE) {
             if (resultCode == RESULT_OK && mCameraCaptureUri != null) {
                 try {
-                    java.io.InputStream is = getContentResolver().openInputStream(mCameraCaptureUri);
-                    android.graphics.Bitmap bmp = android.graphics.BitmapFactory.decodeStream(is);
+                    // 1. Decode bounds first to compute inSampleSize
+                    android.graphics.BitmapFactory.Options boundsOptions = new android.graphics.BitmapFactory.Options();
+                    boundsOptions.inJustDecodeBounds = true;
+                    java.io.InputStream isBounds = getContentResolver().openInputStream(mCameraCaptureUri);
+                    if (isBounds != null) {
+                        android.graphics.BitmapFactory.decodeStream(isBounds, null, boundsOptions);
+                        isBounds.close();
+                    }
+
+                    int origWidth = boundsOptions.outWidth;
+                    int origHeight = boundsOptions.outHeight;
+                    int inSampleSize = 1;
+                    int maxDim = Math.max(origWidth, origHeight);
+                    // Keep max dimension <= 1400px to prevent OOM and Binder IPC TransactionTooLargeException
+                    while (maxDim / inSampleSize > 1400) {
+                        inSampleSize *= 2;
+                    }
+
+                    // 2. Decode sampled bitmap
+                    android.graphics.BitmapFactory.Options decodeOptions = new android.graphics.BitmapFactory.Options();
+                    decodeOptions.inSampleSize = inSampleSize;
+                    java.io.InputStream isActual = getContentResolver().openInputStream(mCameraCaptureUri);
+                    android.graphics.Bitmap bmp = null;
+                    if (isActual != null) {
+                        bmp = android.graphics.BitmapFactory.decodeStream(isActual, null, decodeOptions);
+                        isActual.close();
+                    }
+
                     if (bmp != null) {
+                        // 3. Handle EXIF orientation rotation
+                        try {
+                            java.io.InputStream isExif = getContentResolver().openInputStream(mCameraCaptureUri);
+                            if (isExif != null) {
+                                android.media.ExifInterface exif = new android.media.ExifInterface(isExif);
+                                int orientation = exif.getAttributeInt(
+                                    android.media.ExifInterface.TAG_ORIENTATION,
+                                    android.media.ExifInterface.ORIENTATION_NORMAL
+                                );
+                                isExif.close();
+                                int rotationAngle = 0;
+                                if (orientation == android.media.ExifInterface.ORIENTATION_ROTATE_90) rotationAngle = 90;
+                                else if (orientation == android.media.ExifInterface.ORIENTATION_ROTATE_180) rotationAngle = 180;
+                                else if (orientation == android.media.ExifInterface.ORIENTATION_ROTATE_270) rotationAngle = 270;
+
+                                if (rotationAngle != 0) {
+                                    android.graphics.Matrix matrix = new android.graphics.Matrix();
+                                    matrix.postRotate(rotationAngle);
+                                    android.graphics.Bitmap rotatedBmp = android.graphics.Bitmap.createBitmap(
+                                        bmp, 0, 0, bmp.getWidth(), bmp.getHeight(), matrix, true
+                                    );
+                                    if (rotatedBmp != bmp) {
+                                        bmp.recycle();
+                                        bmp = rotatedBmp;
+                                    }
+                                }
+                            }
+                        } catch (Exception ignored) {}
+
+                        // 4. Compress to 80% JPEG
                         java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
-                        bmp.compress(android.graphics.Bitmap.CompressFormat.JPEG, 92, baos);
+                        bmp.compress(android.graphics.Bitmap.CompressFormat.JPEG, 80, baos);
                         byte[] bytes = baos.toByteArray();
+                        bmp.recycle();
+
                         String base64 = android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP);
-                        final String js = "if (window.SmartScanner && window.SmartScanner.onNativeCameraResult) { window.SmartScanner.onNativeCameraResult('data:image/jpeg;base64," + base64 + "'); }";
+                        String dataUri = "data:image/jpeg;base64," + base64;
+                        mLastCapturedBase64 = dataUri;
+
+                        final String js = "if (window.SmartScanner) { " +
+                                          "  if (window.SmartScanner.onNativeCameraResult) { " +
+                                          "    window.SmartScanner.onNativeCameraResult('" + dataUri + "'); " +
+                                          "  } else if (window.SmartScanner.checkNativePhoto) { " +
+                                          "    window.SmartScanner.checkNativePhoto(); " +
+                                          "  } " +
+                                          "}";
                         runOnUiThread(new JsEvalRunner(this, js));
                     }
                 } catch (Exception e) {
@@ -777,6 +845,16 @@ public class AppJsInterface {
         if (activity != null) {
             activity.openCameraFromJs();
         }
+    }
+
+    @JavascriptInterface
+    public String getLastCapturedPhoto() {
+        if (activity != null) {
+            String photo = activity.mLastCapturedBase64;
+            activity.mLastCapturedBase64 = null;
+            return (photo != null) ? photo : "";
+        }
+        return "";
     }
 }
 """, encoding="utf-8")

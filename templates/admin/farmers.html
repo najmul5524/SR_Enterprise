@@ -410,8 +410,25 @@
     const previewImgId = mode === 'add' ? 'addFarmerPreviewImg' : 'editFarmerPreviewImg';
     const previewImg = document.getElementById(previewImgId);
     const targetInput = document.getElementById(mode === 'add' ? 'addFarmerImageInput' : 'editFarmerImageInput');
-    const src = lastFarmerPhotoSrc[mode] || (targetInput && targetInput.files && targetInput.files[0]) || (previewImg ? previewImg.src : null);
+    let src = lastFarmerPhotoSrc[mode];
+    if (!src && targetInput && targetInput.files && targetInput.files[0]) {
+      src = targetInput.files[0];
+    }
+    if (!src && previewImg) {
+      const raw = previewImg.getAttribute('src');
+      if (raw && raw.trim() !== '' && raw !== window.location.href) {
+        const full = previewImg.src;
+        if (full && (full.startsWith('data:image') || full.startsWith('blob:') || full.includes('/static/uploads/') || full.includes('cloudinary') || /\.(jpe?g|png|webp)/i.test(full))) {
+          src = full;
+        }
+      }
+    }
     const previewCardId = mode === 'add' ? 'addFarmerPreviewCard' : 'editFarmerPreviewCard';
+
+    if (!src) {
+      if (window.showToast) showToast("পুনরায় ক্রপ করার মতো কোনো ছবি নেই", "info");
+      return;
+    }
 
     if (src && window.SmartScanner) {
       SmartScanner.open(src, {

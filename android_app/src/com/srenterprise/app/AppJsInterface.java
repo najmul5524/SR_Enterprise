@@ -31,4 +31,14 @@ public class AppJsInterface {
             activity.openCameraFromJs();
         }
     }
+
+    @JavascriptInterface
+    public String getLastCapturedPhoto() {
+        if (activity != null) {
+            String photo = activity.mLastCapturedBase64;
+            activity.mLastCapturedBase64 = null;
+            return (photo != null) ? photo : "";
+        }
+        return "";
+    }
 }

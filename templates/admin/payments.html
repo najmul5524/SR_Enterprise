@@ -365,7 +365,23 @@
   function recropPaymentsVoucher() {
     const previewImg = document.getElementById('paymentsVoucherPreviewImg');
     const input = document.getElementById('paymentsVoucherInput');
-    const src = lastPaymentsVoucherSrc || (input && input.files && input.files[0]) || (previewImg ? previewImg.src : null);
+    let src = lastPaymentsVoucherSrc;
+    if (!src && input && input.files && input.files[0]) {
+      src = input.files[0];
+    }
+    if (!src && previewImg) {
+      const raw = previewImg.getAttribute('src');
+      if (raw && raw.trim() !== '' && raw !== window.location.href) {
+        const full = previewImg.src;
+        if (full && (full.startsWith('data:image') || full.startsWith('blob:') || full.includes('/static/uploads/') || full.includes('cloudinary') || /\.(jpe?g|png|webp)/i.test(full))) {
+          src = full;
+        }
+      }
+    }
+    if (!src) {
+      if (window.showToast) showToast("পুনরায় ক্রপ করার মতো কোনো ভাউচারের ছবি নেই", "info");
+      return;
+    }
     if (src && window.SmartScanner) {
       SmartScanner.open(src, {
         targetInput: input,
