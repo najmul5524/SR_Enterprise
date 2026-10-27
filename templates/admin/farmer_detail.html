@@ -529,6 +529,9 @@
   let lastFarmerDetailImageSrc = null;
 
   function handleFarmerVoucherChange(inputEl) {
+    if (inputEl._ignoreChangeUntil && Date.now() < inputEl._ignoreChangeUntil) {
+      return;
+    }
     if (inputEl._scannerApplied) {
       inputEl._scannerApplied = false;
       return;
@@ -586,6 +589,9 @@
   }
 
   function handleFarmerDetailImageChange(inputEl) {
+    if (inputEl._ignoreChangeUntil && Date.now() < inputEl._ignoreChangeUntil) {
+      return;
+    }
     if (inputEl._scannerApplied) {
       inputEl._scannerApplied = false;
       return;

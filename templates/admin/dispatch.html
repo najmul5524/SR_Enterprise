@@ -795,6 +795,9 @@
   let lastReceiptPhotoSrc = null;
 
   function handleReceiptFileChange(inputEl) {
+    if (inputEl._ignoreChangeUntil && Date.now() < inputEl._ignoreChangeUntil) {
+      return;
+    }
     if (inputEl._scannerApplied) {
       inputEl._scannerApplied = false;
       return;

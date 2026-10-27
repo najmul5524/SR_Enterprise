@@ -346,6 +346,9 @@
   let lastFarmerPhotoSrc = { add: null, edit: null };
 
   function handleFarmerImageChange(inputEl, mode) {
+    if (inputEl._ignoreChangeUntil && Date.now() < inputEl._ignoreChangeUntil) {
+      return;
+    }
     if (inputEl._scannerApplied) {
       inputEl._scannerApplied = false;
       return;

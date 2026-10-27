@@ -344,6 +344,9 @@
     const camInput = document.getElementById('prodCameraInput');
 
     const handlePick = (input) => {
+      if (input._ignoreChangeUntil && Date.now() < input._ignoreChangeUntil) {
+        return;
+      }
       if (input._scannerApplied) {
         input._scannerApplied = false;
         return;

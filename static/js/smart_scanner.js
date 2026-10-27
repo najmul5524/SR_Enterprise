@@ -248,6 +248,10 @@ const SmartScanner = (function () {
   }
 
   function open(source, options = {}) {
+    if (_isFinishing) {
+      console.warn("[SmartScanner] open() blocked: previous scan is currently finishing.");
+      return;
+    }
     init();
     if (!source) {
       console.warn("[SmartScanner] No source provided to SmartScanner.open");
@@ -617,19 +621,39 @@ const SmartScanner = (function () {
     previewCtx.putImageData(imgData, 0, 0);
   }
 
+  let _isFinishing = false;
+
+  function dataURLtoFile(dataurl, filename) {
+    const arr = dataurl.split(',');
+    const mime = arr[0].match(/:(.*?);/)[1];
+    const bstr = atob(arr[1]);
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    while (n--) {
+      u8arr[n] = bstr.charCodeAt(n);
+    }
+    return new File([u8arr], filename, { type: mime });
+  }
+
   // ==================== FINISH & EXPORT ====================
   function finishAndApply() {
-    if (currentStep === 'crop') {
-      processPerspectiveCrop();
-    }
-    if (!previewCanvas) return;
+    if (_isFinishing) return;
+    _isFinishing = true;
 
-    previewCanvas.toBlob(blob => {
-      if (!blob) return;
+    try {
+      if (currentStep === 'crop') {
+        processPerspectiveCrop();
+      }
+      if (!previewCanvas) {
+        _isFinishing = false;
+        close();
+        return;
+      }
 
+      // Convert to JPEG dataURL synchronously (instant, bulletproof across all WebViews)
+      const dataUrl = previewCanvas.toDataURL('image/jpeg', 0.90);
       const fileName = `scan_${Date.now()}.jpg`;
-      const processedFile = new File([blob], fileName, { type: 'image/jpeg' });
-      const objectUrl = URL.createObjectURL(blob);
+      const processedFile = dataURLtoFile(dataUrl, fileName);
 
       // 1. Populate the target form <input type="file"> via DataTransfer
       if (targetFileInput) {
@@ -637,6 +661,7 @@ const SmartScanner = (function () {
           const dt = new DataTransfer();
           dt.items.add(processedFile);
           targetFileInput._scannerApplied = true;
+          targetFileInput._ignoreChangeUntil = Date.now() + 3000;
           targetFileInput.files = dt.files;
         } catch (e) {
           console.warn("[SmartScanner] DataTransfer not supported:", e);
@@ -647,15 +672,15 @@ const SmartScanner = (function () {
       if (previewElement) {
         if (typeof previewElement === 'string') {
           const el = document.getElementById(previewElement);
-          if (el) el.src = objectUrl;
+          if (el) el.src = dataUrl;
         } else if (previewElement && previewElement.src !== undefined) {
-          previewElement.src = objectUrl;
+          previewElement.src = dataUrl;
         }
       }
 
       // 3. Trigger callback if any
       if (typeof onCompleteCallback === 'function') {
-        onCompleteCallback(processedFile, objectUrl);
+        onCompleteCallback(processedFile, dataUrl);
       }
 
       if (window.showToast) {
@@ -663,7 +688,14 @@ const SmartScanner = (function () {
       }
 
       close();
-    }, 'image/jpeg', 0.92);
+    } catch (err) {
+      console.error("[SmartScanner] finishAndApply error:", err);
+      close();
+    } finally {
+      setTimeout(() => {
+        _isFinishing = false;
+      }, 1500);
+    }
   }
 
   function close() {
