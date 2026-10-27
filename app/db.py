@@ -563,9 +563,12 @@ class DatabaseManager:
 
         # If Firebase is active, sync product to Firestore
         if self.is_firebase_active():
-            doc_data = dict(data)
-            doc_data.update({"id": product_id, "sku": sku, "qr_code": qr_code, "updated_at": now_str})
-            self.sync_document("products", product_id, doc_data)
+            with self._get_connection() as conn:
+                cur = conn.cursor()
+                cur.execute("SELECT * FROM products WHERE id = ?", (product_id,))
+                prod_row = cur.fetchone()
+                if prod_row:
+                    self.sync_document("products", product_id, dict(prod_row))
 
         return product_id
 
@@ -663,11 +666,12 @@ class DatabaseManager:
             conn.commit()
 
         if self.is_firebase_active():
-            f_data = dict(data)
-            f_data["id"] = farmer_id
-            self.sync_document("farmers", farmer_id, f_data)
             with self._get_connection() as conn:
                 cur = conn.cursor()
+                cur.execute("SELECT * FROM farmers WHERE id = ?", (farmer_id,))
+                f_row = cur.fetchone()
+                if f_row:
+                    self.sync_document("farmers", farmer_id, dict(f_row))
                 cur.execute("SELECT * FROM batches WHERE farmer_id = ?", (farmer_id,))
                 for b in cur.fetchall():
                     self.sync_document("batches", b["id"], dict(b))
@@ -1287,12 +1291,25 @@ class DatabaseManager:
             conn.commit()
 
         if self.is_firebase_active():
-            inv_data = dict(data)
-            inv_data["id"] = invoice_id
-            self.sync_document("invoices", invoice_id, inv_data)
-            if data.get("farmer_id"):
-                with self._get_connection() as conn:
-                    cur = conn.cursor()
+            with self._get_connection() as conn:
+                cur = conn.cursor()
+                cur.execute("SELECT * FROM invoices WHERE id = ?", (invoice_id,))
+                inv_row = cur.fetchone()
+                if inv_row:
+                    self.sync_document("invoices", invoice_id, dict(inv_row))
+                for it in items:
+                    prod_id = it.get("product_id") or it.get("id")
+                    if prod_id:
+                        cur.execute("SELECT * FROM products WHERE id = ? OR sku = ?", (prod_id, prod_id))
+                        p_row = cur.fetchone()
+                        if p_row:
+                            self.sync_document("products", p_row["id"], dict(p_row))
+                if batch_id:
+                    cur.execute("SELECT * FROM batches WHERE id = ?", (batch_id,))
+                    b_row = cur.fetchone()
+                    if b_row:
+                        self.sync_document("batches", batch_id, dict(b_row))
+                if data.get("farmer_id"):
                     cur.execute("SELECT * FROM farmers WHERE id = ?", (data["farmer_id"],))
                     f_row = cur.fetchone()
                     if f_row:
@@ -1349,13 +1366,13 @@ class DatabaseManager:
             conn.commit()
 
         if self.is_firebase_active():
-            p_data = dict(data)
-            p_data["id"] = payment_id
-            p_data["receipt_no"] = receipt_no
-            self.sync_document("payments", payment_id, p_data)
-            if farmer_id:
-                with self._get_connection() as conn:
-                    cur = conn.cursor()
+            with self._get_connection() as conn:
+                cur = conn.cursor()
+                cur.execute("SELECT * FROM payments WHERE id = ?", (payment_id,))
+                p_row = cur.fetchone()
+                if p_row:
+                    self.sync_document("payments", payment_id, dict(p_row))
+                if farmer_id:
                     cur.execute("SELECT * FROM farmers WHERE id = ?", (farmer_id,))
                     f_row = cur.fetchone()
                     if f_row:

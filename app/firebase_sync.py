@@ -7,7 +7,7 @@ from datetime import datetime
 from app.config import settings
 
 _firestore_client = None
-_firebase_initialized = False
+_firestore_client = None
 
 def get_firestore_client():
     """
@@ -16,22 +16,19 @@ def get_firestore_client():
       1. FIREBASE_CREDENTIALS (raw JSON string)
       2. FIREBASE_CREDENTIALS_BASE64 (base64 encoded JSON string)
       3. FIREBASE_CREDENTIALS_PATH (file path)
-      4. Default local file: firebase_credentials.json / serviceAccountKey.json
+      4. Render Secret Files directory (/etc/secrets)
+      5. Default local file: firebase_credentials.json / serviceAccountKey.json
     """
-    global _firestore_client, _firebase_initialized
+    global _firestore_client
 
     if _firestore_client is not None:
         return _firestore_client
-
-    if _firebase_initialized:
-        return None
 
     try:
         import firebase_admin
         from firebase_admin import credentials, firestore
     except ImportError:
         print("[FIREBASE] firebase-admin package is not installed.")
-        _firebase_initialized = True
         return None
 
     cred = None
@@ -70,12 +67,12 @@ def get_firestore_client():
         render_secrets_dir = Path("/etc/secrets")
         if render_secrets_dir.is_dir():
             for f in render_secrets_dir.iterdir():
-                if f.is_file() and f.suffix.lower() == ".json":
+                if f.is_file():
                     try:
                         with open(f, "r", encoding="utf-8") as jf:
                             data = json.load(jf)
-                            if data.get("type") == "service_account" or "project_id" in data:
-                                cred = credentials.Certificate(str(f))
+                            if isinstance(data, dict) and (data.get("type") == "service_account" or "project_id" in data):
+                                cred = credentials.Certificate(data)
                                 print(f"[FIREBASE] Successfully loaded credentials from Render Secret File: {f}")
                                 break
                     except Exception as e:
@@ -101,8 +98,8 @@ def get_firestore_client():
                     try:
                         with open(p, "r", encoding="utf-8") as jf:
                             data = json.load(jf)
-                            if data.get("type") == "service_account" or "project_id" in data:
-                                cred = credentials.Certificate(str(p))
+                            if isinstance(data, dict) and (data.get("type") == "service_account" or "project_id" in data):
+                                cred = credentials.Certificate(data)
                                 print(f"[FIREBASE] Successfully loaded credentials from local file: {p}")
                                 break
                     except Exception as e:
@@ -115,16 +112,13 @@ def get_firestore_client():
             if not firebase_admin._apps:
                 firebase_admin.initialize_app(cred)
             _firestore_client = firestore.client()
-            _firebase_initialized = True
             print("[FIREBASE] Google Cloud Firestore connected and active!")
             return _firestore_client
         except Exception as e:
             print(f"[FIREBASE] Failed initializing Firebase App: {e}")
             _firestore_client = None
-            _firebase_initialized = True
             return None
     else:
-        _firebase_initialized = True
         return None
 
 
@@ -157,6 +151,7 @@ def sync_document(collection: str, doc_id: str, data: Dict[str, Any]) -> bool:
                 doc_data[k] = str(v)
 
         client.collection(collection).document(str(doc_id)).set(doc_data, merge=True)
+        print(f"[FIREBASE SYNC SUCCESS] [{collection}/{doc_id}] synced to Firestore.")
         return True
     except Exception as e:
         print(f"[FIREBASE SYNC ERROR] [{collection}/{doc_id}]: {e}")
