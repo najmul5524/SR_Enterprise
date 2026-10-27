@@ -211,11 +211,50 @@
 
       <div>
         <label class="block text-xs font-black text-slate-700 mb-1">মেমোর ছবি যুক্ত / পরিবর্তন করুন</label>
-        <div id="currentMemoImgWrap" class="hidden mb-2 p-2 bg-stone-50 rounded-xl border border-stone-200 flex items-center gap-2">
-          <img id="currentMemoImg" src="" alt="Current Memo" class="w-12 h-12 object-cover rounded-lg border">
-          <div class="text-[11px] font-bold text-slate-600">বর্তমান মেমোর ছবি সংরক্ষিত আছে</div>
+        <div id="currentMemoImgWrap" class="hidden mb-2 p-2 bg-stone-50 rounded-xl border border-stone-200 flex items-center justify-between gap-2">
+          <div class="flex items-center gap-2">
+            <img id="currentMemoImg" src="" alt="Current Memo" class="w-12 h-12 object-cover rounded-lg border">
+            <div class="text-[11px] font-bold text-slate-600">বর্তমান মেমোর ছবি সংরক্ষিত আছে</div>
+          </div>
+          <button type="button" onclick="cropExistingMemoImg()" class="px-2.5 py-1 text-[11px] font-bold bg-stone-200 hover:bg-stone-300 rounded-lg text-slate-700">
+            ক্রপ / সোজা করুন
+          </button>
         </div>
-        <input type="file" name="receipt_file" accept="image/*" class="w-full text-xs text-slate-500 file:mr-2 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-orangeBrand-50 file:text-orangeBrand-700">
+
+        <input type="file" id="editInvoiceReceiptInput" name="receipt_file" accept="image/*" class="hidden" onchange="handleEditInvoiceReceiptChange(this)">
+        <input type="file" id="editInvoiceCameraInput" accept="image/*" capture="environment" class="hidden" onchange="handleEditInvoiceReceiptChange(this)">
+
+        <div class="grid grid-cols-2 gap-2 mb-2">
+          <button type="button" onclick="document.getElementById('editInvoiceCameraInput').click()" 
+            class="py-2 px-3 bg-gradient-to-r from-orangeBrand-600 to-crimson-600 hover:opacity-95 text-white rounded-xl text-xs font-black shadow-sm flex items-center justify-center gap-1.5 transition touch-press">
+            <span>📷</span> <span>ক্যামেরায় তুলুন</span>
+          </button>
+          <button type="button" onclick="document.getElementById('editInvoiceReceiptInput').click()" 
+            class="py-2 px-3 bg-stone-100 hover:bg-stone-200 text-slate-700 rounded-xl text-xs font-black border border-stone-300 flex items-center justify-center gap-1.5 transition touch-press">
+            <span>🖼️</span> <span>ফাইল / গ্যালারি</span>
+          </button>
+        </div>
+
+        <!-- Live Preview with re-crop option -->
+        <div id="editInvoicePreviewCard" class="hidden p-2.5 bg-orangeBrand-50/60 border border-orangeBrand-200 rounded-2xl flex items-center justify-between gap-3">
+          <div class="flex items-center gap-2.5 min-w-0">
+            <img id="editInvoicePreviewImg" src="" alt="Scanned Memo" class="w-12 h-12 rounded-xl object-cover border border-orangeBrand-300 shadow-sm flex-shrink-0 bg-white">
+            <div class="truncate">
+              <div class="text-[11px] font-black text-slate-800 truncate" id="editInvoicePreviewName">নতুন মেমো ছবি নির্বাচিত</div>
+              <div class="text-[10px] text-emerald-700 font-bold flex items-center gap-1">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> স্ক্যান ও ক্রপ সম্পন্ন
+              </div>
+            </div>
+          </div>
+          <div class="flex items-center gap-1.5 flex-shrink-0">
+            <button type="button" onclick="recropEditInvoiceReceipt()" class="px-2.5 py-1.5 text-xs font-bold text-orangeBrand-700 bg-white hover:bg-orangeBrand-100 border border-orangeBrand-200 rounded-xl transition shadow-xs flex items-center gap-1">
+              <span>✂️</span> <span>ক্রপ</span>
+            </button>
+            <button type="button" onclick="clearEditInvoiceReceipt()" class="p-1.5 text-slate-400 hover:text-crimson-600 rounded-lg transition" title="মুছে ফেলুন">
+              ✕
+            </button>
+          </div>
+        </div>
       </div>
 
       <div class="flex items-center justify-end gap-2 pt-3 border-t">
@@ -247,7 +286,76 @@
     document.getElementById('lightboxImg').src = '';
   }
 
+  let lastEditInvoicePhotoSrc = null;
+
+  function handleEditInvoiceReceiptChange(inputEl) {
+    if (inputEl.files && inputEl.files[0]) {
+      const file = inputEl.files[0];
+      lastEditInvoicePhotoSrc = file;
+      if (window.SmartScanner) {
+        SmartScanner.open(file, {
+          targetInput: document.getElementById('editInvoiceReceiptInput'),
+          previewElement: 'editInvoicePreviewImg',
+          onComplete: (procFile, url) => {
+            lastEditInvoicePhotoSrc = url;
+            document.getElementById('editInvoicePreviewName').textContent = procFile.name || 'স্ক্যানকৃত মেমো';
+            document.getElementById('editInvoicePreviewCard').classList.remove('hidden');
+          }
+        });
+      } else {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          document.getElementById('editInvoicePreviewImg').src = e.target.result;
+          document.getElementById('editInvoicePreviewCard').classList.remove('hidden');
+        };
+        reader.readAsDataURL(file);
+      }
+    }
+  }
+
+  function recropEditInvoiceReceipt() {
+    const previewImg = document.getElementById('editInvoicePreviewImg');
+    const src = lastEditInvoicePhotoSrc || (previewImg ? previewImg.src : null);
+    if (src && window.SmartScanner) {
+      SmartScanner.open(src, {
+        targetInput: document.getElementById('editInvoiceReceiptInput'),
+        previewElement: 'editInvoicePreviewImg',
+        onComplete: (procFile, url) => {
+          lastEditInvoicePhotoSrc = url;
+          document.getElementById('editInvoicePreviewCard').classList.remove('hidden');
+        }
+      });
+    }
+  }
+
+  function cropExistingMemoImg() {
+    const curImg = document.getElementById('currentMemoImg');
+    if (curImg && curImg.src && window.SmartScanner) {
+      SmartScanner.open(curImg.src, {
+        targetInput: document.getElementById('editInvoiceReceiptInput'),
+        previewElement: 'editInvoicePreviewImg',
+        onComplete: (procFile, url) => {
+          lastEditInvoicePhotoSrc = url;
+          document.getElementById('editInvoicePreviewCard').classList.remove('hidden');
+        }
+      });
+    }
+  }
+
+  function clearEditInvoiceReceipt() {
+    const inputEl = document.getElementById('editInvoiceReceiptInput');
+    const camEl = document.getElementById('editInvoiceCameraInput');
+    if (inputEl) inputEl.value = '';
+    if (camEl) camEl.value = '';
+    const prev = document.getElementById('editInvoicePreviewImg');
+    if (prev) prev.src = '';
+    const card = document.getElementById('editInvoicePreviewCard');
+    if (card) card.classList.add('hidden');
+    lastEditInvoicePhotoSrc = null;
+  }
+
   function openEditInvoiceModal(inv) {
+    clearEditInvoiceReceipt();
     if (inv.receipt_image_url) {
       document.getElementById('currentMemoImg').src = inv.receipt_image_url;
       document.getElementById('currentMemoImgWrap').classList.remove('hidden');
@@ -266,6 +374,7 @@
   }
 
   function closeEditInvoiceModal() {
+    clearEditInvoiceReceipt();
     document.getElementById('editInvoiceModal').classList.add('hidden');
   }
 </script>

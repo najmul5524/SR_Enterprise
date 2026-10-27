@@ -239,10 +239,52 @@
       </div>
 
       <div>
-        <label class="block text-xs font-black text-slate-700 mb-1">পণ্যের ছবি (Cloudinary তে আপলোড হবে)</label>
-        <input type="file" name="image_file" accept="image/*"
-          class="w-full text-xs text-slate-500 file:mr-2 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-orangeBrand-50 file:text-orangeBrand-700 hover:file:bg-orangeBrand-100">
-        <span class="text-[10px] text-slate-400 mt-0.5 block">Cloudinary ইন্টিগ্রেশনের কারণে রেন্ডারের ৫জিবি ব্যান্ডউইথ খরচ হবে না।</span>
+        <label class="block text-xs font-black text-slate-700 mb-1 flex items-center justify-between">
+          <span>পণ্যের ছবি (মোবাইল ক্যামেরা ও স্মার্ট ক্রপ সাপোর্টেড)</span>
+          <span class="text-[10px] text-orangeBrand-700 font-bold">Cloudinary ক্লাউড স্টোরেজ</span>
+        </label>
+
+        <!-- Hidden Real Form Input -->
+        <input type="file" id="prodImageFile" name="image_file" accept="image/*" class="hidden">
+        <!-- Hidden Camera Input -->
+        <input type="file" id="prodCameraInput" accept="image/*" capture="environment" class="hidden">
+
+        <!-- Dual Action Buttons: Camera & Gallery -->
+        <div id="prodImageUploadButtons" class="grid grid-cols-2 gap-2">
+          <button type="button" onclick="document.getElementById('prodCameraInput').click()" 
+            class="py-2.5 px-3 bg-gradient-to-r from-orangeBrand-600 to-crimson-600 hover:opacity-95 text-white rounded-2xl text-xs font-black shadow-sm flex items-center justify-center gap-1.5 transition touch-press">
+            <span>📸</span> <span>ক্যামেরায় ছবি তুলুন</span>
+          </button>
+          <button type="button" onclick="document.getElementById('prodImageFile').click()" 
+            class="py-2.5 px-3 bg-stone-100 hover:bg-stone-200 text-slate-700 rounded-2xl text-xs font-black border border-stone-300 flex items-center justify-center gap-1.5 transition touch-press">
+            <span>📁</span> <span>গ্যালারি / ডিভাইস</span>
+          </button>
+        </div>
+
+        <!-- Live Thumbnail Preview Card -->
+        <div id="prodImagePreviewCard" class="hidden mt-2 p-2.5 bg-orangeBrand-50/50 rounded-2xl border border-orangeBrand-200">
+          <div class="flex items-center justify-between gap-2">
+            <div class="flex items-center gap-2.5 min-w-0">
+              <img id="prodPreviewImg" src="" alt="Product Preview" class="w-12 h-12 object-cover rounded-xl border border-orangeBrand-200 flex-shrink-0 bg-white shadow-sm">
+              <div class="min-w-0">
+                <div id="prodPreviewName" class="text-xs font-black text-slate-800 truncate">পণ্যের ছবি যুক্ত হয়েছে</div>
+                <div class="text-[10px] text-emerald-700 font-bold flex items-center gap-1">
+                  <span>✓</span> <span>স্মার্ট স্ক্যান ও ক্রপ সম্পন্ন</span>
+                </div>
+              </div>
+            </div>
+            <div class="flex items-center gap-1">
+              <button type="button" onclick="recropProductImage()" class="px-2 py-1 text-[11px] font-bold text-orangeBrand-700 hover:bg-orangeBrand-100 rounded-xl transition flex items-center gap-0.5" title="পুনরায় ক্রপ ও ফিল্টার করুন">
+                <span>✂️</span> <span>ক্রপ</span>
+              </button>
+              <button type="button" onclick="clearProductImage()" class="p-1.5 text-rose-600 hover:bg-rose-100 rounded-xl transition text-xs font-bold" title="ছবি বাতিল করুন">
+                ✕
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <span class="text-[10px] text-slate-400 mt-1 block">💡 ছবি তুললে CamScanner-এর মতো ৪ কোণা সিলেক্ট করে আঁকাবাঁকা সোজা ও ম্যাজিক কালার করতে পারবেন।</span>
       </div>
 
       <div>
@@ -295,6 +337,57 @@
 </div>
 
 <script>
+  let lastProductImageSrc = null;
+
+  function initProductImageScanner() {
+    const fileInput = document.getElementById('prodImageFile');
+    const camInput = document.getElementById('prodCameraInput');
+
+    const handlePick = (input) => {
+      if (input.files && input.files[0]) {
+        lastProductImageSrc = input.files[0];
+        SmartScanner.open(input.files[0], {
+          targetInput: fileInput,
+          previewElement: 'prodPreviewImg',
+          onComplete: (file, url) => {
+            lastProductImageSrc = url;
+            document.getElementById('prodImagePreviewCard').classList.remove('hidden');
+          }
+        });
+      }
+    };
+
+    if (fileInput) fileInput.addEventListener('change', () => handlePick(fileInput));
+    if (camInput) camInput.addEventListener('change', () => handlePick(camInput));
+  }
+
+  function recropProductImage() {
+    const previewImg = document.getElementById('prodPreviewImg');
+    const src = lastProductImageSrc || (previewImg ? previewImg.src : null);
+    if (src) {
+      SmartScanner.open(src, {
+        targetInput: document.getElementById('prodImageFile'),
+        previewElement: 'prodPreviewImg',
+        onComplete: (file, url) => {
+          lastProductImageSrc = url;
+          document.getElementById('prodImagePreviewCard').classList.remove('hidden');
+        }
+      });
+    }
+  }
+
+  function clearProductImage() {
+    const fileInput = document.getElementById('prodImageFile');
+    const camInput = document.getElementById('prodCameraInput');
+    if (fileInput) fileInput.value = '';
+    if (camInput) camInput.value = '';
+    lastProductImageSrc = null;
+    document.getElementById('prodImagePreviewCard').classList.add('hidden');
+    document.getElementById('prodPreviewImg').src = '';
+  }
+
+  document.addEventListener('DOMContentLoaded', initProductImageScanner);
+
   function openAddProductModal() {
     document.getElementById('modalTitle').innerText = "নতুন পণ্য যুক্ত করুন";
     document.getElementById('prodId').value = "";
@@ -306,6 +399,7 @@
     document.getElementById('prodStock').value = "0";
     document.getElementById('prodAlertQty').value = "10";
     document.getElementById('prodDesc').value = "";
+    clearProductImage();
     document.getElementById('productModal').classList.remove('hidden');
   }
 
@@ -322,6 +416,15 @@
     document.getElementById('prodStock').value = p.stock || 0;
     document.getElementById('prodAlertQty').value = p.alert_qty || 10;
     document.getElementById('prodDesc').value = p.description || "";
+    
+    if (p.image_url) {
+      document.getElementById('prodPreviewImg').src = p.image_url;
+      document.getElementById('prodImagePreviewCard').classList.remove('hidden');
+      lastProductImageSrc = p.image_url;
+    } else {
+      clearProductImage();
+    }
+    
     document.getElementById('productModal').classList.remove('hidden');
   }
 

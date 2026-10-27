@@ -356,9 +356,14 @@
                     </div>
                   </div>
                 </div>
-                <button type="button" onclick="clearReceiptFile()" class="p-1.5 text-rose-600 hover:bg-rose-100 rounded-xl transition text-xs font-bold" title="ছবি বাতিল করুন">
-                  ❌ মুছুন
-                </button>
+                <div class="flex items-center gap-1">
+                  <button type="button" onclick="recropReceiptFile()" class="px-2 py-1 text-[11px] font-bold text-orangeBrand-700 hover:bg-orangeBrand-100 rounded-xl transition flex items-center gap-0.5" title="পুনরায় ক্রপ ও ফিল্টার করুন">
+                    <span>✂️</span> <span>ক্রপ</span>
+                  </button>
+                  <button type="button" onclick="clearReceiptFile()" class="p-1.5 text-rose-600 hover:bg-rose-100 rounded-xl transition text-xs font-bold" title="ছবি বাতিল করুন">
+                    ❌ মুছুন
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -787,29 +792,54 @@
   }
 
   
+  let lastReceiptPhotoSrc = null;
+
   function handleReceiptFileChange(inputEl) {
     if (inputEl.files && inputEl.files[0]) {
       const file = inputEl.files[0];
-      if (inputEl.id === 'dispatchCameraInput') {
-        try {
-          const dt = new DataTransfer();
-          dt.items.add(file);
-          document.getElementById('dispatchReceiptInput').files = dt.files;
-        } catch(e) {}
+      lastReceiptPhotoSrc = file;
+      if (window.SmartScanner) {
+        SmartScanner.open(file, {
+          targetInput: document.getElementById('dispatchReceiptInput'),
+          previewElement: 'receiptPreviewImg',
+          onComplete: (procFile, url) => {
+            lastReceiptPhotoSrc = url;
+            document.getElementById('receiptPreviewName').textContent = procFile.name || 'স্ক্যান করা মেমো';
+            document.getElementById('receiptPreviewCard').classList.remove('hidden');
+          }
+        });
+      } else {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          document.getElementById('receiptPreviewImg').src = e.target.result;
+          document.getElementById('receiptPreviewName').textContent = file.name || 'ক্যামেরায় তোলা ছবি';
+          document.getElementById('receiptPreviewCard').classList.remove('hidden');
+        };
+        reader.readAsDataURL(file);
       }
-      const reader = new FileReader();
-      reader.onload = function(e) {
-        document.getElementById('receiptPreviewImg').src = e.target.result;
-        document.getElementById('receiptPreviewName').textContent = file.name || 'ক্যামেরায় তোলা ছবি';
-        document.getElementById('receiptPreviewCard').classList.remove('hidden');
-      };
-      reader.readAsDataURL(file);
+    }
+  }
+
+  function recropReceiptFile() {
+    const previewImg = document.getElementById('receiptPreviewImg');
+    const src = lastReceiptPhotoSrc || (previewImg ? previewImg.src : null);
+    if (src && window.SmartScanner) {
+      SmartScanner.open(src, {
+        targetInput: document.getElementById('dispatchReceiptInput'),
+        previewElement: 'receiptPreviewImg',
+        onComplete: (procFile, url) => {
+          lastReceiptPhotoSrc = url;
+          document.getElementById('receiptPreviewName').textContent = procFile.name || 'স্ক্যান করা মেমো';
+          document.getElementById('receiptPreviewCard').classList.remove('hidden');
+        }
+      });
     }
   }
 
   function clearReceiptFile() {
     try { document.getElementById('dispatchReceiptInput').value = ''; } catch(e){}
     try { document.getElementById('dispatchCameraInput').value = ''; } catch(e){}
+    lastReceiptPhotoSrc = null;
     document.getElementById('receiptPreviewCard').classList.add('hidden');
     document.getElementById('receiptPreviewImg').src = '';
   }

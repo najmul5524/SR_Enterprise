@@ -179,9 +179,41 @@
       </div>
 
       <div>
-        <label class="block text-xs font-black text-slate-700 mb-1">ভাউচার স্লিপের ছবি (Cloudinary তে আপলোড হবে)</label>
-        <input type="file" name="voucher_file" accept="image/*"
-          class="w-full text-xs text-slate-500 file:mr-2 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-orangeBrand-50 file:text-orangeBrand-700">
+        <label class="block text-xs font-black text-slate-700 mb-1">ভাউচার স্লিপের ছবি (ক্যামেরা / গ্যালারি)</label>
+        
+        <input type="file" id="paymentsVoucherInput" name="voucher_file" accept="image/*" class="hidden" onchange="handlePaymentsVoucherChange(this)">
+        <input type="file" id="paymentsVoucherCameraInput" accept="image/*" capture="environment" class="hidden" onchange="handlePaymentsVoucherChange(this)">
+
+        <div class="grid grid-cols-2 gap-2 mb-2">
+          <button type="button" onclick="document.getElementById('paymentsVoucherCameraInput').click()" 
+            class="py-2 px-3 bg-gradient-to-r from-orangeBrand-600 to-crimson-600 hover:opacity-95 text-white rounded-xl text-xs font-black shadow-sm flex items-center justify-center gap-1.5 transition touch-press">
+            <span>📷</span> <span>ক্যামেরায় তুলুন</span>
+          </button>
+          <button type="button" onclick="document.getElementById('paymentsVoucherInput').click()" 
+            class="py-2 px-3 bg-stone-100 hover:bg-stone-200 text-slate-700 rounded-xl text-xs font-black border border-stone-300 flex items-center justify-center gap-1.5 transition touch-press">
+            <span>🖼️</span> <span>ফাইল / গ্যালারি</span>
+          </button>
+        </div>
+
+        <div id="paymentsVoucherPreviewCard" class="hidden p-2.5 bg-orangeBrand-50/60 border border-orangeBrand-200 rounded-2xl flex items-center justify-between gap-3">
+          <div class="flex items-center gap-2.5 min-w-0">
+            <img id="paymentsVoucherPreviewImg" src="" alt="Voucher" class="w-12 h-12 rounded-xl object-cover border border-orangeBrand-300 shadow-sm flex-shrink-0 bg-white">
+            <div class="truncate">
+              <div class="text-[11px] font-black text-slate-800 truncate" id="paymentsVoucherPreviewName">ভাউচার নির্বাচিত</div>
+              <div class="text-[10px] text-emerald-700 font-bold flex items-center gap-1">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> স্ক্যান ও ক্রপ সম্পন্ন
+              </div>
+            </div>
+          </div>
+          <div class="flex items-center gap-1.5 flex-shrink-0">
+            <button type="button" onclick="recropPaymentsVoucher()" class="px-2.5 py-1.5 text-xs font-bold text-orangeBrand-700 bg-white hover:bg-orangeBrand-100 border border-orangeBrand-200 rounded-xl transition shadow-xs flex items-center gap-1">
+              <span>✂️</span> <span>ক্রপ</span>
+            </button>
+            <button type="button" onclick="clearPaymentsVoucher()" class="p-1.5 text-slate-400 hover:text-crimson-600 rounded-lg transition" title="মুছে ফেলুন">
+              ✕
+            </button>
+          </div>
+        </div>
       </div>
 
       <div>
@@ -278,14 +310,70 @@
 </div>
 
 <script>
+  let lastPaymentsVoucherSrc = null;
+
+  function handlePaymentsVoucherChange(inputEl) {
+    if (inputEl.files && inputEl.files[0]) {
+      const file = inputEl.files[0];
+      lastPaymentsVoucherSrc = file;
+      if (window.SmartScanner) {
+        SmartScanner.open(file, {
+          targetInput: document.getElementById('paymentsVoucherInput'),
+          previewElement: 'paymentsVoucherPreviewImg',
+          onComplete: (procFile, url) => {
+            lastPaymentsVoucherSrc = url;
+            document.getElementById('paymentsVoucherPreviewName').textContent = procFile.name || 'স্ক্যানকৃত ভাউচার';
+            document.getElementById('paymentsVoucherPreviewCard').classList.remove('hidden');
+          }
+        });
+      } else {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          document.getElementById('paymentsVoucherPreviewImg').src = e.target.result;
+          document.getElementById('paymentsVoucherPreviewCard').classList.remove('hidden');
+        };
+        reader.readAsDataURL(file);
+      }
+    }
+  }
+
+  function recropPaymentsVoucher() {
+    const previewImg = document.getElementById('paymentsVoucherPreviewImg');
+    const src = lastPaymentsVoucherSrc || (previewImg ? previewImg.src : null);
+    if (src && window.SmartScanner) {
+      SmartScanner.open(src, {
+        targetInput: document.getElementById('paymentsVoucherInput'),
+        previewElement: 'paymentsVoucherPreviewImg',
+        onComplete: (procFile, url) => {
+          lastPaymentsVoucherSrc = url;
+          document.getElementById('paymentsVoucherPreviewCard').classList.remove('hidden');
+        }
+      });
+    }
+  }
+
+  function clearPaymentsVoucher() {
+    const targetInput = document.getElementById('paymentsVoucherInput');
+    const camInput = document.getElementById('paymentsVoucherCameraInput');
+    const previewImg = document.getElementById('paymentsVoucherPreviewImg');
+    const previewCard = document.getElementById('paymentsVoucherPreviewCard');
+    if (targetInput) targetInput.value = '';
+    if (camInput) camInput.value = '';
+    if (previewImg) previewImg.src = '';
+    if (previewCard) previewCard.classList.add('hidden');
+    lastPaymentsVoucherSrc = null;
+  }
+
   // All batches data passed from backend
   const allBatches = {{ (batches or []) | tojson | safe }};
 
   function openPaymentModal() {
+    clearPaymentsVoucher();
     document.getElementById('paymentModal').classList.remove('hidden');
     onModalFarmerChange();
   }
   function closePaymentModal() {
+    clearPaymentsVoucher();
     document.getElementById('paymentModal').classList.add('hidden');
   }
 

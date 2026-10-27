@@ -350,9 +350,41 @@
       </div>
 
       <div>
-        <label class="block text-xs font-black text-slate-700 mb-1">ভাউচার স্লিপের ছবি (Cloudinary)</label>
-        <input type="file" name="voucher_file" accept="image/*"
-          class="w-full text-xs text-slate-500 file:mr-2 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-orangeBrand-50 file:text-orangeBrand-700">
+        <label class="block text-xs font-black text-slate-700 mb-1">ভাউচার স্লিপের ছবি (ক্যামেরা / গ্যালারি)</label>
+        
+        <input type="file" id="farmerVoucherInput" name="voucher_file" accept="image/*" class="hidden" onchange="handleFarmerVoucherChange(this)">
+        <input type="file" id="farmerVoucherCameraInput" accept="image/*" capture="environment" class="hidden" onchange="handleFarmerVoucherChange(this)">
+
+        <div class="grid grid-cols-2 gap-2 mb-2">
+          <button type="button" onclick="document.getElementById('farmerVoucherCameraInput').click()" 
+            class="py-2 px-3 bg-gradient-to-r from-orangeBrand-600 to-crimson-600 hover:opacity-95 text-white rounded-xl text-xs font-black shadow-sm flex items-center justify-center gap-1.5 transition touch-press">
+            <span>📷</span> <span>ক্যামেরায় তুলুন</span>
+          </button>
+          <button type="button" onclick="document.getElementById('farmerVoucherInput').click()" 
+            class="py-2 px-3 bg-stone-100 hover:bg-stone-200 text-slate-700 rounded-xl text-xs font-black border border-stone-300 flex items-center justify-center gap-1.5 transition touch-press">
+            <span>🖼️</span> <span>ফাইল / গ্যালারি</span>
+          </button>
+        </div>
+
+        <div id="farmerVoucherPreviewCard" class="hidden p-2.5 bg-orangeBrand-50/60 border border-orangeBrand-200 rounded-2xl flex items-center justify-between gap-3">
+          <div class="flex items-center gap-2.5 min-w-0">
+            <img id="farmerVoucherPreviewImg" src="" alt="Voucher" class="w-12 h-12 rounded-xl object-cover border border-orangeBrand-300 shadow-sm flex-shrink-0 bg-white">
+            <div class="truncate">
+              <div class="text-[11px] font-black text-slate-800 truncate" id="farmerVoucherPreviewName">ভাউচার নির্বাচিত</div>
+              <div class="text-[10px] text-emerald-700 font-bold flex items-center gap-1">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> স্ক্যান ও ক্রপ সম্পন্ন
+              </div>
+            </div>
+          </div>
+          <div class="flex items-center gap-1.5 flex-shrink-0">
+            <button type="button" onclick="recropFarmerVoucher()" class="px-2.5 py-1.5 text-xs font-bold text-orangeBrand-700 bg-white hover:bg-orangeBrand-100 border border-orangeBrand-200 rounded-xl transition shadow-xs flex items-center gap-1">
+              <span>✂️</span> <span>ক্রপ</span>
+            </button>
+            <button type="button" onclick="clearFarmerVoucher()" class="p-1.5 text-slate-400 hover:text-crimson-600 rounded-lg transition" title="মুছে ফেলুন">
+              ✕
+            </button>
+          </div>
+        </div>
       </div>
 
       <div>
@@ -436,9 +468,41 @@
       </div>
 
       <div>
-        <label class="block text-xs font-black text-slate-700 mb-1">নতুন ছবি পরিবর্তন (Cloudinary তে আপলোড হবে)</label>
-        <input type="file" name="image_file" accept="image/*"
-          class="w-full text-xs text-slate-500 file:mr-2 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-orangeBrand-50 file:text-orangeBrand-700 hover:file:bg-orangeBrand-100">
+        <label class="block text-xs font-black text-slate-700 mb-1">নতুন ছবি পরিবর্তন (ক্যামেরা / গ্যালারি)</label>
+
+        <input type="file" id="farmerDetailImageInput" name="image_file" accept="image/*" class="hidden" onchange="handleFarmerDetailImageChange(this)">
+        <input type="file" id="farmerDetailCameraInput" accept="image/*" capture="environment" class="hidden" onchange="handleFarmerDetailImageChange(this)">
+
+        <div class="grid grid-cols-2 gap-2 mb-2">
+          <button type="button" onclick="document.getElementById('farmerDetailCameraInput').click()" 
+            class="py-2 px-3 bg-gradient-to-r from-orangeBrand-600 to-crimson-600 hover:opacity-95 text-white rounded-xl text-xs font-black shadow-sm flex items-center justify-center gap-1.5 transition touch-press">
+            <span>📷</span> <span>ক্যামেরায় তুলুন</span>
+          </button>
+          <button type="button" onclick="document.getElementById('farmerDetailImageInput').click()" 
+            class="py-2 px-3 bg-stone-100 hover:bg-stone-200 text-slate-700 rounded-xl text-xs font-black border border-stone-300 flex items-center justify-center gap-1.5 transition touch-press">
+            <span>🖼️</span> <span>ফাইল / গ্যালারি</span>
+          </button>
+        </div>
+
+        <div id="farmerDetailImagePreviewCard" class="hidden p-2.5 bg-orangeBrand-50/60 border border-orangeBrand-200 rounded-2xl flex items-center justify-between gap-3">
+          <div class="flex items-center gap-2.5 min-w-0">
+            <img id="farmerDetailImagePreviewImg" src="" alt="Farmer Photo" class="w-12 h-12 rounded-xl object-cover border border-orangeBrand-300 shadow-sm flex-shrink-0 bg-white">
+            <div class="truncate">
+              <div class="text-[11px] font-black text-slate-800 truncate" id="farmerDetailImagePreviewName">ছবি নির্বাচিত</div>
+              <div class="text-[10px] text-emerald-700 font-bold flex items-center gap-1">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> স্ক্যান ও ক্রপ সম্পন্ন
+              </div>
+            </div>
+          </div>
+          <div class="flex items-center gap-1.5 flex-shrink-0">
+            <button type="button" onclick="recropFarmerDetailImage()" class="px-2.5 py-1.5 text-xs font-bold text-orangeBrand-700 bg-white hover:bg-orangeBrand-100 border border-orangeBrand-200 rounded-xl transition shadow-xs flex items-center gap-1">
+              <span>✂️</span> <span>ক্রপ</span>
+            </button>
+            <button type="button" onclick="clearFarmerDetailImage()" class="p-1.5 text-slate-400 hover:text-crimson-600 rounded-lg transition" title="মুছে ফেলুন">
+              ✕
+            </button>
+          </div>
+        </div>
       </div>
 
       <div>
@@ -461,15 +525,125 @@
 </div>
 
 <script>
+  let lastFarmerVoucherSrc = null;
+  let lastFarmerDetailImageSrc = null;
+
+  function handleFarmerVoucherChange(inputEl) {
+    if (inputEl.files && inputEl.files[0]) {
+      const file = inputEl.files[0];
+      lastFarmerVoucherSrc = file;
+      if (window.SmartScanner) {
+        SmartScanner.open(file, {
+          targetInput: document.getElementById('farmerVoucherInput'),
+          previewElement: 'farmerVoucherPreviewImg',
+          onComplete: (procFile, url) => {
+            lastFarmerVoucherSrc = url;
+            document.getElementById('farmerVoucherPreviewName').textContent = procFile.name || 'স্ক্যানকৃত ভাউচার';
+            document.getElementById('farmerVoucherPreviewCard').classList.remove('hidden');
+          }
+        });
+      } else {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          document.getElementById('farmerVoucherPreviewImg').src = e.target.result;
+          document.getElementById('farmerVoucherPreviewCard').classList.remove('hidden');
+        };
+        reader.readAsDataURL(file);
+      }
+    }
+  }
+
+  function recropFarmerVoucher() {
+    const previewImg = document.getElementById('farmerVoucherPreviewImg');
+    const src = lastFarmerVoucherSrc || (previewImg ? previewImg.src : null);
+    if (src && window.SmartScanner) {
+      SmartScanner.open(src, {
+        targetInput: document.getElementById('farmerVoucherInput'),
+        previewElement: 'farmerVoucherPreviewImg',
+        onComplete: (procFile, url) => {
+          lastFarmerVoucherSrc = url;
+          document.getElementById('farmerVoucherPreviewCard').classList.remove('hidden');
+        }
+      });
+    }
+  }
+
+  function clearFarmerVoucher() {
+    const targetInput = document.getElementById('farmerVoucherInput');
+    const camInput = document.getElementById('farmerVoucherCameraInput');
+    const previewImg = document.getElementById('farmerVoucherPreviewImg');
+    const previewCard = document.getElementById('farmerVoucherPreviewCard');
+    if (targetInput) targetInput.value = '';
+    if (camInput) camInput.value = '';
+    if (previewImg) previewImg.src = '';
+    if (previewCard) previewCard.classList.add('hidden');
+    lastFarmerVoucherSrc = null;
+  }
+
+  function handleFarmerDetailImageChange(inputEl) {
+    if (inputEl.files && inputEl.files[0]) {
+      const file = inputEl.files[0];
+      lastFarmerDetailImageSrc = file;
+      if (window.SmartScanner) {
+        SmartScanner.open(file, {
+          targetInput: document.getElementById('farmerDetailImageInput'),
+          previewElement: 'farmerDetailImagePreviewImg',
+          onComplete: (procFile, url) => {
+            lastFarmerDetailImageSrc = url;
+            document.getElementById('farmerDetailImagePreviewName').textContent = procFile.name || 'স্ক্যানকৃত ছবি';
+            document.getElementById('farmerDetailImagePreviewCard').classList.remove('hidden');
+          }
+        });
+      } else {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          document.getElementById('farmerDetailImagePreviewImg').src = e.target.result;
+          document.getElementById('farmerDetailImagePreviewCard').classList.remove('hidden');
+        };
+        reader.readAsDataURL(file);
+      }
+    }
+  }
+
+  function recropFarmerDetailImage() {
+    const previewImg = document.getElementById('farmerDetailImagePreviewImg');
+    const src = lastFarmerDetailImageSrc || (previewImg ? previewImg.src : null);
+    if (src && window.SmartScanner) {
+      SmartScanner.open(src, {
+        targetInput: document.getElementById('farmerDetailImageInput'),
+        previewElement: 'farmerDetailImagePreviewImg',
+        onComplete: (procFile, url) => {
+          lastFarmerDetailImageSrc = url;
+          document.getElementById('farmerDetailImagePreviewCard').classList.remove('hidden');
+        }
+      });
+    }
+  }
+
+  function clearFarmerDetailImage() {
+    const targetInput = document.getElementById('farmerDetailImageInput');
+    const camInput = document.getElementById('farmerDetailCameraInput');
+    const previewImg = document.getElementById('farmerDetailImagePreviewImg');
+    const previewCard = document.getElementById('farmerDetailImagePreviewCard');
+    if (targetInput) targetInput.value = '';
+    if (camInput) camInput.value = '';
+    if (previewImg) previewImg.src = '';
+    if (previewCard) previewCard.classList.add('hidden');
+    lastFarmerDetailImageSrc = null;
+  }
+
   function openPaymentModal() {
+    clearFarmerVoucher();
     document.getElementById('paymentModal').classList.remove('hidden');
   }
   function closePaymentModal() {
+    clearFarmerVoucher();
     document.getElementById('paymentModal').classList.add('hidden');
   }
 
   function openEditFarmerModal(farmer) {
     if (!farmer) return;
+    clearFarmerDetailImage();
     document.getElementById('edit_farmer_id').value = farmer.id || '';
     document.getElementById('edit_farmer_name').value = farmer.name || '';
     document.getElementById('edit_farmer_phone').value = farmer.phone || '';
@@ -483,6 +657,7 @@
   }
 
   function closeEditFarmerModal() {
+    clearFarmerDetailImage();
     document.getElementById('editFarmerModal').classList.add('hidden');
   }
 
