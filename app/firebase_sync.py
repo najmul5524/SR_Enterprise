@@ -338,15 +338,16 @@ def auto_restore_if_needed(db_manager) -> Dict[str, Any]:
             local_products = cur.fetchone()[0]
 
         # Quick check if Firestore has existing collections
+        fs_settings = list(client.collection("settings").limit(1).stream())
         fs_farmers = list(client.collection("farmers").limit(1).stream())
-        fs_invoices = list(client.collection("invoices").limit(1).stream())
         fs_products = list(client.collection("products").limit(1).stream())
+        fs_invoices = list(client.collection("invoices").limit(1).stream())
 
-        firestore_has_records = (len(fs_farmers) > 0) or (len(fs_invoices) > 0) or (len(fs_products) > 0)
+        firestore_has_records = (len(fs_settings) > 0) or (len(fs_farmers) > 0) or (len(fs_products) > 0) or (len(fs_invoices) > 0)
 
-        # Condition 1: Render fresh container deploy detected (local database is empty or only default 1 farmer)
-        if firestore_has_records and (local_invoices == 0 or local_farmers <= 1):
-            print("[FIREBASE AUTO-RESTORE] Fresh container / new deploy detected! Auto-restoring from Firestore...")
+        # Condition 1: Render fresh container deploy detected (local database is fresh/empty)
+        if firestore_has_records and (local_products == 0 or local_farmers == 0 or local_invoices == 0):
+            print("[FIREBASE AUTO-RESTORE] Fresh container / new deploy detected! Auto-restoring all collections from Firestore...")
             res = restore_all_from_firebase(db_manager)
             return {"status": "auto_restored", "result": res}
 
