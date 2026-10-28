@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: sr-enterprise
+    name: srenterprise
     runtime: python
     plan: free
     buildCommand: pip install -r requirements.txt

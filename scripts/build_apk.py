@@ -238,7 +238,7 @@ import android.widget.Toast;
 public class MainActivity extends Activity implements View.OnClickListener, Runnable {
     private String mPendingDocName = "SR_Enterprise_Invoice";
 
-    public static final String APP_URL = "https://sr-enterprise-zsxl.onrender.com/";
+    public static final String APP_URL = "https://srenterprise.onrender.com/";
     public static final int REQUEST_CAMERA_PERMISSION = 1001;
     public static final int FILE_CHOOSER_REQUEST_CODE = 2001;
     public static final int NATIVE_CAMERA_REQUEST_CODE = 3001;
